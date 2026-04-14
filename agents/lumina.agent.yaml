@@ -1,0 +1,8 @@
+name: lumina
+display_name: Lumina
+role: lead_orchestrator
+model: claude-sonnet
+container: CT305
+description: Lead orchestrator agent. Handles user requests via Matrix, delegates to specialist agents via Nexus.
+max_tools_per_turn: 5
+inbox_check_interval: 300

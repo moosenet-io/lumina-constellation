@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Config{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+  <h1 style="font-size:1.5rem;font-weight:700;">⚙️ Configuration</h1>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+  <div class="card">
+    <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Constellation Config</h2>
+    <div id="constellation-config"
+      hx-get="/api/constellation"
+      hx-trigger="load"
+      hx-swap="innerHTML">
+      <div style="color:var(--text-secondary);">Loading...</div>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Active Modules</h2>
+    <div id="modules-list"
+      hx-get="/api/modules"
+      hx-trigger="load"
+      hx-swap="innerHTML">
+      <div style="color:var(--text-secondary);">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:1.5rem;">
+  <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Rename Assistant</h2>
+  <div style="display:flex;gap:0.75rem;max-width:480px;">
+    <input type="text" id="agent-name" placeholder="New assistant name..."
+      style="flex:1;padding:0.5rem 0.75rem;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);color:var(--text-primary);">
+    <button
+      hx-put="/api/constellation/agent/lumina/display_name"
+      hx-include="#agent-name"
+      hx-vals='js:{"name": document.getElementById("agent-name").value}'
+      hx-target="#rename-result"
+      class="btn-primary">Rename</button>
+  </div>
+  <div id="rename-result" style="margin-top:0.75rem;"></div>
+</div>
+{% endblock %}

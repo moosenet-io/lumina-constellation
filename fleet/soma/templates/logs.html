@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Logs{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+  <h1 style="font-size:1.5rem;font-weight:700;">📋 Logs</h1>
+  <div style="display:flex;gap:0.75rem;align-items:center;">
+    <select id="service-select" onchange="loadLogs(this.value)"
+      style="padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);">
+      <option value="soma">soma.service</option>
+      <option value="axon">axon.service</option>
+      <option value="sentinel-health">sentinel-health</option>
+      <option value="skill-evolution">skill-evolution</option>
+      <option value="inbox-monitor-py">inbox-monitor</option>
+      <option value="dura-backup-hourly">dura-backup</option>
+    </select>
+    <button onclick="toggleAutoScroll()"
+      class="btn-secondary"
+      id="autoscroll-btn"
+      style="font-size:0.875rem;">⏸ Pause</button>
+  </div>
+</div>
+
+<div class="card" style="padding:0;">
+  <div id="log-viewer"
+    style="font-family:monospace;font-size:0.8rem;height:60vh;overflow-y:auto;padding:1rem;background:var(--bg-primary);"
+    hx-get="/api/logs?service=soma&lines=100"
+    hx-trigger="load"
+    hx-swap="innerHTML">
+    <div style="color:var(--text-secondary);">Loading logs...</div>
+  </div>
+</div>
+
+<script>
+let autoScroll = true;
+const viewer = document.getElementById('log-viewer');
+
+function loadLogs(service) {
+  viewer.setAttribute('hx-get', `/api/logs?service=${service}&lines=100`);
+  htmx.trigger(viewer, 'load');
+}
+
+function toggleAutoScroll() {
+  autoScroll = !autoScroll;
+  document.getElementById('autoscroll-btn').textContent = autoScroll ? '⏸ Pause' : '▶ Resume';
+}
+
+// Auto-scroll to bottom when new content loads
+viewer.addEventListener('htmx:afterSwap', () => {
+  if (autoScroll) viewer.scrollTop = viewer.scrollHeight;
+});
+
+// Auto-refresh every 5 seconds
+setInterval(() => {
+  const service = document.getElementById('service-select').value;
+  if (autoScroll) loadLogs(service);
+}, 5000);
+</script>
+{% endblock %}

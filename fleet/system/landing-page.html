@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumina — System Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0f;--bg2:#12121a;--bg3:#1a1a28;--text:#e8e6e0;--muted:#8a8880;--accent:#a78bfa;--accent2:#7c3aed;--teal:#5dcaa5;--coral:#f0997b;--amber:#ef9f27;--pink:#ed93b1;--blue:#85b7eb;--red:#f09595;--green:#97c459;--border:rgba(255,255,255,0.06);--glow:rgba(167,139,250,0.08)}
+body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;font-weight:400;line-height:1.7;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',monospace;font-size:0.85em}
+
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:2rem;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(167,139,250,0.06) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+.hero h1{font-size:clamp(3rem,8vw,6rem);font-weight:700;letter-spacing:-0.03em;background:linear-gradient(135deg,#e8e6e0 0%,#a78bfa 50%,#5dcaa5 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.5rem}
+.hero .sub{font-size:clamp(1rem,2.5vw,1.4rem);color:var(--muted);font-weight:300;max-width:600px;margin-bottom:2rem}
+.hero .stats{display:flex;gap:2rem;flex-wrap:wrap;justify-content:center}
+.stat{text-align:center}
+.stat .num{font-size:2.5rem;font-weight:700;color:var(--accent)}
+.stat .label{font-size:0.75rem;text-transform:uppercase;letter-spacing:0.15em;color:var(--muted)}
+
+.container{max-width:1100px;margin:0 auto;padding:0 2rem}
+section{padding:6rem 0}
+section h2{font-size:2rem;font-weight:600;margin-bottom:0.5rem;letter-spacing:-0.02em}
+section .section-sub{color:var(--muted);margin-bottom:3rem;font-size:1.05rem}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+@media(max-width:768px){.grid-2,.grid-3{grid-template-columns:1fr}}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;transition:border-color 0.3s}
+.card:hover{border-color:rgba(167,139,250,0.2)}
+.card h3{font-size:1.1rem;font-weight:600;margin-bottom:0.25rem}
+.card .card-sub{font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem}
+.card p{font-size:0.9rem;color:var(--muted);line-height:1.6}
+
+.badge{display:inline-block;padding:2px 10px;border-radius:100px;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;text-transform:uppercase}
+.badge-shipped{background:rgba(93,202,165,0.15);color:var(--teal)}
+.badge-live{background:rgba(133,183,235,0.15);color:var(--blue)}
+.badge-ready{background:rgba(239,159,39,0.15);color:var(--amber)}
+.badge-future{background:rgba(138,136,128,0.15);color:var(--muted)}
+.badge-blocked{background:rgba(240,149,149,0.15);color:var(--red)}
+
+.infra-table{width:100%;border-collapse:collapse;font-size:0.85rem}
+.infra-table th{text-align:left;padding:0.75rem 1rem;color:var(--muted);font-weight:500;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;border-bottom:1px solid var(--border)}
+.infra-table td{padding:0.6rem 1rem;border-bottom:1px solid var(--border)}
+.infra-table tr:hover td{background:var(--glow)}
+.ct{font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--accent)}
+.ip{font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--muted)}
+
+.timeline{position:relative;padding-left:2rem}
+.timeline::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,var(--accent),var(--teal),var(--border))}
+.tl-item{position:relative;margin-bottom:2rem;padding-left:1.5rem}
+.tl-item::before{content:'';position:absolute;left:-2rem;top:0.5rem;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--bg)}
+.tl-item h4{font-weight:600;font-size:1rem;margin-bottom:0.25rem}
+.tl-item .tl-date{font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem}
+.tl-item p{font-size:0.85rem;color:var(--muted)}
+
+.diagram-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:2rem;overflow-x:auto}
+.diagram-wrap h3{font-size:0.9rem;font-weight:500;color:var(--muted);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.1em}
+
+.cost-bar{display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem}
+.cost-bar .bar-label{min-width:120px;font-size:0.85rem;color:var(--muted)}
+.cost-bar .bar{flex:1;height:24px;border-radius:6px;background:var(--bg3);overflow:hidden;position:relative}
+.cost-bar .bar-fill{height:100%;border-radius:6px;transition:width 0.6s ease}
+.cost-bar .bar-val{font-family:'JetBrains Mono',monospace;font-size:0.8rem;min-width:60px;text-align:right}
+
+.naming{display:grid;grid-template-columns:auto 1fr auto;gap:0 1.5rem;align-items:baseline;font-size:0.9rem}
+.naming .n-name{font-weight:600;color:var(--text)}
+.naming .n-role{color:var(--muted)}
+.naming .n-type{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em}
+.naming > *{padding:0.4rem 0;border-bottom:1px solid var(--border)}
+
+.principle{padding:1.25rem 1.5rem;border-left:3px solid var(--accent);background:var(--bg2);border-radius:0 12px 12px 0;margin-bottom:1rem}
+.principle strong{color:var(--text)}
+.principle p{color:var(--muted);font-size:0.9rem;margin-top:0.25rem}
+
+footer{padding:3rem 0;text-align:center;color:var(--muted);font-size:0.8rem;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+<h1>Lumina</h1>
+<p class="sub">An autonomous AI agent system for life operations. Built on a 3-node Proxmox homelab. Orchestrated by a single lead agent. Powered by local + cloud inference. Designed for one person to manage everything.</p>
+<div class="stats">
+<div class="stat"><div class="num">22</div><div class="label">Modules</div></div>
+<div class="stat"><div class="num">14</div><div class="label">Plane projects</div></div>
+<div class="stat"><div class="num">672+</div><div class="label">Work items</div></div>
+<div class="stat"><div class="num">$1.55</div><div class="label">Max daily cost</div></div>
+</div>
+</div>
+
+<section>
+<div class="container">
+<h2>Design principles</h2>
+<p class="section-sub">The philosophy behind every architectural decision.</p>
+
+<div class="principle"><strong>Inference is a resource to be allocated, not a constant.</strong><p>Each agent and each sub-task uses the minimum inference tier that produces acceptable quality. Local Qwen for parsing, cloud Haiku for synthesis, Sonnet for deep research, Opus for architectural reasoning. 90% of execution is pure Python at $0.</p></div>
+<div class="principle"><strong>Lumina orchestrates, never executes bulk work.</strong><p>Maximum ~5 tool calls per user request. Complex work is delegated to sub-agents via Nexus inbox. Lumina plans and monitors. Sub-agents execute.</p></div>
+<div class="principle"><strong>Custom over native OpenClaw.</strong><p>IronClaw lacks native multi-agent communication. Python sub-agents aren't IronClaw agents. Our custom inbox (Nexus) provides more control over inference routing and cost than native sessions_send ever would.</p></div>
+<div class="principle"><strong>No peer-to-peer agent messaging.</strong><p>All communication routes through Lumina via Nexus. Prevents runaway delegation loops, keeps token costs predictable, maintains a single audit trail.</p></div>
+</div>
+</section>
+
+<section style="background:var(--bg2)">
+<div class="container">
+<h2>Infrastructure</h2>
+<p class="section-sub">Three Proxmox nodes. 20+ containers. One cluster.</p>
+
+<div class="diagram-wrap">
+<h3>Proxmox cluster — PVS (services + agents)</h3>
+<table class="infra-table">
+<tr><th>Container</th><th>IP</th><th>Name</th><th>Role</th><th>Status</th></tr>
+<tr><td><span class="ct">CT305</span></td><td><span class="ip">.217</span></td><td>Lumina</td><td>Lead orchestrator (IronClaw v0.19.0)</td><td><span class="badge badge-shipped">shipped</span></td></tr>
+<tr><td><span class="ct">CT310</span></td><td><span class="ip">.120</span></td><td>Fleet</td><td>Axon, Vigil, Sentinel, Seer, Wizard, Vector, Meridian</td><td><span class="badge badge-live">live</span></td></tr>
+<tr><td><span class="ct">CT300</span></td><td><span class="ip">.224</span></td><td>Postgres</td><td>Nexus inbox backend (lumina_inbox database)</td><td><span class="badge badge-shipped">shipped</span></td></tr>
+<tr><td><span class="ct">CT315</span></td><td><span class="ip">.232</span></td><td>Plane CE</td><td>Project management (14 projects, 672+ items)</td><td><span class="badge badge-shipped">shipped</span></td></tr>
+<tr><td><span class="ct">CT306</span></td><td><span class="ip">.208</span></td><td>Matrix</td><td>Tuwunel + bridge bot (the operator's chat interface)</td><td><span class="badge badge-shipped">shipped</span></td></tr>
+</table>
+</div>
+
+<div class="grid-2">
+<div class="diagram-wrap">
+<h3>PVM (control plane)</h3>
+<table class="infra-table">
+<tr><th>CT</th><th>Name</th><th>Role</th></tr>
+<tr><td><span class="ct">CT214</span></td><td>Terminus</td><td>MCP hub (120+ tools, 20+ modules)</td></tr>
+<tr><td><span class="ct">CT215</span></td><td>LiteLLM</td><td>Inference proxy (24 models)</td></tr>
+<tr><td><span class="ct">CT223</span></td><td>Gitea</td><td>Git repos (7 lumina-* repos)</td></tr>
+<tr><td><span class="ct">CT212</span></td><td>Dev</td><td>Code-server + Claude Code</td></tr>
+<tr><td><span class="ct">CT221</span></td><td>Infisical</td><td>Secrets management</td></tr>
+<tr><td><span class="ct">CT207</span></td><td>NPM</td><td>Nginx Proxy Manager</td></tr>
+</table>
+</div>
+<div class="diagram-wrap">
+<h3>PVE (inference)</h3>
+<table class="infra-table">
+<tr><th>ID</th><th>Name</th><th>Role</th></tr>
+<tr><td><span class="ct">VM901</span></td><td>Ollama GPU</td><td>RTX 3050 8GB — Qwen 2.5:7b</td></tr>
+<tr><td><span class="ct">CT110</span></td><td>Ollama CPU</td><td>nomic-embed-text (embeddings)</td></tr>
+</table>
+</div>
+</div>
+</div>
+</section>
+
+<section>
+<div class="container">
+<h2>Naming schema</h2>
+<p class="section-sub">Evocative sci-fi for systems. Character names for agents.</p>
+
+<div class="grid-2">
+<div class="card">
+<h3>Systems</h3>
+<div class="naming">
+<span class="n-name">Nexus</span><span class="n-role">Inter-agent inbox (Postgres)</span><span class="n-type badge badge-shipped">shipped</span>
+<span class="n-name">Refractor</span><span class="n-role">Smart LLM proxy (14 categories)</span><span class="n-type badge badge-shipped">shipped</span>
+<span class="n-name">Terminus</span><span class="n-role">MCP tool hub (120+ tools)</span><span class="n-type badge badge-shipped">shipped</span>
+<span class="n-name">Engram</span><span class="n-role">Memory + knowledge (sqlite-vec)</span><span class="n-type badge badge-live">live</span>
+<span class="n-name">The Obsidian Circle</span><span class="n-role">Wizard reasoning council</span><span class="n-type badge badge-live">live</span>
+<span class="n-name">The Plexus</span><span class="n-role">Work queue (Plane project PX)</span><span class="n-type badge badge-shipped">shipped</span>
+</div>
+</div>
+<div class="card">
+<h3>Agents</h3>
+<div class="naming">
+<span class="n-name">Lumina</span><span class="n-role">Lead orchestrator</span><span class="n-type badge badge-shipped">shipped</span>
+<span class="n-name">Axon</span><span class="n-role">Work queue manager</span><span class="n-type badge badge-shipped">shipped</span>
+<span class="n-name">Vigil</span><span class="n-role">Briefings + daily dashboard</span><span class="n-type badge badge-live">live</span>
+<span class="n-name">Sentinel</span><span class="n-role">Ops monitoring + status page</span><span class="n-type badge badge-live">live</span>
+<span class="n-name">Seer</span><span class="n-role">Deep research engine</span><span class="n-type badge badge-live">live</span>
+<span class="n-name">Mr. Wizard</span><span class="n-role">Deep reasoning (Claude OAuth)</span><span class="n-type badge badge-live">live</span>
+<span class="n-name">Vector</span><span class="n-role">Autonomous dev loops</span><span class="n-type badge badge-ready">phase 1</span>
+<span class="n-name">Meridian</span><span class="n-role">Paper trading simulator</span><span class="n-type badge badge-ready">spec'd</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section style="background:var(--bg2)">
+<div class="container">
+<h2>Inference cost model</h2>
+<p class="section-sub">Four tiers matched to task complexity. 90% of work runs at $0.</p>
+
+<div class="cost-bar"><span class="bar-label">Tier 3: Python</span><div class="bar"><div class="bar-fill" style="width:90%;background:var(--teal)"></div></div><span class="bar-val">$0/day</span></div>
+<div class="cost-bar"><span class="bar-label">Tier 2: Qwen local</span><div class="bar"><div class="bar-fill" style="width:70%;background:var(--blue)"></div></div><span class="bar-val">$0/day</span></div>
+<div class="cost-bar"><span class="bar-label">Tier 1: cloud LLM</span><div class="bar"><div class="bar-fill" style="width:20%;background:var(--accent)"></div></div><span class="bar-val">$0.55-1.55</span></div>
+<div class="cost-bar"><span class="bar-label">Tier 0: Opus (gated)</span><div class="bar"><div class="bar-fill" style="width:5%;background:var(--coral)"></div></div><span class="bar-val">subscription</span></div>
+<div class="cost-bar"><span class="bar-label">Nexus inbox monitor</span><div class="bar"><div class="bar-fill" style="width:3%;background:var(--amber)"></div></div><span class="bar-val">$0.03/day</span></div>
+
+<div class="grid-3" style="margin-top:2rem">
+<div class="card">
+<h3>Tier 3 — pure Python</h3>
+<p>API calls, retries, state management, Nexus routing. No LLM involvement. Handles 90% of Axon's work, all Sentinel health checks, all Nexus message routing.</p>
+</div>
+<div class="card">
+<h3>Tier 2 — local Qwen</h3>
+<p>Qwen 2.5:7b on VM901 GPU via LiteLLM. $0 inference. Used for parsing, label naming, description writing, per-source summarization in Seer, Vigil formatting.</p>
+</div>
+<div class="card">
+<h3>Tier 1 — cloud</h3>
+<p>Haiku + Sonnet via OpenRouter. Lumina's orchestration, Seer deep synthesis ($2-5/report), Meridian market analysis. The thinking that requires judgment.</p>
+</div>
+</div>
+</div>
+</section>
+
+<section>
+<div class="container">
+<h2>Module ecosystem</h2>
+<p class="section-sub">21 modules across core infrastructure, agents, productivity, and lifestyle.</p>
+
+<div class="grid-3">
+<div class="card"><h3 style="color:var(--teal)">Nexus</h3><div class="card-sub">Core infrastructure <span class="badge badge-shipped">shipped</span></div><p>Inter-agent inbox. 5 MCP tools. Postgres backend. Flag-graded heartbeat (critical/urgent/normal/low). ~$0.03/day.</p></div>
+<div class="card"><h3 style="color:var(--teal)">Axon</h3><div class="card-sub">Core agent <span class="badge badge-shipped">shipped</span></div><p>Work queue manager. Receives work orders via Nexus, decomposes into Plane tasks, executes as pure Python API calls.</p></div>
+<div class="card"><h3 style="color:var(--teal)">Refractor</h3><div class="card-sub">Core infrastructure <span class="badge badge-shipped">shipped</span></div><p>Smart LLM proxy. 14 keyword categories. Filters 138 tools to 17-28 per turn. Sub-millisecond latency.</p></div>
+
+<div class="card"><h3 style="color:var(--blue)">Vigil</h3><div class="card-sub">Productivity <span class="badge badge-live">live</span></div><p>Morning + afternoon briefings. Self-hosted HTML dashboard. Calendar, weather, commute, news, sports, tasks.</p></div>
+<div class="card"><h3 style="color:var(--blue)">Sentinel</h3><div class="card-sub">Productivity <span class="badge badge-live">live</span></div><p>Cluster health monitoring. HTML status page with green/amber/red per service. 12 services tracked.</p></div>
+<div class="card"><h3 style="color:var(--blue)">Engram</h3><div class="card-sub">Core infrastructure <span class="badge badge-live">live</span></div><p>Three-layer memory: knowledge base, activity journal, behavioral patterns. sqlite-vec embeddings. nomic-embed-text.</p></div>
+
+<div class="card"><h3 style="color:var(--pink)">Seer</h3><div class="card-sub">Specialist agent <span class="badge badge-live">live</span></div><p>Research engine. 3 effort tiers (light $0, standard $0.01, deep $2-5). Sanitization pipeline. Self-hosted HTML reports.</p></div>
+<div class="card"><h3 style="color:var(--pink)">Mr. Wizard</h3><div class="card-sub">Specialist agent <span class="badge badge-live">phases 1-3</span></div><p>Deep reasoning via Claude OAuth. Auto tier (Sonnet) + gated tier (Opus with the operator approval). Obsidian Circle council.</p></div>
+<div class="card"><h3 style="color:var(--pink)">Vector</h3><div class="card-sub">Specialist agent <span class="badge badge-ready">phase 1</span></div><p>Autonomous dev loops. Dual-mode: standalone (open source) + integrated (Lumina). Replaces ARCADE.</p></div>
+
+<div class="card"><h3 style="color:var(--blue)">Odyssey</h3><div class="card-sub">Lifestyle <span class="badge badge-live">live</span></div><p>Trip planning. Destination research via Seer, deal tracker, bucket list, adventure log. <a href="/travel/" style="color:var(--teal)">→ Travel</a></p></div>
+<div class="card"><h3 style="color:var(--amber)">Vitals</h3><div class="card-sub">Lifestyle <span class="badge badge-ready">spec'd</span></div><p>Health + fitness. Universal ingestion from any tracker. Training programs. Health coaching personality.</p></div>
+<div class="card"><h3 style="color:var(--amber)">Hearth</h3><div class="card-sub">Lifestyle <span class="badge badge-blocked">grocy</span></div><p>Kitchen management. Grocy API for pantry. Recipe scraping via Seer. Meal planning. Shared shopping lists.</p></div>
+
+<div class="card"><h3 style="color:var(--amber)">Ledger</h3><div class="card-sub">Lifestyle <span class="badge badge-blocked">docker</span></div><p>Personal finance via Actual Budget. Natural language logging. Budget alerts. Household shared view.</p></div>
+<div class="card"><h3 style="color:var(--blue)">Crucible</h3><div class="card-sub">Lifestyle <span class="badge badge-live">live</span></div><p>Learning + skills tracker. Courses, books, certs, hobby projects, FPV flight logs, reading queue. Streak tracking.</p></div>
+<div class="card"><h3 style="color:var(--amber)">Relay</h3><div class="card-sub">Lifestyle <span class="badge badge-blocked">lubelogger</span></div><p>Vehicle maintenance via LubeLogger. Service history, fuel tracking, maintenance reminders, document renewals.</p></div>
+
+<div class="card"><h3 style="color:var(--coral)">Meridian</h3><div class="card-sub">Experimental <span class="badge badge-ready">spec'd</span></div><p>Paper trading sandbox. Crypto + stocks. Autonomous/advisory/manual modes. Reasoning journal. Benchmark tracking.</p></div>
+<div class="card"><h3 style="color:var(--blue)">Dashboard</h3><div class="card-sub">Frontend <span class="badge badge-live">gateway live</span></div><p>API gateway live at :8080 (8 endpoints). Homepage frontend Docker pending. Chat widget pending. <a href="http://YOUR_FLEET_SERVER_IP:8080/" style="color:var(--teal)">→ API</a></p></div>
+<div class="card"><h3 style="color:var(--coral)">Household</h3><div class="card-sub">Multi-agent <span class="badge badge-future">future</span></div><p>Partner agent on dedicated CT. Shared Nexus channel. Private + household data isolation. Naming ceremony.</p></div>
+
+<div class="card"><h3 style="color:var(--muted)">Google Workspace</h3><div class="card-sub">Integration <span class="badge badge-blocked">peter</span></div><p>Calendar + email via dedicated lumina@moosenet.online account. Read-only calendar, managed inbox.</p></div>
+<div class="card"><h3 style="color:var(--muted)">Commute</h3><div class="card-sub">Productivity <span class="badge badge-live">live</span></div><p>TomTom traffic intelligence. Proactive Matrix alerts when commute exceeds baseline by 25%+.</p></div>
+<div class="card"><h3 style="color:var(--teal)">Terminus</h3><div class="card-sub">Core infrastructure <span class="badge badge-shipped">shipped</span></div><p>MCP tool hub on CT214. 120+ tools across 20+ modules. SSH stdio transport. Version-controlled in Gitea.</p></div>
+</div>
+</div>
+</section>
+
+<section style="background:var(--bg2)">
+<div class="container">
+<h2>Gitea repositories</h2>
+<p class="section-sub">Everything version-controlled. Organized by deployment target.</p>
+
+<table class="infra-table">
+<tr><th>Repository</th><th>Contents</th><th>Deploys to</th><th>Files</th></tr>
+<tr><td><span class="ct">moosenet/lumina</span></td><td>Project docs, specs, architecture, diagrams</td><td>Reference only</td><td>29</td></tr>
+<tr><td><span class="ct">moosenet/lumina-terminus</span></td><td>All MCP tool modules + server.py</td><td>CT214 /opt/ai-mcp/</td><td>28</td></tr>
+<tr><td><span class="ct">moosenet/lumina-fleet</span></td><td>All agent processes (axon, vigil, sentinel, seer, wizard, vector)</td><td>CT310 /opt/lumina-fleet/</td><td>—</td></tr>
+<tr><td><span class="ct">moosenet/lumina-engram</span></td><td>Knowledge base, journals, behavioral patterns</td><td>Gitea only (data)</td><td>—</td></tr>
+<tr><td><span class="ct">moosenet/lumina-vector</span></td><td>Vector dev loop source (dual-mode)</td><td>CT310 + public GitHub</td><td>—</td></tr>
+<tr><td><span class="ct">moosenet/lumina-vigil</span></td><td>Briefing config + templates</td><td>CT310</td><td>—</td></tr>
+<tr><td><span class="ct">moosenet/lumina-sentinel</span></td><td>Health check configs + logs</td><td>CT310</td><td>—</td></tr>
+</table>
+</div>
+</section>
+
+<section>
+<div class="container">
+<h2>Communication backbone</h2>
+<p class="section-sub">Nexus routes all inter-agent messaging through Postgres with flag-graded priorities.</p>
+
+<div class="grid-2">
+<div class="card">
+<h3>Message envelope</h3>
+<p class="mono" style="color:var(--text);line-height:2">
+from_agent: lumina | axon | vigil | ...<br>
+to_agent: lumina | axon | * (broadcast)<br>
+message_type: work_order | result | escalation | status | heartbeat<br>
+priority: critical | urgent | normal | low<br>
+payload: { ... } (JSON, schema per type)<br>
+correlation_id, ttl_hours, timestamp
+</p>
+</div>
+<div class="card">
+<h3>Heartbeat flags</h3>
+<div style="margin-top:0.5rem">
+<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem"><span class="badge" style="background:rgba(240,149,149,0.2);color:var(--red);min-width:60px;text-align:center">critical</span><span style="font-size:0.85rem;color:var(--muted)">Process + notify the operator (&lt; 5 min)</span></div>
+<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem"><span class="badge" style="background:rgba(239,159,39,0.2);color:var(--amber);min-width:60px;text-align:center">urgent</span><span style="font-size:0.85rem;color:var(--muted)">Process next 5-min check</span></div>
+<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem"><span class="badge" style="background:rgba(93,202,165,0.2);color:var(--teal);min-width:60px;text-align:center">normal</span><span style="font-size:0.85rem;color:var(--muted)">30-min heartbeat cycle</span></div>
+<div style="display:flex;align-items:center;gap:0.75rem"><span class="badge" style="background:rgba(133,183,235,0.2);color:var(--blue);min-width:60px;text-align:center">low</span><span style="font-size:0.85rem;color:var(--muted)">Daily review</span></div>
+</div>
+</div>
+</div>
+
+<div class="card" style="margin-top:1.5rem">
+<h3>Access control</h3>
+<p style="margin-bottom:0.75rem">Lumina can send to any agent. Sub-agents can only send to Lumina. No peer-to-peer messaging.</p>
+<table class="infra-table">
+<tr><th>Agent</th><th>Can send to</th><th>Can read</th></tr>
+<tr><td>Lumina</td><td>Any agent, broadcast (*)</td><td>Own inbox + all history</td></tr>
+<tr><td>Axon, Vigil, Sentinel</td><td>Lumina only</td><td>Own inbox only</td></tr>
+<tr><td>Seer, Wizard, Vector</td><td>Lumina only</td><td>Own inbox only</td></tr>
+<tr><td>Partner (future)</td><td>Lumina + household type</td><td>Own + household messages</td></tr>
+</table>
+</div>
+</div>
+</section>
+
+<section style="background:var(--bg2)">
+<div class="container">
+<h2>Build history</h2>
+<p class="section-sub">From a design brief to a 21-module platform in one session.</p>
+
+<div class="timeline">
+<div class="tl-item"><h4>Sessions 1-8: foundation</h4><div class="tl-date">March 2026</div><p>IronClaw deployed on CT305. Signal channel (later Matrix). MCP hub on CT214 with 61 tools. Identity files. Routines. Smart Proxy. Cost optimization from $5/day to $0.50/day. Agent Briefly and Agent Ops built on CT310.</p></div>
+
+<div class="tl-item"><h4>Session 9: the big build</h4><div class="tl-date">April 5, 2026</div><p>Nexus inbox shipped. Axon work queue shipped. Full naming schema approved. 7 Gitea repos renamed/created. 14 Plane projects with 672+ work items. Seer research engine built. Mr. Wizard phases 1-3 live. Vigil dashboard, Sentinel status page, Engram, commute intelligence built. 29 documentation files across all repos. 8 spec documents produced covering 21 total modules.</p></div>
+
+<div class="tl-item"><h4>Key unlock: Plane-driven agentic workflow</h4><div class="tl-date">April 5, 2026</div><p>Claude Code + Plane API + dangerously-skip-permissions = autonomous build agent that creates its own work items, executes them, and updates status in real-time. This pattern validated what Axon will do in production.</p></div>
+
+<div class="tl-item" style="opacity:0.6"><h4>Next: productivity sprint</h4><div class="tl-date">April 6-10, 2026</div><p>$100 API credit burn. Google Workspace integration, Homepage dashboard, remaining lifestyle modules, Meridian trading sandbox.</p></div>
+</div>
+</div>
+</section>
+
+<section>
+<div class="container">
+<h2>Spec library</h2>
+<p class="section-sub">8 documents covering every module, ready for Claude Code execution.</p>
+
+<div class="grid-2">
+<div class="card"><h3>lumina-nexus-prd.docx</h3><div class="card-sub"><span class="badge badge-shipped">shipped</span></div><p>Nexus inbox + Axon work queue. Postgres schema, MCP tools, build phases.</p></div>
+<div class="card"><h3>lumina-seer-wizard-spec.docx</h3><div class="card-sub"><span class="badge badge-live">built</span></div><p>Seer research engine (3 tiers, sanitization pipeline) + Mr. Wizard (Obsidian Circle).</p></div>
+<div class="card"><h3>lumina-vector-spec.docx</h3><div class="card-sub"><span class="badge badge-ready">queued</span></div><p>Dual-mode dev loops. Interface contracts, standalone vs integrated backends.</p></div>
+<div class="card"><h3>lumina-productivity-sprint.docx</h3><div class="card-sub"><span class="badge badge-live">partial</span></div><p>Google, Vigil dashboard, Sentinel status, Engram, commute. 5 modules.</p></div>
+<div class="card"><h3>lumina-lifestyle-modules.docx</h3><div class="card-sub"><span class="badge badge-ready">queued</span></div><p>Odyssey (travel), Vitals (health), Household (multi-agent), Hearth (kitchen).</p></div>
+<div class="card"><h3>lumina-lifestyle-addendum.docx</h3><div class="card-sub"><span class="badge badge-ready">queued</span></div><p>Ledger (Actual Budget), Crucible (learning), Relay (LubeLogger).</p></div>
+<div class="card"><h3>lumina-dashboard-spec.docx</h3><div class="card-sub"><span class="badge badge-ready">building</span></div><p>Homepage frontend, API gateway, chat widget, nightly composer, auto-troubleshooter.</p></div>
+<div class="card"><h3>lumina-meridian-spec.docx</h3><div class="card-sub"><span class="badge badge-ready">queued</span></div><p>Paper trading sandbox. Crypto + stocks. Reasoning journal. Benchmark tracking.</p></div>
+</div>
+</div>
+</section>
+
+<footer>
+<div class="container">
+<p>Lumina &middot; MooseNet &middot; Built by Peter Boose with Claude &middot; MIT License &middot; 2026</p>
+<p style="margin-top:0.5rem;font-size:0.7rem">21 modules &middot; 14 Plane projects &middot; 672+ work items &middot; 7 Gitea repos &middot; 3 Proxmox nodes &middot; ~$1.55/day max operating cost</p>
+</div>
+</footer>
+
+
+<!-- ── README EXPLAINER SECTIONS ─────────────────────────────────────── -->
+<section style="background:var(--bg2)">
+<div class="container">
+<h2>How it works — system deep dive</h2>
+<p class="section-sub">A complete technical explainer drawn from the repository documentation.</p>
+
+<!-- LUMINA OVERVIEW -->
+<div class="diagram-wrap" style="margin-bottom:2rem">
+<h3>Communication flow</h3>
+<pre style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--muted);line-height:1.6;overflow-x:auto">
+the operator (Matrix/phone)
+    │
+    ▼ voice / text
+LUMINA (CT305) — IronClaw v0.19.0 + Claude Sonnet + Refractor (14 categories)
+    │                         │
+    │ MCP tools (SSH stdio)   │ Nexus send/receive
+    ▼                         ▼
+TERMINUS (CT214)         NEXUS (CT300 Postgres)
+120+ tools               inbox_messages table
+FastMCP server           5 tools: send/check/read/ack/history
+    │                         │
+    │ SSH to CT310            │ work_orders
+    ▼                         ▼
+FLEET (CT310 — all agents)
+├── Axon      polls Nexus every 60s, executes Plane/Gitea bulk ops
+├── Vigil     briefings at 6:45AM + 3:50PM weekdays
+├── Sentinel  health checks + /status/ HTML page
+├── Seer      research engine → /research/ HTML reports
+├── Wizard    Obsidian Circle council → /wizard/ Engram entries
+├── Engram    sqlite-vec semantic memory (1536-dim embeddings)
+└── Vector    autonomous dev loops (standalone or integrated mode)
+    │
+    ▼ Apache on port 80
+http://YOUR_FLEET_SERVER_IP/
+├── /           Landing page (this page)
+├── /briefing/  Vigil daily dashboard
+├── /status/    Sentinel cluster health
+├── /research/  Seer research reports
+├── /trading/   Meridian weekly reviews
+├── /learning/  Crucible progress tracker
+└── /travel/    Odyssey bucket list + reports
+</pre>
+</div>
+</div>
+</section>
+
+<section>
+<div class="container">
+<h2>Terminus — MCP tool hub</h2>
+<p class="section-sub">CT214 runs the FastMCP server. Lumina connects via SSH stdio. All 120+ tools live here as Python modules.</p>
+
+<div class="grid-2">
+<div>
+<div class="card" style="margin-bottom:1rem">
+<h3>Tool modules (21)</h3>
+<table class="infra-table" style="margin-top:0.75rem">
+<tr><th>Module</th><th>Tools</th><th>Purpose</th></tr>
+<tr><td class="ct">nexus_tools.py</td><td>5</td><td>Inter-agent inbox</td></tr>
+<tr><td class="ct">axon_tools.py</td><td>4</td><td>Work queue delegation</td></tr>
+<tr><td class="ct">seer_tools.py</td><td>3</td><td>Web research engine</td></tr>
+<tr><td class="ct">wizard_tools.py</td><td>3</td><td>Deep reasoning</td></tr>
+<tr><td class="ct">engram_tools.py</td><td>5</td><td>Semantic memory</td></tr>
+<tr><td class="ct">vigil_tools.py</td><td>2</td><td>Briefing agent</td></tr>
+<tr><td class="ct">sentinel_tools.py</td><td>3</td><td>Ops monitoring</td></tr>
+<tr><td class="ct">vector_tools.py</td><td>8</td><td>Dev loops</td></tr>
+<tr><td class="ct">plane_tools.py</td><td>24</td><td>Plane CE management</td></tr>
+<tr><td class="ct">prometheus_tools.py</td><td>4</td><td>Metrics queries</td></tr>
+<tr><td class="ct">gitea_tools.py</td><td>6</td><td>Git operations</td></tr>
+<tr><td class="ct">ansible_tools.py</td><td>4</td><td>Gated playbooks</td></tr>
+</table>
+</div>
+</div>
+<div>
+<div class="card" style="margin-bottom:1rem">
+<h3>Refractor — smart proxy</h3>
+<p style="margin-bottom:0.75rem">Runs on CT305. Filters all 120+ tools to 17-28 relevant tools per turn using keyword categories. 80-88% token reduction on tool definitions.</p>
+<p class="mono" style="font-size:0.75rem;color:var(--muted);line-height:2">
+git · monitoring · media · dev · news · infra<br>
+routines · briefing · discovery · jobs · plane<br>
+nexus · axon · seer · wizard · engram · odyssey<br>
+crucible · hearth · ledger · relay · meridian · dashboard
+</p>
+</div>
+<div class="card">
+<h3>Adding a new tool module</h3>
+<p class="mono" style="font-size:0.75rem;color:var(--text);line-height:2">
+1. Write <span style="color:var(--accent)">module_tools.py</span><br>
+2. Add <span style="color:var(--teal)">register_module_tools(mcp)</span><br>
+3. Import in <span style="color:var(--accent)">server.py</span><br>
+4. Add Refractor category<br>
+5. Restart <span style="color:var(--teal)">ai-mcp.service</span>
+</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section style="background:var(--bg2)">
+<div class="container">
+<h2>Fleet agents — what each one does</h2>
+<p class="section-sub">All agents run on CT310. They communicate via Nexus and publish HTML via Apache.</p>
+
+<div class="grid-2">
+<div class="card">
+<h3 style="color:var(--teal)">Axon — Work Queue Manager</h3>
+<p class="card-sub">systemd service · polls Nexus every 60s · direct psycopg2 to CT300</p>
+<p>Receives <span class="mono">work_order</span> messages from Lumina via Nexus. Decomposes into atomic API calls. Executes bulk Plane operations (create issues, labels, states) or Gitea operations (create repos, push files). Creates tracking issues in The Plexus. Returns results via Nexus. Queries Engram for prior context before acting.</p>
+</div>
+<div class="card">
+<h3 style="color:var(--blue)">Vigil — Briefing Agent</h3>
+<p class="card-sub">IronClaw routines · 6:45 AM + 3:50 PM weekdays · Qwen for formatting ($0)</p>
+<p>Gathers data from 15 sources in parallel (ThreadPoolExecutor): weather, commute, news (3 topics), sports, crypto, Plex, Jellyseerr, cluster health, fun fact, SETI, reflection. Generates HTML dashboard at <span class="mono">/briefing/</span>. Matrix message is a link + one-line summary.</p>
+</div>
+<div class="card">
+<h3 style="color:var(--blue)">Sentinel — Ops Monitoring</h3>
+<p class="card-sub">10 health operations · HTML status page · auto-refreshes every 5 min</p>
+<p>Runs health checks across all services (Prometheus, Plex, Gitea, VM901, Ollama). Generates <span class="mono">/status/</span> HTML with green/amber/red per service. Auto-updates after <span class="mono">system-snapshot</span>, <span class="mono">self-health</span>, <span class="mono">plex-health</span> operations. Checks 12 services.</p>
+</div>
+<div class="card">
+<h3 style="color:var(--pink)">Seer — Research Engine</h3>
+<p class="card-sub">8-step pipeline · 3 tiers · sanitization on all fetched content</p>
+<p>Query planner (Qwen) → SearXNG search → source ranker → 3-layer injection sanitization → per-source summarization (Qwen, isolated, canary-validated) → gap analysis loops → synthesis (Haiku or Sonnet) → HTML + Markdown publish. Deep tier includes bias evaluation, comparison matrix, 3 Sonnet passes.</p>
+</div>
+<div class="card">
+<h3 style="color:var(--pink)">Mr. Wizard — Deep Reasoning</h3>
+<p class="card-sub">Auto tier (Sonnet ~$0.10) · Gated tier (Opus via Claude OAuth)</p>
+<p>Convenes the Obsidian Circle: <strong>Architect Arcane</strong> (systems design), <strong>Skeptic Seer</strong> (devil's advocate), <strong>Keeper of Operations</strong> (3 AM runbook), <strong>Wandering Fool</strong> (lateral thinking). Four sequential perspective passes, then Mr. Wizard synthesizes. Results in Engram + Nexus result to Lumina.</p>
+</div>
+<div class="card">
+<h3 style="color:var(--accent)">Engram — Semantic Memory</h3>
+<p class="card-sub">sqlite-vec · nomic-embed-text · 1536-dim · 3 layers</p>
+<p>Three memory layers: <strong>knowledge_base</strong> (infrastructure facts, decisions), <strong>patterns</strong> (conventions, naming rules), <strong>activity_journal</strong> (timestamped agent actions). Embedding via LiteLLM → nomic-embed-text on Ollama (VM901). Text search fallback when embedding fails.</p>
+</div>
+</div>
+</div>
+</section>
+
+<section>
+<div class="container">
+<h2>Engram — how memory works</h2>
+<p class="section-sub">Semantic memory across three layers. Agents query before acting, journal after completing.</p>
+
+<div class="grid-2">
+<div>
+<div class="card" style="margin-bottom:1rem">
+<h3>Memory layers</h3>
+<table class="infra-table" style="margin-top:0.75rem">
+<tr><th>Layer</th><th>Key pattern</th><th>Purpose</th></tr>
+<tr><td><span class="badge badge-shipped">kb</span></td><td class="mono" style="font-size:0.75rem">category/name</td><td>Facts, decisions, how-tos</td></tr>
+<tr><td><span class="badge badge-live">patterns</span></td><td class="mono" style="font-size:0.75rem">category/rule</td><td>Conventions, naming rules</td></tr>
+<tr><td><span class="badge badge-ready">journal</span></td><td class="mono" style="font-size:0.75rem">(auto-timestamped)</td><td>Agent action log</td></tr>
+</table>
+</div>
+<div class="card">
+<h3>Seeded knowledge (17 facts)</h3>
+<p style="font-size:0.85rem;color:var(--muted)">Container IPs and roles for all nodes · Naming schema (systems + agents) · Nexus access patterns · MCP access patterns · Plane + Gitea API patterns · SearXNG URL · LiteLLM model names</p>
+</div>
+</div>
+<div class="card">
+<h3>Using Engram from IronClaw</h3>
+<p class="mono" style="font-size:0.75rem;color:var(--text);line-height:2.2">
+<span style="color:var(--accent)">engram_query</span>(<span style="color:var(--teal)">"how were Plane labels created"</span>)<br>
+→ Returns top-K semantically similar KB entries<br>
+<br>
+<span style="color:var(--accent)">engram_store</span>(key=<span style="color:var(--teal)">"decision/auth"</span>, content=<span style="color:var(--teal)">"..."</span>, layer=<span style="color:var(--teal)">"patterns"</span>)<br>
+→ Embeds + stores to sqlite-vec DB<br>
+<br>
+<span style="color:var(--accent)">engram_journal</span>(agent=<span style="color:var(--teal)">"axon"</span>, action=<span style="color:var(--teal)">"created labels"</span>, outcome=<span style="color:var(--teal)">"5 done"</span>)<br>
+→ Activity log entry with embedding<br>
+<br>
+<span style="color:var(--accent)">engram_conventions</span>(topic=<span style="color:var(--teal)">"naming"</span>)<br>
+→ Returns relevant patterns as markdown<br>
+<br>
+<span style="color:var(--accent)">engram_recent</span>(hours_back=<span style="color:var(--amber)">24</span>, agent_filter=<span style="color:var(--teal)">"lumina"</span>)<br>
+→ Recent journal entries for context
+</p>
+</div>
+</div>
+</div>
+</section>
+
+<section style="background:var(--bg2)">
+<div class="container">
+<h2>Vector — dual-mode dev loops</h2>
+<p class="section-sub">Standalone (open source, zero infra) or integrated (full Lumina stack). Same core loop, different backends.</p>
+
+<div class="grid-2">
+<div class="card">
+<h3>Interface contracts (Phase 1 — complete)</h3>
+<p style="margin-bottom:0.75rem">Four abstract backends. Core loop never imports implementations directly.</p>
+<table class="infra-table">
+<tr><th>Interface</th><th>Standalone</th><th>Integrated</th></tr>
+<tr><td>StateBackend</td><td>SQLite</td><td>Plane (The Plexus)</td></tr>
+<tr><td>MessageBus</td><td>stdout + log</td><td>Nexus (psycopg2)</td></tr>
+<tr><td>MemoryStore</td><td>./memory/*.md</td><td>Engram (sqlite-vec)</td></tr>
+<tr><td>CostGate</td><td>Hard cap $5</td><td>Nexus → Lumina approval</td></tr>
+</table>
+</div>
+<div class="card">
+<h3>8-phase loop (Phase 2 — building)</h3>
+<p class="mono" style="font-size:0.78rem;color:var(--muted);line-height:2">
+1. INTAKE  ← work order (CLI or Nexus)<br>
+2. PLAN    ← LLM decomposes into tasks<br>
+3. EXECUTE ← write code, apply changes<br>
+4. TEST    ← run test command, eval output<br>
+5. REVIEW  ← MemoryStore + LLM judgment<br>
+6. ITERATE ← fix or advance<br>
+7. COMPLETE ← StateBackend.complete_task()<br>
+8. LEARN   ← MemoryStore + CostGate
+</p>
+<p style="font-size:0.8rem;color:var(--muted);margin-top:0.5rem">Escalates (not loops forever) on: 3 consecutive failures · architectural ambiguity · budget exhausted · scope creep</p>
+</div>
+</div>
+</div>
+</section>
+
+<section>
+<div class="container">
+<h2>Repositories — documentation index</h2>
+<p class="section-sub">Every repo has README, ONBOARDING, HELP, HOWTO, and LICENSE. MIT licensed. Co-authored by Peter Boose and Claude Code.</p>
+
+<div class="grid-3">
+<div class="card">
+<h3><a href="http://git.moosenet.online/moosenet/lumina" style="color:var(--accent);text-decoration:none">moosenet/lumina</a></h3>
+<p class="card-sub">Project docs · specs · architecture</p>
+<p>8 spec documents covering all 21 modules. Architecture diagrams. Build history. This is the reference repo — nothing deploys from here.</p>
+</div>
+<div class="card">
+<h3><a href="http://git.moosenet.online/moosenet/lumina-terminus" style="color:var(--accent);text-decoration:none">lumina-terminus</a></h3>
+<p class="card-sub">Deploys to CT214 /opt/ai-mcp/</p>
+<p>All MCP tool modules + server.py. 28 files. Add a new module by writing a Python file with a register_*_tools(mcp) function and importing it in server.py.</p>
+</div>
+<div class="card">
+<h3><a href="http://git.moosenet.online/moosenet/lumina-fleet" style="color:var(--accent);text-decoration:none">lumina-fleet</a></h3>
+<p class="card-sub">Deploys to CT310 /opt/lumina-fleet/</p>
+<p>All agent processes: axon, vigil, sentinel, seer, wizard, engram, vector. Each subdirectory is a self-contained agent with its own Python code and config.</p>
+</div>
+<div class="card">
+<h3><a href="http://git.moosenet.online/moosenet/lumina-engram" style="color:var(--accent);text-decoration:none">lumina-engram</a></h3>
+<p class="card-sub">Data only · CT310 DB not committed</p>
+<p>LUMINA.md identity file, PATTERNS.md conventions, wizard consultation archive, Seer research reports, CT310 audit logs. The sqlite-vec database (engram.db) is runtime — not committed.</p>
+</div>
+<div class="card">
+<h3><a href="http://git.moosenet.online/moosenet/lumina-vector" style="color:var(--accent);text-decoration:none">lumina-vector</a></h3>
+<p class="card-sub">Dual-mode · open source</p>
+<p>Formerly ARCADE. Phase 1 (interfaces + standalone backends) complete. Phase 2 (core loop) building. Public GitHub repo planned at moosenet-io/vector.</p>
+</div>
+<div class="card">
+<h3><a href="http://git.moosenet.online/moosenet/lumina-vigil" style="color:var(--accent);text-decoration:none">lumina-vigil</a></h3>
+<p class="card-sub">Generated briefing output</p>
+<p>Briefing markdown outputs. Dashboard code lives in lumina-fleet/vigil/. Live: <a href="/briefing/" style="color:var(--teal)">YOUR_FLEET_SERVER_IP/briefing/</a></p>
+</div>
+<div class="card">
+<h3><a href="http://git.moosenet.online/moosenet/lumina-sentinel" style="color:var(--accent);text-decoration:none">lumina-sentinel</a></h3>
+<p class="card-sub">Generated health check output</p>
+<p>Ops monitoring output. Agent code in lumina-fleet/sentinel/. Live: <a href="/status/" style="color:var(--teal)">YOUR_FLEET_SERVER_IP/status/</a></p>
+</div>
+</div>
+</div>
+</section>
+
+<section style="background:var(--bg2)">
+<div class="container">
+<h2>Build progress — live status</h2>
+<p class="section-sub">Current state across all 16 Plane projects and 21 modules.</p>
+
+<div class="grid-3">
+<div class="card">
+<h3 style="color:var(--teal)">✅ Shipped &amp; running</h3>
+<p>Nexus inbox · Axon work queue · Refractor (14 categories) · Terminus (120+ tools) · Vigil dashboard · Sentinel status page · Seer research engine · Mr. Wizard (Obsidian Circle) · Engram memory · Commute intelligence · landing page · API gateway</p>
+</div>
+<div class="card">
+<h3 style="color:var(--blue)">🔄 Building now</h3>
+<p>Vector Phase 2 (loop.py deployed) · Meridian trading sandbox · Seer deep-tier test · reflexa.py full implementation</p>
+</div>
+<div class="card">
+<h3 style="color:var(--amber)">⛔ Waiting on the operator</h3>
+<p>Google account → M1 Workspace · Docker CT → Actual Budget + LubeLogger · Grocy API key → Hearth · Alpha Vantage + Finnhub keys → Meridian · Homepage CT → Dashboard · GitHub repos → Vector public</p>
+</div>
+</div>
+
+<div class="card" style="margin-top:1.5rem">
+<h3>Attribution</h3>
+<p style="margin-top:0.5rem;color:var(--muted)"><strong style="color:var(--text)">Peter Boose</strong> ("Moose") — System architecture, product requirements, operations, and design direction. MooseNet homelab operator. All systems run on private infrastructure at moosenet.online.</p>
+<p style="margin-top:0.75rem;color:var(--muted)"><strong style="color:var(--text)">Claude Code</strong> (Anthropic claude-sonnet-4-6) — Implementation, code generation, system integration, and documentation. Built autonomously across 9+ sessions under the operator's direction, 2026.</p>
+<p style="margin-top:0.75rem;font-style:italic;color:var(--accent)">"Python handles execution. LLMs handle judgment only." — Lumina Architecture Principles</p>
+<p style="margin-top:0.75rem;font-size:0.8rem;color:var(--muted)">MIT License · Copyright © 2026 Peter Boose and Claude Code (Anthropic)</p>
+</div>
+</div>
+</section>
+
+
+</body>
+</html>

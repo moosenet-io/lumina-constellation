@@ -1,0 +1,50 @@
+{
+    admin off
+    local_certs
+}
+
+https://YOUR_FLEET_SERVER_IP, https://localhost, https://127.0.0.1 {
+    tls internal
+
+    # Soma admin panel — systemd service on host:8082
+    handle /soma* {
+        uri strip_prefix /soma
+        reverse_proxy host.docker.internal:8082
+    }
+
+    # Actual Budget — fixes SharedArrayBuffer requirement
+    handle /actual* {
+        uri strip_prefix /actual
+        reverse_proxy actual-budget:5006
+    }
+    handle_path /actual {
+        reverse_proxy actual-budget:5006
+    }
+
+    # LubeLogger
+    handle /relay* {
+        uri strip_prefix /relay
+        reverse_proxy lubelogger:8080
+    }
+
+    # Grocy
+    handle /hearth* {
+        uri strip_prefix /hearth
+        reverse_proxy grocy:80
+    }
+
+    # Gateway API (for Soma backend)
+    handle /api* {
+        reverse_proxy gateway:8080
+    }
+
+    # Default: gateway
+    handle {
+        reverse_proxy gateway:8080
+    }
+}
+
+# Plain HTTP — redirect to HTTPS
+:80 {
+    redir https://{host}{uri} permanent
+}

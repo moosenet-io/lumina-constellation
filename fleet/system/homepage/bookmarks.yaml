@@ -1,0 +1,29 @@
+- Lumina Modules:
+    - Briefing Dashboard:
+        - abbr: BR
+          href: http://YOUR_FLEET_SERVER_IP/briefing/
+    - System Status:
+        - abbr: ST
+          href: http://YOUR_FLEET_SERVER_IP/status/
+    - Research:
+        - abbr: SR
+          href: http://YOUR_FLEET_SERVER_IP/research/
+    - Learning:
+        - abbr: CR
+          href: http://YOUR_FLEET_SERVER_IP/learning/
+    - Travel:
+        - abbr: OD
+          href: http://YOUR_FLEET_SERVER_IP/travel/
+- Infrastructure:
+    - Gitea:
+        - abbr: GT
+          href: http://YOUR_GITEA_IP:3000
+    - Plane:
+        - abbr: PL
+          href: http://YOUR_PLANE_IP
+    - Portainer:
+        - abbr: PO
+          href: https://YOUR_PORTAINER_IP:9443
+    - Proxmox PVM:
+        - abbr: PV
+          href: https://YOUR_PVM_HOST_IP:8006

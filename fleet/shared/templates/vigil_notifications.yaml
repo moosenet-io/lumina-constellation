@@ -1,0 +1,5 @@
+# Vigil notification templates — no LLM needed
+briefing_ready: "Morning briefing ready: {sections} sections, {events} calendar items."
+briefing_sent: "Briefing delivered at {time}."
+health_all_ok: "All {count} services healthy."
+health_degraded: "{count} service(s) need attention: {services}."

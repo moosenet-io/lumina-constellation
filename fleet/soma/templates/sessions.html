@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Sessions{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+  <h1 style="font-size:1.5rem;font-weight:700;">💬 Sessions</h1>
+  <span class="badge-secondary" id="session-count">Loading...</span>
+</div>
+
+<div id="sessions-container"
+  hx-get="/api/sessions"
+  hx-trigger="load"
+  hx-swap="innerHTML">
+  <div style="text-align:center;padding:3rem;color:var(--text-secondary);">Loading sessions...</div>
+</div>
+
+<template id="sessions-template">
+  <!-- Populated by HTMX response -->
+</template>
+{% endblock %}

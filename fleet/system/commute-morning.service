@@ -1,0 +1,10 @@
+[Unit]
+Description=Commute morning check
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+EnvironmentFile=/opt/lumina-fleet/axon/.env
+ExecStart=/usr/bin/python3 /opt/lumina-fleet/commute/commute_check.py morning
+SyslogIdentifier=commute-morning

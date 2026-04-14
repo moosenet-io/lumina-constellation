@@ -1,0 +1,233 @@
+/* constellation-reports.css — Report styling for Lumina Constellation modules */
+/* Extends constellation.css — always include constellation.css first */
+
+/* ── Report Layout ─────────────────────────────────────────────────────────── */
+
+.report-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+}
+
+.report-header {
+  border-bottom: 2px solid var(--accent, #58a6ff);
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.report-header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+.report-metadata {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+  color: var(--text-secondary, #8b949e);
+  margin-top: 0.75rem;
+}
+
+.report-metadata span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.report-section {
+  margin-bottom: 2rem;
+}
+
+.report-section h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color, #30363d);
+}
+
+.report-section h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+/* ── KPI Cards ─────────────────────────────────────────────────────────────── */
+
+.report-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.report-kpi-card {
+  background: var(--bg-secondary, #161b22);
+  border: 1px solid var(--border-color, #30363d);
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.report-kpi-card .kpi-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--accent, #58a6ff);
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.report-kpi-card .kpi-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #8b949e);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.report-kpi-card.kpi-success .kpi-value { color: var(--success, #3fb950); }
+.report-kpi-card.kpi-warning .kpi-value { color: var(--warning, #d29922); }
+.report-kpi-card.kpi-error .kpi-value   { color: var(--danger, #f85149); }
+
+/* ── Tables ────────────────────────────────────────────────────────────────── */
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+
+.report-table th {
+  background: var(--bg-tertiary, #0d1117);
+  padding: 0.625rem 0.875rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary, #8b949e);
+  border-bottom: 1px solid var(--border-color, #30363d);
+}
+
+.report-table td {
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--border-color, #30363d);
+  vertical-align: top;
+}
+
+.report-table tr:hover td {
+  background: var(--bg-secondary, #161b22);
+}
+
+/* ── Model tags (Council reports) ──────────────────────────────────────────── */
+
+.report-model-tag {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 0.5rem;
+}
+
+.report-model-tag.model-claude   { background: #f97316; color: #fff; }
+.report-model-tag.model-gpt      { background: #10a37f; color: #fff; }
+.report-model-tag.model-gemini   { background: #4285f4; color: #fff; }
+.report-model-tag.model-deepseek { background: #5b4fcf; color: #fff; }
+.report-model-tag.model-qwen     { background: #0068c8; color: #fff; }
+
+.report-model-response {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1rem 1rem 1.25rem;
+  border-left: 3px solid var(--border-color, #30363d);
+}
+
+.report-model-response.model-claude   { border-left-color: #f97316; }
+.report-model-response.model-gpt      { border-left-color: #10a37f; }
+.report-model-response.model-gemini   { border-left-color: #4285f4; }
+.report-model-response.model-deepseek { border-left-color: #5b4fcf; }
+
+/* ── Charts (CSS-only bar charts) ──────────────────────────────────────────── */
+
+.report-chart-container {
+  margin: 1rem 0;
+}
+
+.report-bar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.report-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.report-bar-label {
+  min-width: 120px;
+  color: var(--text-secondary, #8b949e);
+}
+
+.report-bar-track {
+  flex: 1;
+  height: 12px;
+  background: var(--bg-tertiary, #0d1117);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.report-bar-fill {
+  height: 100%;
+  background: var(--accent, #58a6ff);
+  border-radius: 6px;
+  transition: width 0.5s ease;
+}
+
+.report-bar-fill.fill-success { background: var(--success, #3fb950); }
+.report-bar-fill.fill-warning { background: var(--warning, #d29922); }
+.report-bar-fill.fill-danger  { background: var(--danger, #f85149); }
+
+.report-bar-value {
+  min-width: 48px;
+  text-align: right;
+  color: var(--text-secondary, #8b949e);
+}
+
+/* ── Status indicators ─────────────────────────────────────────────────────── */
+
+.report-status-ok      { color: var(--success, #3fb950); }
+.report-status-warn    { color: var(--warning, #d29922); }
+.report-status-error   { color: var(--danger, #f85149); }
+.report-status-unknown { color: var(--text-tertiary, #484f58); }
+
+/* ── Footer ────────────────────────────────────────────────────────────────── */
+
+.report-footer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color, #30363d);
+  font-size: 0.75rem;
+  color: var(--text-secondary, #8b949e);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ── Print styles ──────────────────────────────────────────────────────────── */
+
+@media print {
+  body { background: white !important; color: black !important; }
+  .report-container { max-width: 100%; padding: 1rem; }
+  .report-header { border-color: black; }
+  .report-kpi-card { border: 1px solid #ccc; }
+  .report-table th { background: #f5f5f5; color: black; }
+  .report-table td { border-color: #ccc; }
+  .report-footer { color: #666; }
+}

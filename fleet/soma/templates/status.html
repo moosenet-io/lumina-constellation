@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Status{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+  <div>
+    <h1 style="margin:0;font-size:1.5rem;">System Status</h1>
+    <div style="color:var(--text-tertiary);font-size:0.85rem;margin-top:0.25rem;">
+      Auto-refreshes every 10s &mdash; <span id="last-updated">{{ status.timestamp }}</span>
+    </div>
+  </div>
+  <div>
+    {% if status.status == 'ok' %}
+      <span class="badge-success" style="padding:0.4rem 1rem;border-radius:6px;font-weight:600;">ALL SYSTEMS OK</span>
+    {% elif status.status == 'degraded' %}
+      <span class="badge-warning" style="padding:0.4rem 1rem;border-radius:6px;font-weight:600;">DEGRADED</span>
+    {% else %}
+      <span class="badge-error" style="padding:0.4rem 1rem;border-radius:6px;font-weight:600;">CRITICAL</span>
+    {% endif %}
+  </div>
+</div>
+
+<div id="status-grid"
+     hx-get="/status/grid"
+     hx-trigger="every 10s"
+     hx-swap="innerHTML"
+     style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;">
+  {% include "status_grid.html" %}
+</div>
+
+<script>
+  document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target.id === 'status-grid') {
+      document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+    }
+  });
+</script>
+{% endblock %}

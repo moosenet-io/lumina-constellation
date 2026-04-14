@@ -1,0 +1,9 @@
+# Dashboard insight templates — no LLM needed
+delta_up: "{module}: {metric} is {delta}% higher than yesterday."
+delta_down: "{module}: {metric} is {delta}% lower than yesterday."
+milestone: "{count} {thing} completed. New record!"
+tips:
+  - "Try 'deep research X' for a Sonnet-powered analysis ($2-5)."
+  - "Say 'what can I make?' and Hearth matches recipes to your pantry."
+  - "Ask 'audit [github-url]' for a Cortex code review of any repo."
+  - "Say 'burn remaining tokens' to run deferred work before your cycle resets."

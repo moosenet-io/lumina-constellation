@@ -1,0 +1,10 @@
+[Unit]
+Description=Run inbox monitor every 5 minutes
+
+[Timer]
+OnBootSec=90
+OnUnitActiveSec=300
+Unit=inbox-monitor-py.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Timers{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+  <div>
+    <h1 style="margin:0;font-size:1.5rem;">Systemd Timers</h1>
+    <div style="color:var(--text-tertiary);font-size:0.85rem;margin-top:0.25rem;">
+      CT310 scheduled jobs — auto-refreshes every 30s
+    </div>
+  </div>
+  <span class="badge-secondary" id="timer-count" style="padding:0.35rem 0.85rem;">Loading...</span>
+</div>
+
+<div id="timer-list"
+     hx-get="/api/timers"
+     hx-trigger="load, every 30s"
+     hx-swap="innerHTML">
+  <div style="text-align:center;padding:3rem;color:var(--text-secondary);">Loading timers...</div>
+</div>
+
+<script>
+// Known timer descriptions for friendly display
+const TIMER_INFO = {
+  'sentinel-health.timer':    { label: 'Sentinel Health',     schedule: 'Every 5 min',  icon: '🛡️' },
+  'skill-evolution.timer':    { label: 'Skill Evolution',     schedule: 'Daily 2 AM',   icon: '🧬' },
+  'inbox-monitor-py.timer':   { label: 'Inbox Monitor',       schedule: 'Every 5 min',  icon: '📬' },
+  'dura-backup-hourly.timer': { label: 'Dura Backup',         schedule: 'Hourly',       icon: '💾' },
+  'commute-morning.timer':    { label: 'Commute (Morning)',   schedule: 'Weekdays 7 AM',icon: '🚗' },
+  'commute-evening.timer':    { label: 'Commute (Evening)',   schedule: 'Weekdays 4 PM',icon: '🚗' },
+  'myelin-collect.timer':     { label: 'Myelin Collect',      schedule: 'Hourly',       icon: '🧠' },
+  'myelin-alerts.timer':      { label: 'Myelin Alerts',       schedule: 'Daily 8 AM',   icon: '🧠' },
+};
+
+function parseTimerLine(raw) {
+  // systemctl list-timers columns: NEXT LEFT LAST PASSED UNIT ACTIVATES
+  // Split on 2+ spaces to handle date/time with spaces
+  const parts = raw.split(/\s{2,}/);
+  let name = null, next = null, last = null, activates = null;
+  // Find timer name
+  for (const p of parts) {
+    if (p.trim().endsWith('.timer')) { name = p.trim(); break; }
+  }
+  if (parts.length >= 1) next = parts[0];
+  if (parts.length >= 3) last = parts[2];
+  if (parts.length >= 5) activates = parts[5];
+  return { name, next, last, activates };
+}
+
+function renderTimers(data) {
+  const target = document.getElementById('timer-list');
+  if (!target) return;
+  const timers = data.timers || [];
+  const countBadge = document.getElementById('timer-count');
+  if (countBadge) countBadge.textContent = `${timers.length} timers`;
+
+  if (timers.length === 0) {
+    target.innerHTML = '<div class="card" style="padding:2rem;text-align:center;color:var(--text-tertiary);">No timers found.</div>';
+    return;
+  }
+
+  let html = '<div style="display:grid;gap:0.75rem;">';
+  timers.forEach(t => {
+    const info = TIMER_INFO[t.name] || { label: t.name.replace('.timer',''), schedule: '—', icon: '⏰' };
+    const parsed = parseTimerLine(t.raw || '');
+    const isActive = t.raw && !t.raw.includes('inactive');
+    const statusBadge = isActive
+      ? '<span class="badge-success" style="font-size:0.75rem;padding:0.2rem 0.6rem;">active</span>'
+      : '<span class="badge-secondary" style="font-size:0.75rem;padding:0.2rem 0.6rem;">inactive</span>';
+    const safeName = encodeURIComponent(t.name);
+
+    html += `
+      <div class="card" style="padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;">
+        <div style="font-size:1.5rem;flex-shrink:0;">${info.icon}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
+            <span style="font-weight:600;">${escHtml(info.label)}</span>
+            ${statusBadge}
+          </div>
+          <div style="font-size:0.8rem;color:var(--text-tertiary);display:flex;gap:1.5rem;flex-wrap:wrap;">
+            <span>Schedule: ${escHtml(info.schedule)}</span>
+            ${parsed.next ? `<span>Next: <code style="font-size:0.8rem;">${escHtml(parsed.next.substring(0,30))}</code></span>` : ''}
+            ${parsed.last ? `<span>Last: <code style="font-size:0.8rem;">${escHtml(parsed.last.substring(0,30))}</code></span>` : ''}
+          </div>
+          <div style="font-size:0.75rem;color:var(--text-tertiary);margin-top:0.25rem;font-family:monospace;opacity:0.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(t.name)}">${escHtml(t.name)}</div>
+        </div>
+        <button
+          hx-post="/api/timers/${safeName}/trigger"
+          hx-target="#trigger-result"
+          hx-swap="innerHTML"
+          class="btn-secondary"
+          style="flex-shrink:0;font-size:0.8rem;padding:0.4rem 0.85rem;"
+          title="Manually trigger ${escHtml(t.name)}">
+          &#x25B6; Run
+        </button>
+      </div>`;
+  });
+  html += '</div>';
+  html += '<div id="trigger-result" style="margin-top:1rem;font-size:0.85rem;"></div>';
+
+  target.innerHTML = html;
+  htmx.process(target);
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+  if (!evt.detail.target || evt.detail.target.id !== 'timer-list') return;
+  if (!evt.detail.successful) return;
+  const raw = evt.detail.target.innerHTML;
+  try {
+    const data = JSON.parse(raw.trim());
+    renderTimers(data);
+  } catch(e) {}
+});
+</script>
+{% endblock %}

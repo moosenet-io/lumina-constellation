@@ -1,0 +1,23 @@
+# Constellation Theme — MooseNet defaults
+# Edit to customize your constellation's appearance
+# Soma compiles this into a :root override block
+
+constellation: MooseNet
+
+theme:
+  accent: "#7c3aed"        # Primary accent color
+  dark_bg: "#0a0a0f"      # Dark mode background
+  logo_emoji: "🌌"
+  favicon: "/shared/favicon.ico"
+
+typography:
+  font_sans: "Inter"
+  font_mono: "JetBrains Mono"
+  font_display: "Outfit"
+
+modules:
+  vigil: { enabled: true, show_in_nav: true }
+  sentinel: { enabled: true, show_in_nav: true }
+  cortex: { enabled: true, show_in_nav: false }
+  engram: { enabled: true, show_in_nav: false }
+  myelin: { enabled: true, show_in_nav: true }

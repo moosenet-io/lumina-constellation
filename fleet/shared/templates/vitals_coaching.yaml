@@ -1,0 +1,17 @@
+# Vitals coaching message templates — no LLM needed
+celebrations:
+  steps_milestone:
+    - "You hit {target} steps {count}/{total} days this week — solid consistency."
+    - "{count} out of {total} days above {target} steps. Strong week."
+  streak:
+    - "{n}-day streak! Last time you hit this was {last_date}."
+    - "That's {n} days in a row. Building momentum."
+nudges:
+  low_steps:
+    - "You've been under {target} steps for {n} days. Even a short walk counts."
+    - "{n} quiet days. Your energy tends to be better on active days."
+patterns:
+  sleep_exercise:
+    - "Your sleep quality is {delta}% better on days you exercise before {time}."
+  step_energy:
+    - "You tend to rate your energy higher on days with {threshold}+ steps."

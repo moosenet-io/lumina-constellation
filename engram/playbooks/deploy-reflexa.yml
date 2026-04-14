@@ -1,0 +1,57 @@
+---
+# deploy-reflexa.yml
+# Deploys Reflexa (Engram) memory system to CT310 agent fleet
+# Targets: CT310 (<fleet-server-ip>) via SSH through PVS
+
+- name: Deploy Reflexa to CT310 agent fleet
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    pvs_host: "root@<pvs-host-ip>"
+    fleet_ct: "310"
+    engram_dir: "/opt/lumina-fleet/engram"
+
+  tasks:
+    - name: Verify Engram directory exists
+      shell: >
+        ssh {{ pvs_host }} "pct exec {{ fleet_ct }} -- ls {{ engram_dir }}"
+      register: engram_check
+
+    - name: Install sqlite-vec Python package
+      shell: >
+        ssh {{ pvs_host }} "pct exec {{ fleet_ct }} -- pip3 install sqlite-vec --break-system-packages 2>&1 | tail -3"
+      register: sqlite_vec_install
+
+    - name: Verify sqlite-vec import
+      shell: >
+        ssh {{ pvs_host }} "pct exec {{ fleet_ct }} -- python3 -c 'import sqlite_vec; print(sqlite_vec.__version__)'"
+      register: sqlite_vec_version
+
+    - name: Print sqlite-vec version
+      debug:
+        msg: "sqlite-vec installed: {{ sqlite_vec_version.stdout }}"
+
+    - name: Initialize Engram database
+      shell: >
+        ssh {{ pvs_host }} "pct exec {{ fleet_ct }} -- python3 {{ engram_dir }}/engram.py init 2>/dev/null || echo 'init not supported, will auto-create on first use'"
+      register: init_result
+      ignore_errors: true
+
+    - name: Verify Engram module imports
+      shell: >
+        ssh {{ pvs_host }} "pct exec {{ fleet_ct }} -- python3 -c 'import sys; sys.path.insert(0, \"/opt/lumina-fleet\"); from engram.engram import *; print(\"Engram OK\")' 2>&1"
+      register: engram_test
+
+    - name: Show Engram status
+      debug:
+        msg: "{{ engram_test.stdout }}"
+
+    - name: Verify Reflexa hooks present
+      shell: >
+        ssh {{ pvs_host }} "pct exec {{ fleet_ct }} -- ls {{ engram_dir }}/reflexa.py"
+      register: reflexa_check
+
+    - name: Done
+      debug:
+        msg: "Reflexa/Engram deployment complete on CT310"

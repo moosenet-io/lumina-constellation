@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector — Soma</title>
+<link rel="stylesheet" href="http://YOUR_FLEET_SERVER_IP/shared/constellation.css">
+<script src="https://unpkg.com/htmx.org@1.9.10" crossorigin="anonymous"></script>
+</head>
+<body hx-headers='{"X-Soma-Key": "YOUR_SOMA_ADMIN_KEY"}'>
+<div style="max-width:1200px;margin:0 auto;padding:1.5rem;">
+
+  <!-- FIX 5: Enriched header -->
+  <div style="margin-bottom:1.5rem;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <h1 style="font-size:1.5rem;font-weight:700;margin:0 0 0.5rem;">&#x26A1; Vector</h1>
+        <p style="color:var(--text-secondary);margin:0;max-width:600px;font-size:0.875rem;">
+          Autonomous dev loops against your codebase. Vector plans, executes, reviews, and iterates —
+          creating PRs for your review. Powered by the <strong>Ralph Loop</strong> pattern with
+          <strong>Calx behavioral correction</strong>.
+          <a href="/wiki/modules/vector" style="color:var(--accent);margin-left:0.5rem;">&#8594; Full docs</a>
+        </p>
+      </div>
+      <a href="/status" style="color:var(--text-secondary);text-decoration:none;font-size:0.875rem;">&#8592; Dashboard</a>
+    </div>
+  </div>
+
+  <!-- Status overview -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1rem;margin-bottom:1.5rem;">
+    <div class="card"
+      hx-get="/api/vector/status"
+      hx-trigger="load, every 10s"
+      hx-swap="innerHTML"
+      id="vector-status-card">
+      <div style="color:var(--text-secondary);font-size:0.875rem;">Checking Vector status...</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div style="display:flex;gap:0;border-bottom:1px solid var(--border-color);margin-bottom:1.5rem;">
+    <button onclick="showTab('submit')" id="tab-submit" style="padding:0.75rem 1.25rem;border:none;background:none;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--text-primary);font-weight:600;">Submit Task</button>
+    <button onclick="showTab('calx')" id="tab-calx" style="padding:0.75rem 1.25rem;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-secondary);">Calx History</button>
+    <button onclick="showTab('prs')" id="tab-prs" style="padding:0.75rem 1.25rem;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-secondary);">Open PRs</button>
+  </div>
+
+  <!-- Submit tab -->
+  <div id="tab-submit-content" style="display:block;">
+    <div class="card" style="max-width:640px;">
+      <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Submit a task to Vector</h2>
+      <form onsubmit="submitVectorTask(event)">
+        <!-- FIX 5: Enhanced task textarea with help tooltip and cost estimate -->
+        <div style="margin-bottom:1rem;">
+          <label style="font-weight:600;display:block;margin-bottom:0.25rem;">
+            Task description
+            <span title="Describe what you want built. Vector will decompose this into steps and work through them autonomously."
+              style="cursor:help;color:var(--text-secondary);font-weight:normal;font-size:0.8rem;margin-left:0.5rem;">&#x2139;&#xFE0F; help</span>
+          </label>
+          <textarea id="task-input" rows="4" placeholder="e.g. Add rate limiting to the Nexus API endpoints..."
+            style="width:100%;padding:0.75rem;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);color:var(--text-primary);font-size:0.875rem;resize:vertical;"
+            oninput="updateCostEstimate(this.value)"></textarea>
+          <div id="cost-estimate" style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.25rem;"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+          <div>
+            <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Target repo</label>
+            <select id="repo-input" style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);">
+              <option value="/opt/lumina-fleet">/opt/lumina-fleet (fleet agents)</option>
+              <option value="/opt/ai-mcp">/opt/ai-mcp (Terminus tools)</option>
+              <option value="/opt/lumina-fleet/soma">/opt/lumina-fleet/soma (Soma)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Cost budget: <span id="budget-label">$2.00</span></label>
+            <input type="range" id="budget-input" min="0.5" max="10" step="0.5" value="2"
+              oninput="document.getElementById('budget-label').textContent='$'+this.value"
+              style="width:100%;">
+          </div>
+        </div>
+        <button type="submit" class="btn-primary" style="width:100%;">&#x26A1; Submit to Vector</button>
+      </form>
+      <div id="submit-result" style="margin-top:1rem;"></div>
+    </div>
+  </div>
+
+  <!-- Calx tab -->
+  <div id="tab-calx-content" style="display:none;">
+    <div style="display:flex;gap:0.75rem;margin-bottom:1rem;align-items:center;">
+      <select id="calx-filter" onchange="loadCalx(this.value)"
+        style="padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);">
+        <option value="">All triggers</option>
+        <option value="T1_TEST">T1 — Test compliance</option>
+        <option value="T2_STYLE">T2 — Style</option>
+        <option value="T3_SECURITY">T3 — Security (hard blocks)</option>
+      </select>
+    </div>
+    <!-- FIX 5: Empty state for Calx -->
+    <div id="calx-content"
+      hx-get="/api/vector/calx?limit=50"
+      hx-trigger="load"
+      hx-swap="innerHTML">
+      <div style="color:var(--text-secondary);text-align:center;padding:2rem;">
+        <div style="font-size:1.5rem;margin-bottom:0.5rem;">&#x1F3AF;</div>
+        <div>No Calx triggers recorded yet.</div>
+        <div style="font-size:0.875rem;margin-top:0.25rem;">Submit a task to Vector and behavioral corrections will appear here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRs tab -->
+  <div id="tab-prs-content" style="display:none;">
+    <!-- FIX 5: Empty state for PRs -->
+    <div id="prs-content"
+      hx-get="/api/vector/prs"
+      hx-trigger="load"
+      hx-swap="innerHTML">
+      <div style="color:var(--text-secondary);text-align:center;padding:2rem;">
+        <div>No open PRs from Vector yet.</div>
+        <div style="font-size:0.875rem;margin-top:0.25rem;">
+          When Vector completes tasks, PRs appear here.
+          <a href="http://YOUR_GITEA_IP:3000" target="_blank" style="color:var(--accent);">Browse Gitea &#8594;</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// FIX 5: Format vector status card response
+const CALX_COLORS = {'T1_TEST': '#58a6ff', 'T2_STYLE': '#d29922', 'T3_SECURITY': '#f85149', 'T4_PROMISE': '#a371f7'};
+
+document.addEventListener('htmx:afterSwap', function(e) {
+  if (e.detail.elt.id === 'vector-status-card') {
+    try {
+      const data = JSON.parse(e.detail.elt.innerText);
+      const pending = data.pending_work_orders || 0;
+      const lastResult = data.last_result;
+      let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">' +
+        '<h3 style="margin:0;">Agent Status</h3>' +
+        '<span class="badge-' + (pending > 0 ? 'warning' : 'success') + '" style="font-size:0.75rem;">' +
+        (pending > 0 ? pending + ' pending' : 'idle') +
+        '</span></div>';
+      if (lastResult) {
+        html += '<div style="font-size:0.875rem;color:var(--text-secondary);">Last: ' +
+          (lastResult.tasks_completed || 0) + ' tasks, $' + (lastResult.cost || 0).toFixed(2) + '</div>';
+      } else {
+        html += '<div style="font-size:0.875rem;color:var(--text-secondary);">No tasks run yet</div>';
+      }
+      e.detail.elt.innerHTML = html;
+    } catch(err) { /* keep raw */ }
+  }
+});
+
+function showTab(name) {
+  ['submit','calx','prs'].forEach(t => {
+    document.getElementById('tab-' + t + '-content').style.display = t === name ? 'block' : 'none';
+    const btn = document.getElementById('tab-' + t);
+    btn.style.borderBottomColor = t === name ? 'var(--accent)' : 'transparent';
+    btn.style.color = t === name ? 'var(--text-primary)' : 'var(--text-secondary)';
+    btn.style.fontWeight = t === name ? '600' : 'normal';
+  });
+}
+
+function loadCalx(type) {
+  const url = '/api/vector/calx?limit=50' + (type ? '&trigger_type=' + type : '');
+  document.getElementById('calx-content').setAttribute('hx-get', url);
+  htmx.trigger(document.getElementById('calx-content'), 'load');
+}
+
+// FIX 5: Cost estimate heuristic
+function updateCostEstimate(text) {
+  const el = document.getElementById('cost-estimate');
+  if (!el) return;
+  const words = text.trim().split(/\s+/).filter(function(w) { return w; }).length;
+  if (words === 0) { el.textContent = ''; return; }
+  const estimate = words < 10 ? '~$0.20 (simple)' : words < 30 ? '~$0.50-1.00 (medium)' : '~$1.00-2.00 (complex)';
+  el.textContent = 'Estimated cost: ' + estimate;
+}
+
+async function submitVectorTask(e) {
+  e.preventDefault();
+  const task = document.getElementById('task-input').value.trim();
+  const repo = document.getElementById('repo-input').value;
+  const budget = document.getElementById('budget-input').value;
+  const result = document.getElementById('submit-result');
+
+  if (!task) { result.innerHTML = '<div class="alert-error">Task description required</div>'; return; }
+
+  result.innerHTML = '<div class="alert-info">Submitting to Vector...</div>';
+
+  try {
+    const r = await fetch('/api/vector/submit', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-Soma-Key': 'YOUR_SOMA_ADMIN_KEY'},
+      body: JSON.stringify({task, repo, cost_budget: parseFloat(budget)})
+    });
+    const data = await r.json();
+    if (data.status === 'queued') {
+      result.innerHTML = '<div class="alert-success">&#x2713; Work order queued: ' + data.message_id + '</div>';
+      document.getElementById('task-input').value = '';
+      document.getElementById('cost-estimate').textContent = '';
+    } else {
+      result.innerHTML = '<div class="alert-error">Error: ' + (data.error || JSON.stringify(data)) + '</div>';
+    }
+  } catch(err) {
+    result.innerHTML = '<div class="alert-error">Failed: ' + err.message + '</div>';
+  }
+}
+</script>
+</body>
+</html>

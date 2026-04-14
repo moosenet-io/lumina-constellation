@@ -1,0 +1,95 @@
+- Lumina Core:
+    - Inbox:
+        icon: mdi-inbox-arrow-down
+        description: "Nexus message inbox"
+        widget:
+          type: customapi
+          url: http://YOUR_FLEET_SERVER_IP:8080/api/inbox
+          headers:
+            x-api-key: lumina-gateway-dev
+          mappings:
+            - field: pending
+              label: Pending
+              format: number
+    - System Health:
+        icon: mdi-heart-pulse
+        description: "MooseNet cluster status"
+        href: http://YOUR_FLEET_SERVER_IP/status/
+        widget:
+          type: customapi
+          url: http://YOUR_FLEET_SERVER_IP:8080/api/health
+          headers:
+            x-api-key: lumina-gateway-dev
+          mappings:
+            - field: summary
+              label: Status
+              format: text
+    - Tasks:
+        icon: mdi-checkbox-marked-circle
+        description: "Urgent items in LM project"
+        href: http://YOUR_PLANE_IP/
+        widget:
+          type: customapi
+          url: http://YOUR_FLEET_SERVER_IP:8080/api/tasks
+          headers:
+            x-api-key: lumina-gateway-dev
+          mappings:
+            - field: count
+              label: Urgent
+              format: number
+
+- Modules:
+    - Briefing:
+        icon: mdi-weather-sunny
+        description: "Daily briefing dashboard"
+        href: http://YOUR_FLEET_SERVER_IP/briefing/
+    - Status Page:
+        icon: mdi-server
+        description: "Cluster health"
+        href: http://YOUR_FLEET_SERVER_IP/status/
+    - Research:
+        icon: mdi-magnify
+        description: "Seer research reports"
+        href: http://YOUR_FLEET_SERVER_IP/research/
+    - Learning:
+        icon: mdi-book-open
+        description: "Crucible learning tracker"
+        href: http://YOUR_FLEET_SERVER_IP/learning/
+    - Travel:
+        icon: mdi-airplane
+        description: "Odyssey travel planning"
+        href: http://YOUR_FLEET_SERVER_IP/travel/
+    - System Home:
+        icon: mdi-home
+        description: "Lumina landing page"
+        href: http://YOUR_FLEET_SERVER_IP/
+
+- System:
+    - Gitea:
+        icon: gitea
+        description: "Source control"
+        href: http://YOUR_GITEA_IP:3000
+        widget:
+          type: gitea
+          url: http://YOUR_GITEA_IP:3000
+          key: YOUR_GITEA_TOKEN
+    - Plane:
+        icon: mdi-clipboard-list
+        description: "Project management"
+        href: http://YOUR_PLANE_IP
+    - Portainer:
+        icon: portainer
+        description: "Container management"
+        href: https://YOUR_PORTAINER_IP:9443
+    - LiteLLM:
+        icon: mdi-robot
+        description: "LLM proxy"
+        href: http://YOUR_LITELLM_IP:4000
+    - Prometheus:
+        icon: prometheus
+        description: "Metrics"
+        href: http://YOUR_PROMETHEUS_IP:9090
+    - Infisical:
+        icon: mdi-lock
+        description: "Secrets"
+        href: http://YOUR_INFISICAL_IP:8080

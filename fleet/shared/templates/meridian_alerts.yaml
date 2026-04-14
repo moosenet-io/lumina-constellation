@@ -1,0 +1,7 @@
+# Meridian paper trading alerts — no LLM needed
+price_spike: "{asset} up {delta}% in 24h (${price}). Portfolio impact: +${impact}."
+price_drop: "{asset} down {delta}% in 24h (${price}). Portfolio impact: -${impact}."
+fear_greed: "Fear & Greed Index at {value} ({label}). Market sentiment shifted."
+weekly_positive: "Portfolio: ${value} ({pct}% return). Beating {benchmark} by {delta}%."
+weekly_negative: "Portfolio: ${value} ({pct}% return). Trailing {benchmark} by {delta}%."
+weekly_flat: "Portfolio: ${value} ({pct}% return). Tracking {benchmark} closely."

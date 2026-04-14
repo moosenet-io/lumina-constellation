@@ -1,0 +1,5 @@
+# Budget alert templates — no LLM needed
+threshold_50: "{category}: ${spent} of ${budget} used ({pct}%). {days} days remaining."
+threshold_80: "Heads up — {category} at ${spent}/${budget} ({pct}%) with {days} days left."
+threshold_100: "{category} budget exceeded: ${spent}/${budget}. Adjust budget?"
+large_transaction: "Logged ${amount} at {vendor} under {category}. Correct?"

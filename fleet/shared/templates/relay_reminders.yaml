@@ -1,0 +1,5 @@
+# Vehicle/document renewal reminders — no LLM needed
+due_soon: "{doc_type} expires in {days} days ({expiry_date}). Start renewal."
+due_today: "{doc_type} expires today! Action required."
+overdue: "{doc_type} expired {days_ago} days ago ({expiry_date}). Urgent."
+service_due: "{vehicle}: {service_type} due at {mileage} miles. Currently {current_mileage}."

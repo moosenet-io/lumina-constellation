@@ -1,0 +1,87 @@
+# Lumina Constellation — Identity Configuration
+# Internal codenames never change. Display names are yours.
+# Edit this file to rename any component.
+# Reload: systemctl restart any agent service that uses naming.py
+
+constellation:
+  name: "MooseNet"
+  tagline: "Home operations, automated"
+
+lead_agent:
+  internal: lumina
+  display_name: "Lumina"
+  personality: warm
+  emoji: "✨"
+
+agents:
+  - internal: lumiere
+    display_name: "Lumière"
+    personality: warm
+    emoji: "💕"
+
+systems:
+  nexus:
+    display_name: "Nexus"
+    description: "Message routing"
+  engram:
+    display_name: "Engram"
+    description: "Knowledge + memory"
+  terminus:
+    display_name: "Terminus"
+    description: "Tool gateway"
+  refractor:
+    display_name: "Refractor"
+    description: "Smart proxy"
+  plexus:
+    display_name: "The Plexus"
+    description: "Work queue"
+  obsidian_circle:
+    display_name: "The Obsidian Circle"
+    description: "Deep reasoning council"
+
+modules:
+  vigil:
+    display_name: "Vigil"
+    description: "Daily briefings"
+  sentinel:
+    display_name: "Sentinel"
+    description: "System health"
+  seer:
+    display_name: "Seer"
+    description: "Deep research"
+  wizard:
+    display_name: "Mr. Wizard"
+    description: "Complex reasoning"
+  vector:
+    display_name: "Vector"
+    description: "Dev automation"
+  axon:
+    display_name: "Axon"
+    description: "Task execution"
+  odyssey:
+    display_name: "Odyssey"
+    description: "Trip planning"
+  vitals:
+    display_name: "Vitals"
+    description: "Health tracking"
+  hearth:
+    display_name: "Hearth"
+    description: "Kitchen management"
+  ledger:
+    display_name: "Ledger"
+    description: "Personal finance"
+  relay:
+    display_name: "Relay"
+    description: "Vehicle maintenance"
+  meridian:
+    display_name: "Meridian"
+    description: "Trading sandbox"
+  dashboard:
+    display_name: "Dashboard"
+    description: "Visual frontend"
+  crucible:
+    display_name: "Crucible"
+    description: "Learning & skills"
+  gateway:
+    display_name: "Gateway"
+    description: "API aggregator"

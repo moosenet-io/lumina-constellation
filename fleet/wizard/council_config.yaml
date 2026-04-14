@@ -1,0 +1,84 @@
+# Obsidian Circle v2 — Council Configuration
+# Each seat runs on a distinct AI architecture for genuine disagreement
+
+seats:
+  architect-arcane:
+    display_name: "Architect Arcane"
+    emoji: "🏛️"
+    persona_file: "council/architect-arcane.md"
+    model: "claude-opus-4-6"
+    route_priority:
+      - type: openrouter
+        model: "anthropic/claude-opus-4-6"
+      - type: litellm
+        model: "claude-opus-4-6"
+    temperature: 0.3
+    max_tokens: 800
+    specialty: "Systems architecture, long-term coherence, structural patterns"
+
+  skeptic-seer:
+    display_name: "Skeptic Seer"
+    emoji: "🔍"
+    persona_file: "council/skeptic-seer.md"
+    model: "openai/o3"
+    route_priority:
+      - type: openrouter
+        model: "openai/o3"
+      - type: litellm
+        model: "Lumina"
+    temperature: 0.1
+    max_tokens: 600
+    specialty: "Adversarial reasoning, failure modes, what can go wrong"
+
+  keeper-of-operations:
+    display_name: "Keeper of Operations"
+    emoji: "⚙️"
+    persona_file: "council/keeper-of-operations.md"
+    model: "deepseek-coder:6.7b"
+    route_priority:
+      - type: ollama
+        model: "deepseek-coder:6.7b"
+        endpoint: "http://YOUR_GPU_HOST_IP:11434"
+      - type: litellm
+        model: "Lumina Fast"
+    temperature: 0.2
+    max_tokens: 500
+    specialty: "Cost, complexity, operational reality, what the operator will actually maintain"
+
+  wandering-fool:
+    display_name: "Wandering Fool"
+    emoji: "🃏"
+    persona_file: "council/wandering-fool.md"
+    model: "google/gemini-2.0-flash-001"
+    route_priority:
+      - type: openrouter
+        model: "google/gemini-2.0-flash-001"
+      - type: litellm
+        model: "Lumina Fast"
+    temperature: 0.8
+    max_tokens: 400
+    specialty: "Creative alternatives, unexpected connections, beginner mindset"
+
+synthesis:
+  model: "claude-sonnet-4-6"
+  provider: litellm
+  max_tokens: 1000
+  prompt_template: |
+    You are Lumina synthesizing the Obsidian Circle's deliberation.
+    4 council members with distinct architectures have analyzed: {query}
+
+    Architect Arcane (Claude): {architect_arcane}
+    Skeptic Seer (o3): {skeptic_seer}
+    Keeper (DeepSeek): {keeper_of_operations}
+    Wandering Fool (Gemini): {wandering_fool}
+
+    Synthesize into: 1) consensus recommendation with confidence 0-10,
+    2) key disagreements to flag, 3) one-paragraph executive summary.
+    Format as JSON: {recommendation, confidence, disagreements, summary}
+
+session:
+  journal_to_engram: true
+  track_costs: true
+  min_confidence_threshold: 6
+  escalate_below_threshold: true
+  timeout_seconds: 45

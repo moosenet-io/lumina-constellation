@@ -1,0 +1,69 @@
+services:
+  actual-server:
+    image: actualbudget/actual-server:latest
+    container_name: actual-budget
+    restart: unless-stopped
+    ports:
+      - "5006:5006"
+    volumes:
+      - actual-data:/data
+
+  actual-http-api:
+    image: jhonderson/actual-http-api:latest
+    container_name: actual-http-api
+    restart: unless-stopped
+    ports:
+      - "5007:5007"
+    environment:
+      - ACTUAL_SERVER_URL=http://actual-budget:5006/
+      - ACTUAL_SERVER_PASSWORD=${ACTUAL_PASSWORD}
+      - API_KEY=${ACTUAL_API_KEY}
+    depends_on:
+      - actual-server
+
+  lubelogger:
+    image: hargata/lubelogger:latest
+    container_name: lubelogger
+    restart: unless-stopped
+    ports:
+      - "5000:8080"
+    volumes:
+      - lubelogger-data:/App/data
+    environment:
+      - LC_ALL=en_US.UTF-8
+
+  grocy:
+    image: linuxserver/grocy:latest
+    container_name: grocy
+    restart: unless-stopped
+    ports:
+      - "9283:80"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Los_Angeles
+    volumes:
+      - grocy-data:/config
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "443:443"
+      - "8443:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+
+volumes:
+  actual-data:
+  lubelogger-data:
+  grocy-data:
+  caddy-data:
+  caddy-config:

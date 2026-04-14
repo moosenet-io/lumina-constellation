@@ -1,0 +1,30 @@
+# Soma Admin Panel — Docker Compose Fragment
+# Note: Soma currently runs as a systemd service on CT310.
+# This fragment shows how to run it containerized (e.g., for docker compose --profile standard).
+# To use: merge into fleet/docker/docker-compose.yml and add to Caddyfile /soma* route.
+
+services:
+  soma:
+    image: python:3.11-slim
+    container_name: soma
+    restart: unless-stopped
+    working_dir: /app
+    command: >
+      sh -c "pip install fastapi uvicorn jinja2 pyyaml --quiet &&
+             python -m uvicorn api.main:app --host 0.0.0.0 --port 8082"
+    volumes:
+      - ./fleet/soma:/app
+      - ./fleet:/opt/lumina-fleet:ro
+    environment:
+      - SOMA_SECRET_KEY=${SOMA_SECRET_KEY:-soma-dev-key}
+      - SOMA_PORT=8082
+    ports:
+      - "8082:8082"
+    profiles:
+      - standard
+      - gpu
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

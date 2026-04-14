@@ -1,0 +1,24 @@
+{
+  "instruction_overrides": [
+    {"pattern": "ignore previous instructions", "severity": 3},
+    {"pattern": "disregard your system prompt", "severity": 3},
+    {"pattern": "you are now", "severity": 2},
+    {"pattern": "new instructions:", "severity": 3},
+    {"pattern": "SYSTEM:", "severity": 2},
+    {"pattern": "\\nAssistant:", "severity": 2},
+    {"pattern": "\\nHuman:", "severity": 2}
+  ],
+  "delimiter_escapes": [
+    {"pattern": "</system>", "severity": 3},
+    {"pattern": "</instructions>", "severity": 3},
+    {"pattern": "[INST]", "severity": 2},
+    {"pattern": "<<SYS>>", "severity": 2},
+    {"pattern": "```system", "severity": 2},
+    {"pattern": "```assistant", "severity": 2}
+  ],
+  "exfiltration": [
+    {"pattern": "(?i)(send|post|fetch|call)\\s+https?://", "severity": 3},
+    {"pattern": "[A-Za-z0-9+/]{100,}={0,2}", "severity": 2},
+    {"pattern": "!\\[.*\\]\\(data:", "severity": 3}
+  ]
+}

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skills — Soma</title>
+<link rel="stylesheet" href="http://YOUR_FLEET_SERVER_IP/shared/constellation.css">
+<script src="https://unpkg.com/htmx.org@1.9.10" crossorigin="anonymous"></script>
+</head>
+<body style="padding:1.5rem;">
+<div style="max-width:960px;margin:0 auto;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+    <h1 style="font-size:1.5rem;font-weight:700;">🎯 Skills</h1>
+    <a href="/status" style="color:var(--text-secondary);text-decoration:none;font-size:0.875rem;">← Dashboard</a>
+  </div>
+
+  <!-- Tab bar -->
+  <div style="display:flex;gap:0;border-bottom:1px solid var(--border-color);margin-bottom:1.5rem;">
+    <button onclick="showTab('active')" id="tab-active" style="padding:0.75rem 1.25rem;border:none;background:none;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--text-primary);font-weight:600;">Active</button>
+    <button onclick="showTab('proposed')" id="tab-proposed" style="padding:0.75rem 1.25rem;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-secondary);">Proposed</button>
+  </div>
+
+  <!-- Active skills -->
+  <div id="tab-active-content"
+    hx-get="/api/skills?status=active"
+    hx-trigger="load"
+    hx-swap="innerHTML">
+    <div style="color:var(--text-secondary);text-align:center;padding:2rem;">Loading active skills...</div>
+  </div>
+
+  <!-- Proposed skills -->
+  <div id="tab-proposed-content" style="display:none;"
+    hx-get="/api/skills?status=proposed"
+    hx-trigger="revealed"
+    hx-swap="innerHTML">
+    <div style="color:var(--text-secondary);text-align:center;padding:2rem;">Loading proposed skills...</div>
+  </div>
+</div>
+
+<script>
+function showTab(name) {
+  ['active','proposed'].forEach(t => {
+    document.getElementById('tab-'+t+'-content').style.display = t===name ? 'block' : 'none';
+    const btn = document.getElementById('tab-'+t);
+    btn.style.borderBottomColor = t===name ? 'var(--accent)' : 'transparent';
+    btn.style.color = t===name ? 'var(--text-primary)' : 'var(--text-secondary)';
+    btn.style.fontWeight = t===name ? '600' : 'normal';
+    if (t===name) htmx.trigger(document.getElementById('tab-'+t+'-content'), 'revealed');
+  });
+}
+</script>
+</body>
+</html>

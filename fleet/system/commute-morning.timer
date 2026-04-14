@@ -1,0 +1,11 @@
+[Unit]
+Description=Morning commute check at 7:00 and 7:30 AM PT
+
+[Timer]
+OnCalendar=Mon-Fri 15:00:00
+OnCalendar=Mon-Fri 15:30:00
+Persistent=false
+Unit=commute-morning.service
+
+[Install]
+WantedBy=timers.target

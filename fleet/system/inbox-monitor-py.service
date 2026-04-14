@@ -1,0 +1,12 @@
+[Unit]
+Description=Nexus Inbox Monitor (Python, no inference)
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/lumina-fleet/nexus
+EnvironmentFile=/opt/lumina-fleet/axon/.env
+ExecStart=/usr/bin/python3 /opt/lumina-fleet/nexus/inbox_monitor.py
+StandardOutput=journal
+SyslogIdentifier=inbox-monitor-py

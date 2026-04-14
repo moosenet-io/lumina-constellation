@@ -1,0 +1,176 @@
+# Dura Smoke Test Fixtures
+# test_fixtures.yaml — input/output schema for MCP tool smoke tests
+# Run via dura_smoke_test.py after every lumina-terminus push
+
+version: "1.0"
+updated: "2026-04-08"
+
+tools:
+  # Nexus tools
+  nexus_check:
+    input: {agent_id: "lumina"}
+    expected_keys: ["pending", "critical"]
+    expected_no_error: true
+
+  nexus_send:
+    input: {from_agent: "dura", to_agent: "lumina", message_type: "test", payload: {test: true}, priority: "low"}
+    expected_keys: ["id", "status"]
+    skip: false
+
+  nexus_read:
+    input: {agent_id: "lumina", limit: 1}
+    expected_keys: ["messages"]
+    expected_no_error: true
+
+  # Engram tools
+  engram_query:
+    input: {query: "smoke test query", limit: 1}
+    expected_keys: ["count", "results"]
+    expected_no_error: true
+
+  engram_store:
+    input: {key: "dura/smoke-test", content: "smoke test marker", layer: "kb"}
+    expected_keys: ["stored"]
+    expected_no_error: true
+
+  engram_recent:
+    input: {hours_back: 1}
+    expected_keys: ["count", "entries"]
+    expected_no_error: true
+
+  # Cortex tools
+  cortex_stats:
+    input: {repo: "lumina-fleet"}
+    expected_keys: ["nodes", "edges", "files"]
+    expected_no_error: true
+
+  cortex_scope:
+    input: {repo: "lumina-fleet", changed_files: "axon/axon.py"}
+    expected_keys: ["blast_radius", "blast_count"]
+    expected_no_error: true
+
+  # Myelin tools
+  myelin_status:
+    input: {}
+    expected_no_error: true
+    note: "Returns usage.json content or note about collection starting"
+
+  myelin_today:
+    input: {}
+    expected_keys: ["date", "total_cost"]
+    expected_no_error: true
+
+  myelin_runaway_check:
+    input: {}
+    expected_keys: ["agents", "runaways"]
+    expected_no_error: true
+
+  # Axon tools
+  axon_list:
+    input: {status: "pending", limit: 5}
+    expected_keys: ["count", "items"]
+    expected_no_error: true
+
+  # Seer tools
+  seer_status:
+    input: {}
+    expected_no_error: true
+    note: "Returns seer agent status"
+
+  # Plane tools
+  plane_list_projects:
+    input: {}
+    expected_no_error: true
+
+  # Gitea tools
+  gitea_list_repos:
+    input: {}
+    expected_no_error: true
+
+  # Vigil tools
+  vigil_status:
+    input: {}
+    expected_no_error: true
+
+  # Sentinel tools
+  sentinel_status:
+    input: {}
+    expected_no_error: true
+
+  # Google tools
+  google_calendar_today:
+    input: {}
+    expected_no_error: true
+    note: "May return empty events if no calendar events"
+
+  # Ledger tools
+  ledger_budget_status:
+    input: {}
+    expected_no_error: true
+    note: "Requires ACTUAL_BUDGET_ID set"
+
+  # Relay tools
+  relay_status:
+    input: {}
+    expected_no_error: true
+
+  # Hearth tools
+  hearth_pantry:
+    input: {}
+    expected_no_error: true
+
+  # Gateway tools
+  dashboard_status:
+    input: {}
+    expected_no_error: true
+
+  # Wizard tools
+  wizard_history:
+    input: {limit: 1}
+    expected_no_error: true
+
+  # Vector tools
+  vector_status:
+    input: {}
+    expected_no_error: true
+
+  # Odyssey tools
+  odyssey_status:
+    input: {}
+    expected_no_error: true
+
+  # Crucible tools
+  crucible_status:
+    input: {}
+    expected_no_error: true
+
+  # Vitals tools
+  vitals_status:
+    input: {}
+    expected_no_error: true
+
+  # Meridian tools
+  meridian_status:
+    input: {}
+    expected_no_error: true
+
+  # Infisical tools (read-only)
+  infisical_list_secrets:
+    input: {}
+    expected_no_error: true
+
+  # LiteLLM tools
+  litellm_model_list:
+    input: {}
+    expected_no_error: true
+
+  # Network tools
+  network_ping:
+    input: {host: "YOUR_PLANE_IP", count: 1}
+    expected_no_error: true
+
+  # Prometheus tools
+  prometheus_query:
+    input: {query: "up", time: "now"}
+    expected_no_error: true
+    skip: false

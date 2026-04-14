@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{DESTINATION}} — Destination Report | Lumina Constellation</title>
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+      padding: 20px 16px 40px;
+      line-height: 1.6;
+    }
+
+    a { color: #58a6ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Layout container ── */
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    /* ── Header / hero ── */
+    .report-header {
+      background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 28px 28px 24px;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .report-header::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #58a6ff, #3d8bcd, #58a6ff);
+    }
+    .report-badge {
+      display: inline-block;
+      background: rgba(88, 166, 255, 0.15);
+      border: 1px solid rgba(88, 166, 255, 0.35);
+      color: #58a6ff;
+      font-size: 0.72em;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+    }
+    .report-title {
+      font-size: 2em;
+      font-weight: 700;
+      color: #f0f6fc;
+      margin-bottom: 6px;
+    }
+    .report-subtitle {
+      color: #8b949e;
+      font-size: 0.9em;
+    }
+    .report-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      margin-top: 18px;
+      font-size: 0.82em;
+      color: #8b949e;
+    }
+    .report-meta span { display: flex; align-items: center; gap: 5px; }
+
+    /* ── Section cards ── */
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px 12px;
+      border-bottom: 1px solid #21262d;
+      background: #0d1117;
+    }
+    .card-icon { font-size: 1.1em; }
+    .card-title {
+      flex: 1;
+      font-weight: 600;
+      font-size: 0.95em;
+      color: #f0f6fc;
+    }
+    .card-badge {
+      font-size: 0.72em;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: rgba(88, 166, 255, 0.15);
+      color: #58a6ff;
+      border: 1px solid rgba(88, 166, 255, 0.3);
+    }
+    .card-body {
+      padding: 16px 18px;
+      font-size: 0.875em;
+      color: #c9d1d9;
+    }
+
+    /* ── Summary section ── */
+    .summary-text {
+      font-size: 0.9em;
+      color: #c9d1d9;
+      line-height: 1.7;
+    }
+
+    /* ── Key info grid ── */
+    .key-info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .info-tile {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .info-tile-label {
+      font-size: 0.72em;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #58a6ff;
+      margin-bottom: 5px;
+    }
+    .info-tile-value {
+      font-size: 0.88em;
+      color: #e6edf3;
+      font-weight: 500;
+    }
+
+    /* ── Attractions list ── */
+    .attractions-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .attraction-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 12px;
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+    }
+    .attraction-rank {
+      min-width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: rgba(88, 166, 255, 0.15);
+      border: 1px solid rgba(88, 166, 255, 0.3);
+      color: #58a6ff;
+      font-size: 0.72em;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .attraction-details { flex: 1; }
+    .attraction-name {
+      font-weight: 600;
+      font-size: 0.88em;
+      color: #e6edf3;
+      margin-bottom: 2px;
+    }
+    .attraction-desc {
+      font-size: 0.8em;
+      color: #8b949e;
+    }
+
+    /* ── Flight & accommodation two-column ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 560px) { .two-col { grid-template-columns: 1fr; } }
+
+    .sub-card {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .sub-card-title {
+      font-size: 0.78em;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #58a6ff;
+      margin-bottom: 8px;
+    }
+    .sub-card-body {
+      font-size: 0.82em;
+      color: #c9d1d9;
+      line-height: 1.6;
+    }
+    .sub-card-body p { margin-bottom: 4px; }
+    .sub-card-body p:last-child { margin-bottom: 0; }
+
+    /* ── Budget tracker ── */
+    .budget-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85em;
+    }
+    .budget-table th {
+      text-align: left;
+      padding: 8px 10px;
+      color: #58a6ff;
+      font-size: 0.78em;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-bottom: 1px solid #30363d;
+    }
+    .budget-table td {
+      padding: 9px 10px;
+      color: #c9d1d9;
+      border-bottom: 1px solid #21262d;
+    }
+    .budget-table tr:last-child td { border-bottom: none; }
+    .budget-table tr:hover td { background: rgba(88, 166, 255, 0.04); }
+    .budget-table td.amount {
+      text-align: right;
+      font-weight: 600;
+      color: #e6edf3;
+      font-variant-numeric: tabular-nums;
+    }
+    .budget-table td.category { color: #8b949e; font-size: 0.82em; }
+    .budget-total td {
+      font-weight: 700;
+      color: #58a6ff;
+      border-top: 1px solid #30363d;
+      border-bottom: none;
+    }
+
+    .budget-summary {
+      display: flex;
+      gap: 12px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .budget-pill {
+      flex: 1;
+      min-width: 120px;
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      padding: 10px 14px;
+      text-align: center;
+    }
+    .budget-pill-label {
+      font-size: 0.7em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #8b949e;
+      margin-bottom: 4px;
+    }
+    .budget-pill-value {
+      font-size: 1.15em;
+      font-weight: 700;
+      color: #e6edf3;
+    }
+    .budget-pill.accent .budget-pill-value { color: #58a6ff; }
+
+    /* ── Notes ── */
+    .notes-block {
+      background: rgba(88, 166, 255, 0.06);
+      border: 1px solid rgba(88, 166, 255, 0.2);
+      border-left: 3px solid #58a6ff;
+      border-radius: 0 8px 8px 0;
+      padding: 12px 14px;
+      font-size: 0.85em;
+      color: #c9d1d9;
+      line-height: 1.6;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid #21262d;
+      font-size: 0.75em;
+      color: #484f58;
+    }
+    .footer .constellation {
+      font-size: 1.3em;
+      display: block;
+      margin-bottom: 6px;
+      opacity: 0.5;
+    }
+    .footer strong { color: #8b949e; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ── Header ── -->
+  <div class="report-header">
+    <div class="report-badge">✈️ Destination Report</div>
+    <h1 class="report-title">{{DESTINATION}}</h1>
+    <p class="report-subtitle">{{DESTINATION_TAGLINE}}</p>
+    <div class="report-meta">
+      <span>📅 Generated: {{REPORT_DATE}}</span>
+      <span>👤 Traveler: {{TRAVELER_NAME}}</span>
+      <span>🗓️ Proposed Travel: {{PROPOSED_DATES}}</span>
+      <span>👥 Party Size: {{PARTY_SIZE}}</span>
+    </div>
+  </div>
+
+  <!-- ── Summary ── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">📋</span>
+      <span class="card-title">Summary</span>
+    </div>
+    <div class="card-body">
+      <p class="summary-text">{{SUMMARY_TEXT}}</p>
+    </div>
+  </div>
+
+  <!-- ── Key Info ── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">📌</span>
+      <span class="card-title">Key Information</span>
+    </div>
+    <div class="card-body">
+      <div class="key-info-grid">
+        <div class="info-tile">
+          <div class="info-tile-label">Best Time to Visit</div>
+          <div class="info-tile-value">{{BEST_TIME_TO_VISIT}}</div>
+        </div>
+        <div class="info-tile">
+          <div class="info-tile-label">Estimated Trip Cost</div>
+          <div class="info-tile-value">{{ESTIMATED_COST}}</div>
+        </div>
+        <div class="info-tile">
+          <div class="info-tile-label">Visa Requirements</div>
+          <div class="info-tile-value">{{VISA_REQUIREMENTS}}</div>
+        </div>
+        <div class="info-tile">
+          <div class="info-tile-label">Currency</div>
+          <div class="info-tile-value">{{CURRENCY}}</div>
+        </div>
+        <div class="info-tile">
+          <div class="info-tile-label">Language</div>
+          <div class="info-tile-value">{{LANGUAGE}}</div>
+        </div>
+        <div class="info-tile">
+          <div class="info-tile-label">Time Zone</div>
+          <div class="info-tile-value">{{TIMEZONE}}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Top Attractions ── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">🗺️</span>
+      <span class="card-title">Top Attractions</span>
+      <span class="card-badge">{{ATTRACTION_COUNT}} Places</span>
+    </div>
+    <div class="card-body">
+      <ul class="attractions-list">
+        <li class="attraction-item">
+          <div class="attraction-rank">1</div>
+          <div class="attraction-details">
+            <div class="attraction-name">{{ATTRACTION_1_NAME}}</div>
+            <div class="attraction-desc">{{ATTRACTION_1_DESC}}</div>
+          </div>
+        </li>
+        <li class="attraction-item">
+          <div class="attraction-rank">2</div>
+          <div class="attraction-details">
+            <div class="attraction-name">{{ATTRACTION_2_NAME}}</div>
+            <div class="attraction-desc">{{ATTRACTION_2_DESC}}</div>
+          </div>
+        </li>
+        <li class="attraction-item">
+          <div class="attraction-rank">3</div>
+          <div class="attraction-details">
+            <div class="attraction-name">{{ATTRACTION_3_NAME}}</div>
+            <div class="attraction-desc">{{ATTRACTION_3_DESC}}</div>
+          </div>
+        </li>
+        <li class="attraction-item">
+          <div class="attraction-rank">4</div>
+          <div class="attraction-details">
+            <div class="attraction-name">{{ATTRACTION_4_NAME}}</div>
+            <div class="attraction-desc">{{ATTRACTION_4_DESC}}</div>
+          </div>
+        </li>
+        <li class="attraction-item">
+          <div class="attraction-rank">5</div>
+          <div class="attraction-details">
+            <div class="attraction-name">{{ATTRACTION_5_NAME}}</div>
+            <div class="attraction-desc">{{ATTRACTION_5_DESC}}</div>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── Flights & Accommodation ── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">✈️</span>
+      <span class="card-title">Flights &amp; Accommodation</span>
+    </div>
+    <div class="card-body">
+      <div class="two-col">
+        <div class="sub-card">
+          <div class="sub-card-title">✈️ Flights</div>
+          <div class="sub-card-body">
+            <p><strong>Route:</strong> {{FLIGHT_ROUTE}}</p>
+            <p><strong>Est. Flight Time:</strong> {{FLIGHT_TIME}}</p>
+            <p><strong>Avg. Round-Trip:</strong> {{FLIGHT_COST_RT}}</p>
+            <p><strong>Best Booking Window:</strong> {{FLIGHT_BOOK_WINDOW}}</p>
+            <p><strong>Recommended Airlines:</strong> {{AIRLINES}}</p>
+          </div>
+        </div>
+        <div class="sub-card">
+          <div class="sub-card-title">🏨 Accommodation</div>
+          <div class="sub-card-body">
+            <p><strong>Recommended Area:</strong> {{ACCOM_AREA}}</p>
+            <p><strong>Budget Hotel:</strong> {{ACCOM_BUDGET}}/night</p>
+            <p><strong>Mid-Range:</strong> {{ACCOM_MIDRANGE}}/night</p>
+            <p><strong>Luxury:</strong> {{ACCOM_LUXURY}}/night</p>
+            <p><strong>Suggested Stay:</strong> {{ACCOM_NIGHTS}} nights</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Budget Tracker ── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">💰</span>
+      <span class="card-title">Budget Tracker</span>
+      <span class="card-badge">Per Person</span>
+    </div>
+    <div class="card-body">
+      <table class="budget-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Details</th>
+            <th class="amount">Est. Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>✈️ Flights</td>
+            <td class="category">Round-trip, economy</td>
+            <td class="amount">{{BUDGET_FLIGHTS}}</td>
+          </tr>
+          <tr>
+            <td>🏨 Accommodation</td>
+            <td class="category">{{BUDGET_ACCOM_NIGHTS}} nights</td>
+            <td class="amount">{{BUDGET_ACCOM}}</td>
+          </tr>
+          <tr>
+            <td>🍽️ Food &amp; Dining</td>
+            <td class="category">Meals + snacks per day</td>
+            <td class="amount">{{BUDGET_FOOD}}</td>
+          </tr>
+          <tr>
+            <td>🚌 Local Transport</td>
+            <td class="category">Transit, taxis, car rental</td>
+            <td class="amount">{{BUDGET_TRANSPORT}}</td>
+          </tr>
+          <tr>
+            <td>🎭 Activities</td>
+            <td class="category">Tours, entrance fees</td>
+            <td class="amount">{{BUDGET_ACTIVITIES}}</td>
+          </tr>
+          <tr>
+            <td>🛍️ Shopping &amp; Misc</td>
+            <td class="category">Souvenirs, incidentals</td>
+            <td class="amount">{{BUDGET_MISC}}</td>
+          </tr>
+          <tr class="budget-total">
+            <td colspan="2"><strong>Total Estimated (Per Person)</strong></td>
+            <td class="amount">{{BUDGET_TOTAL}}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="budget-summary">
+        <div class="budget-pill">
+          <div class="budget-pill-label">Budget Tier</div>
+          <div class="budget-pill-value">{{BUDGET_TIER}}</div>
+        </div>
+        <div class="budget-pill">
+          <div class="budget-pill-label">Per Day</div>
+          <div class="budget-pill-value">{{BUDGET_PER_DAY}}</div>
+        </div>
+        <div class="budget-pill accent">
+          <div class="budget-pill-label">Trip Total ({{PARTY_SIZE}})</div>
+          <div class="budget-pill-value">{{BUDGET_TRIP_TOTAL}}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Travel Notes ── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">📝</span>
+      <span class="card-title">Travel Notes &amp; Advisories</span>
+    </div>
+    <div class="card-body">
+      <div class="notes-block">
+        {{TRAVEL_NOTES}}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Footer ── -->
+  <div class="footer">
+    <span class="constellation">✦ ✧ ✦</span>
+    <strong>Lumina Constellation</strong> — Destination Report<br />
+    Generated by Odyssey · {{REPORT_DATE}} · <em>moosenet.online</em>
+  </div>
+
+</div><!-- /.container -->
+</body>
+</html>

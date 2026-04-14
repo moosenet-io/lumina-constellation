@@ -1,0 +1,38 @@
+# Myelin — Token Governance Configuration
+budget:
+  daily_soft_limit: 3.00
+  weekly_soft_limit: 15.00
+  monthly_soft_limit: 50.00
+
+agent_budgets:
+  seer:
+    per_report_limit: 5.00
+  wizard:
+    per_session_limit: 1.00
+  vector:
+    per_loop_limit: 3.00
+    max_iterations_before_alert: 8
+
+subscriptions:
+  anthropic:
+    plan: max_5x
+    cycle: weekly
+    reset_day: sunday
+  openrouter:
+    plan: credits
+    auto_reload: true
+    monthly_limit: 250.00
+  local:
+    plan: unlimited
+
+alerts:
+  channel: nexus
+  runaway_threshold_multiplier: 3
+  subscription_warn_percent: 80
+  subscription_urgent_percent: 95
+  burn_suggestion_threshold: 30
+
+schedule:
+  collect_interval_minutes: 30
+  burn_planner_time: "18:00"
+  weekly_report_day: sunday

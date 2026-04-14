@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Soma{% endblock %} — Lumina Admin</title>
+<script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5ViYgSibmK" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="http://YOUR_FLEET_SERVER_IP/shared/constellation.css">
+<style>
+  body { min-height: 100vh; display: flex; flex-direction: column; margin: 0; }
+  .layout { display: flex; height: 100vh; overflow: hidden; }
+  .sidebar { width: 200px; flex-shrink: 0; margin: 1rem 0 1rem 1rem; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; }
+  .main-content { flex: 1; padding: 1.5rem; overflow-y: auto; }
+  .nav-link { display: block; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; color: var(--text-secondary); transition: background 0.15s; margin-bottom: 2px; }
+  .nav-link:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+  .nav-link.active { background: var(--bg-tertiary); color: var(--text-primary); font-weight: 600; }
+  .sidebar-brand { font-weight: 700; font-size: 1.1rem; margin-bottom: 1.5rem; color: var(--accent); padding: 0 1rem; }
+  .sidebar-footer { margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); font-size: 0.75rem; color: var(--text-tertiary); padding-left: 1rem; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body hx-headers='{"X-Soma-Key": "YOUR_SOMA_ADMIN_KEY"}'>
+<div class="layout">
+  <nav class="sidebar card">
+    <div class="sidebar-brand">&#x29ED; Soma</div>
+    <a href="/status"  class="nav-link {% if active_page=='status'   %}active{% endif %}">&#x1F4CA; Status</a>
+    <a href="/config"  class="nav-link {% if active_page=='config'   %}active{% endif %}">&#x2699;&#xFE0F; Config</a>
+    <a href="/skills"  class="nav-link {% if active_page=='skills'   %}active{% endif %}">&#x1F3AF; Skills</a>
+    <a href="/plugins" class="nav-link {% if active_page=='plugins'  %}active{% endif %}">&#x1F50C; Plugins</a>
+    <a href="/sessions"class="nav-link {% if active_page=='sessions' %}active{% endif %}">&#x1F4AC; Sessions</a>
+    <a href="/cron"    class="nav-link {% if active_page=='cron'     %}active{% endif %}">&#x23F0; Timers</a>
+    <a href="/logs"    class="nav-link {% if active_page=='logs'     %}active{% endif %}">&#x1F4CB; Logs</a>
+    <a href="/wizard"  class="nav-link {% if active_page=='wizard'   %}active{% endif %}">&#x1F9D9; Wizard</a>
+    <a href="/vector"  class="nav-link {% if active_page=='vector'   %}active{% endif %}">&#x26A1; Vector</a>
+    <div class="sidebar-footer">Lumina Constellation</div>
+  </nav>
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% include 'partials/chat.html' %}
+</body>
+</html>

@@ -1,0 +1,139 @@
+{# Status grid partial — rendered inline on /status and via HTMX on /status/grid #}
+
+{# IronClaw #}
+{% set ic = status.checks.ironclaw_version %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <h3 style="margin:0;">IronClaw</h3>
+    <span class="health-dot {% if ic.ok %}healthy{% else %}dead{% endif %}"></span>
+  </div>
+  <div class="card-sub" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
+    {{ ic.value or ic.error or 'unreachable' }}
+  </div>
+</div>
+
+{# Active Agents #}
+{% set ag = status.checks.active_agents %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <h3 style="margin:0;">Agents</h3>
+    {% if ag.ok %}
+      <span class="health-dot healthy"></span>
+    {% elif ag.active_count is defined and ag.active_count > 0 %}
+      <span class="health-dot degraded"></span>
+    {% else %}
+      <span class="health-dot dead"></span>
+    {% endif %}
+  </div>
+  <div style="margin-top:0.5rem;font-size:0.85rem;">
+    {% if ag.value %}
+      {% for name, running in ag.value.items() %}
+        <div style="display:flex;justify-content:space-between;padding:0.15rem 0;">
+          <span style="color:var(--text-secondary);">{{ name }}</span>
+          {% if running %}
+            <span class="badge-success" style="font-size:0.75rem;padding:0.1rem 0.4rem;border-radius:4px;">up</span>
+          {% else %}
+            <span class="badge-error" style="font-size:0.75rem;padding:0.1rem 0.4rem;border-radius:4px;">down</span>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <span style="color:var(--text-tertiary);">{{ ag.error or 'unreachable' }}</span>
+    {% endif %}
+  </div>
+</div>
+
+{# Nexus Inbox #}
+{% set nx = status.checks.nexus_messages %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <h3 style="margin:0;">Nexus Inbox</h3>
+    <span class="health-dot {% if nx.ok %}healthy{% else %}dead{% endif %}"></span>
+  </div>
+  <div class="card-sub" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
+    {% if nx.ok %}
+      {{ nx.value }} pending message{% if nx.value != 1 %}s{% endif %}
+    {% else %}
+      {{ nx.error or 'unreachable' }}
+    {% endif %}
+  </div>
+</div>
+
+{# Engram #}
+{% set eg = status.checks.engram_facts %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <h3 style="margin:0;">Engram</h3>
+    <span class="health-dot {% if eg.ok %}healthy{% else %}dead{% endif %}"></span>
+  </div>
+  <div class="card-sub" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
+    {% if eg.ok %}
+      {{ eg.value }} rows
+      {% if eg.tables %}
+        across {{ eg.tables | length }} table{% if eg.tables|length != 1 %}s{% endif %}
+      {% endif %}
+    {% else %}
+      {{ eg.error or 'unreachable' }}
+    {% endif %}
+  </div>
+</div>
+
+{# LiteLLM #}
+{% set ll = status.checks.litellm_models %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <h3 style="margin:0;">LiteLLM</h3>
+    <span class="health-dot {% if ll.ok %}healthy{% else %}dead{% endif %}"></span>
+  </div>
+  <div class="card-sub" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
+    {% if ll.ok %}
+      {{ ll.value }} model{% if ll.value != 1 %}s{% endif %} available
+    {% else %}
+      {{ ll.error or 'unreachable' }}
+    {% endif %}
+  </div>
+</div>
+
+{# Matrix Bridge #}
+{% set mb = status.checks.matrix_bridge %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <h3 style="margin:0;">Matrix Bridge</h3>
+    <span class="health-dot {% if mb.ok %}healthy{% else %}dead{% endif %}"></span>
+  </div>
+  <div class="card-sub" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
+    {{ mb.value or mb.error or 'unreachable' }}
+  </div>
+</div>
+
+{# Refractor #}
+{% set rf = status.checks.refractor_categories %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <h3 style="margin:0;">Refractor</h3>
+    <span class="health-dot {% if rf.ok %}healthy{% else %}dead{% endif %}"></span>
+  </div>
+  <div class="card-sub" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
+    {% if rf.ok %}
+      {{ rf.value }} category match{% if rf.value != 1 %}es{% endif %}
+    {% else %}
+      {{ rf.error or 'unreachable' }}
+    {% endif %}
+  </div>
+</div>
+
+{# Plane #}
+{% set pl = status.checks.plane_projects %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <h3 style="margin:0;">Plane</h3>
+    <span class="health-dot {% if pl.ok %}healthy{% else %}dead{% endif %}"></span>
+  </div>
+  <div class="card-sub" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
+    {% if pl.ok %}
+      {{ pl.value }} project{% if pl.value != 1 %}s{% endif %}
+    {% else %}
+      {{ pl.error or 'unreachable' }}
+    {% endif %}
+  </div>
+</div>

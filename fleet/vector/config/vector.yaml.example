@@ -1,0 +1,91 @@
+# Vector configuration
+# Copy to vector.yaml and customize
+
+mode: standalone  # standalone | integrated
+
+# ── LLM Provider ────────────────────────────────────────────────────────────
+# provider: litellm (recommended for Lumina homelab), openrouter, ollama, anthropic
+# api_key_env: name of the environment variable holding the API key/token
+llm:
+  provider: litellm  # openrouter | litellm | ollama | anthropic
+  endpoint: http://YOUR_LITELLM_IP:4000
+  model: claude-sonnet-4-6
+  api_key_env: LITELLM_MASTER_KEY
+
+# ── Standalone Mode ──────────────────────────────────────────────────────────
+# No Lumina infrastructure required. State lives in local SQLite + flat files.
+# max_cost_per_run: hard spend cap in USD — loop halts when exceeded
+# max_iterations: hard cap on loop iterations before auto-halt (regardless of cost)
+# interactive: if true, prompt before each chunk (useful for debugging)
+standalone:
+  state_db: ./vector-state.db
+  memory_dir: ./memory/
+  conventions: ./conventions.md
+  log_file: ./vector.log
+  max_cost_per_run: 5.00
+  max_iterations: 10
+  interactive: false
+
+# ── Integrated Mode ──────────────────────────────────────────────────────────
+# Full Lumina integration: work orders from Nexus, results to Plane, memory in Engram.
+# Requires Postgres lumina_inbox schema applied on CT300.
+# Requires INBOX_DB_USER and INBOX_DB_PASS set in environment.
+integrated:
+  nexus:
+    db_host: YOUR_POSTGRES_IP     # CT300 IP (YOUR_POSTGRES_IP)
+    db_name: lumina_inbox
+    db_user_env: INBOX_DB_USER    # env var name (not the value)
+    db_pass_env: INBOX_DB_PASS    # env var name (not the value)
+    agent_id: vector              # how Vector identifies itself in inbox messages
+    poll_interval: 30             # seconds between inbox checks
+  plane:
+    api_url: http://YOUR_PLANE_IP  # CT315 IP (YOUR_PLANE_IP)
+    api_token_env: PLANE_TOKEN_LUMINA
+    workspace: moosenet
+    project_id: 507ff56c-772d-462e-a79c-2d93783968ff  # VEC project
+  engram:
+    gitea_url: http://YOUR_GITEA_IP:3000  # CT223 IP (YOUR_GITEA_IP)
+    repo: moosenet/lumina-engram
+    token_env: GITEA_TOKEN
+    embed_url: http://YOUR_LITELLM_IP:4000/v1/embeddings
+    embed_model: text-embedding
+  cost_gate:
+    # approval_via: how to request human approval when daily_auto_limit is exceeded
+    # nexus = insert an approval_request message; manual = halt and log only
+    approval_via: nexus
+    daily_auto_limit: 10.00       # auto-approve up to this amount per day (USD)
+
+# ── Behavioral Correction (Calx) ────────────────────────────────────────────
+# Adapted from getcalx/oss (archived). Watches diffs and test results for
+# anti-patterns and injects corrections into the next iteration.
+# T1/T2: soft corrections (injected as context). T3: hard blocks (task halted).
+calx:
+  enabled: true                  # Enable Calx trigger evaluation
+  history_db: ~/.vector/calx.db  # SQLite DB for trigger history
+
+  # T1 — Test compliance (soft corrections)
+  t1:
+    enabled: true
+    fail_on_deleted_tests: true  # Hard block if tests deleted without replacement
+    require_tests_for_new_functions: true  # Soft correction if new funcs have no tests
+
+  # T2 — Style conventions (soft corrections)
+  t2:
+    enabled: true
+    max_file_lines: 500          # Soft correction if file exceeds this
+    max_function_lines: 50       # Soft correction if function exceeds this
+    check_lint: true             # Run flake8/ruff and inject corrections on failure
+
+  # T3 — Anti-patterns (HARD blocks — task cannot proceed until fixed)
+  t3:
+    enabled: true
+    block_hardcoded_secrets: true  # Block commits with API keys/tokens in diff
+    block_sql_injection: true      # Block string-formatted SQL queries
+    block_unbounded_loops: true    # Warn on while True without clear exit
+
+  # Skill evolution integration
+  # When the same Calx trigger fires min_trigger_count times across iterations,
+  # Vector proposes adding a skill to prevent the pattern recurrence.
+  skill_evolution:
+    enabled: true
+    min_trigger_count: 3         # Propose a skill when trigger fires this many times

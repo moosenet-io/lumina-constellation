@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Sentinel health checks every 5 minutes
+
+[Timer]
+OnBootSec=60
+OnUnitActiveSec=300
+Unit=sentinel-health.service
+
+[Install]
+WantedBy=timers.target

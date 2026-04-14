@@ -1,0 +1,18 @@
+title: Lumina
+description: MooseNet Intelligence Platform
+startUrl: http://YOUR_POSTGRES_IP:3000
+theme: dark
+color: slate
+headerStyle: clean
+cardBlur: sm
+useEqualHeights: false
+layout:
+  Lumina Core:
+    style: row
+    columns: 3
+  System:
+    style: row
+    columns: 2
+  Modules:
+    style: row
+    columns: 3
