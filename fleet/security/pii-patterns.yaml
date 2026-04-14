@@ -1,0 +1,38 @@
+# Operator-specific PII patterns for Lumina Constellation
+# Loaded by terminus/pii_gate.py in ADDITION to built-in patterns
+# IMPORTANT: push only to Gitea (not GitHub) — this file is internal
+
+patterns:
+  # Operator identity — uncomment and customize
+  # operator_name: 'YOUR_NAME|YOUR_NICKNAME'
+  # operator_email: 'your.internal@|your.personal@'
+  # operator_phone: '555[0-9]{7}'
+
+  # Proxmox container refs (internal hostnames)
+  container_refs: 'CT[0-9]{3}'
+
+  # Proxmox node refs
+  node_refs: '\b(PVS|PVM|PVE)\b'
+
+  # Internal domain patterns — customize to your domain
+  # internal_domains: 'yourdomain\.local|yourdomain\.online'
+
+# Allowlist: patterns that LOOK like PII but are intentional in public repos
+# The scanner blanks these out before checking, so they pass through.
+allowlist:
+  # Generic placeholder text
+  - 'YOUR_[A-Z_]+_IP'
+  - 'YOUR_[A-Z_]+_HOST'
+  - 'REDACTED'
+  - 'CHANGEME'
+  - 'example\.com'
+  - 'your\.email@example\.com'
+
+  # These are public by design
+  - 'moosenet-io'          # GitHub org name (public)
+  - 'github\.com\/moosenet-io'  # Public GitHub URLs
+
+  # Generic terms that match patterns but aren't sensitive
+  - '\boperator\b'         # generic "the operator" references
+  - '\bcontainer\b'        # generic container references
+
