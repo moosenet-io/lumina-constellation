@@ -12,13 +12,26 @@ from typing import Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeout
 
 # IronClaw gateway token (from DB: channels.gateway_auth_token)
-IRONCLAW_URL = os.environ.get("IRONCLAW_URL", "http://YOUR_IRONCLAW_IP:3001")
-IRONCLAW_TOKEN = os.environ.get("IRONCLAW_GATEWAY_TOKEN", "YOUR_IRONCLAW_GATEWAY_TOKEN")
+IRONCLAW_URL = os.environ.get("IRONCLAW_URL", "http://192.168.0.217:3001")
+IRONCLAW_TOKEN = os.environ.get("IRONCLAW_GATEWAY_TOKEN", "")
 
-# Status cache: avoid re-probing every 10s auto-refresh
-_STATUS_CACHE: dict = {}
-_STATUS_CACHE_TS: float = 0
-_STATUS_CACHE_TTL = 10  # seconds
+# ── Cache layer (SP.1) ───────────────────────────────────────────────────────
+import sys as _sys
+_sys.path.insert(0, '/opt/lumina-fleet/soma')
+try:
+    from cache import SomaCache
+    from refreshers.refresh_status import refresh_status as _refresh_status_fn
+    _CACHE_AVAILABLE = True
+except ImportError:
+    _CACHE_AVAILABLE = False
+    class SomaCache:
+        def get(self, k): return None
+        def set(self, k, v): pass
+        def get_or_fetch(self, k): return None
+        def invalidate(self, k=None): pass
+        def status_report(self): return {}
+        def register(self, *a, **kw): pass
+        def start_background_refresh(self, app): pass
 
 from fastapi import FastAPI, HTTPException, Header, Body, Request
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
@@ -34,6 +47,12 @@ SOMA_KEY = os.environ.get("SOMA_SECRET_KEY", "soma-dev-key")
 FLEET_DIR = Path("/opt/lumina-fleet")
 CONSTELLATION_YAML = FLEET_DIR / "constellation.yaml"
 
+# Initialize cache with admin token for HMAC integrity
+_soma_cache = SomaCache(admin_token=SOMA_KEY)
+if _CACHE_AVAILABLE:
+    _soma_cache.register('/api/status', _refresh_status_fn, ttl=10)
+    _soma_cache.start_background_refresh(app)
+
 def _auth(x_soma_key: str = ""):
     if SOMA_KEY and x_soma_key != SOMA_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -42,6 +61,20 @@ def _auth(x_soma_key: str = ""):
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "soma", "version": "1.0"}
+
+# ── Cache management (SP.1) ───────────────────────────────────────────────────
+@app.post("/api/cache/clear")
+def cache_clear(x_soma_key: str = Header(default="")):
+    """Invalidate all cached data. Next request will probe live services."""
+    _auth(x_soma_key)
+    _soma_cache.invalidate()
+    return {"ok": True, "message": "Cache cleared. Next requests will fetch live data."}
+
+@app.get("/api/cache/status")
+def cache_status(x_soma_key: str = Header(default="")):
+    """Show cache age, hit/miss ratio, and last refresh time per key."""
+    _auth(x_soma_key)
+    return _soma_cache.status_report()
 
 # ── Constellation config ──────────────────────────────────────────────────────
 @app.get("/api/constellation")
@@ -110,7 +143,7 @@ def inference_status(x_soma_key: str = Header(default="")):
     _auth(x_soma_key)
     try:
         import urllib.request
-        litellm_url = os.environ.get("LITELLM_URL", "http://YOUR_LITELLM_IP:4000")
+        litellm_url = os.environ.get("LITELLM_URL", "http://192.168.0.215:4000")
         litellm_key = os.environ.get("LITELLM_MASTER_KEY", "")
         req = urllib.request.Request(f"{litellm_url}/v1/models",
             headers={"Authorization": f"Bearer {litellm_key}"})
@@ -152,7 +185,7 @@ def recent_logs(source: str = "CT310", lines: int = 50, x_soma_key: str = Header
         ct_map = {"CT305": "305", "CT310": "310", "CT300": "300", "CT214": "214"}
         ct_id = ct_map.get(source, "310")
         result = subprocess.run(
-            ["ssh", "root@YOUR_PVS_HOST_IP", f"pct exec {ct_id} -- journalctl -n {lines} --no-pager --output=short 2>/dev/null"],
+            ["ssh", "root@192.168.0.104", f"pct exec {ct_id} -- journalctl -n {lines} --no-pager --output=short 2>/dev/null"],
             capture_output=True, text=True, timeout=15
         )
         return {"source": source, "lines": result.stdout.splitlines()[-lines:]}
@@ -248,7 +281,7 @@ def list_docs(x_soma_key: str = Header(default='')):
 def get_doc(path: str, x_soma_key: str = Header(default='')):
     """Serve documentation from Gitea lumina-docs repo."""
     _auth(x_soma_key)
-    gitea_url = 'http://YOUR_GITEA_IP:3000'
+    gitea_url = 'http://192.168.0.223:3000'
     gitea_token = os.environ.get('GITEA_TOKEN', '')
     # Try to fetch from Gitea first
     try:
@@ -426,11 +459,11 @@ def wizard_scan_status():
             return {'service': name, 'status': 'unreachable', 'detail': str(ex)[:60]}
 
     checks.append(_ping('Soma API', 'http://localhost:8082/health'))
-    checks.append(_ping('LiteLLM', 'http://YOUR_LITELLM_IP:4000/health'))
-    checks.append(_ping('Terminus MCP', 'http://YOUR_TERMINUS_IP:8080/health'))
+    checks.append(_ping('LiteLLM', 'http://192.168.0.215:4000/health'))
+    checks.append(_ping('Terminus MCP', 'http://192.168.0.226:8080/health'))
 
     try:
-        s = socket.create_connection(('YOUR_PVS_HOST_IP', 5432), timeout=3)
+        s = socket.create_connection(('192.168.0.104', 5432), timeout=3)
         s.close()
         checks.append({'service': 'Postgres', 'status': 'ok'})
     except Exception as ex:
@@ -485,7 +518,7 @@ def _run_check(fn, timeout=3):
 
 def _check_ironclaw():
     r = subprocess.run(
-        ["ssh", "root@YOUR_PVS_HOST_IP",
+        ["ssh", "root@192.168.0.104",
          "pct exec 305 -- /usr/local/bin/ironclaw --version 2>&1"],
         capture_output=True, text=True, timeout=6
     )
@@ -496,17 +529,17 @@ def _check_ironclaw():
 def _check_active_agents():
     agents = {}
     r = subprocess.run(
-        ["ssh", "root@YOUR_PVS_HOST_IP", "pct exec 310 -- systemctl is-active axon.service 2>/dev/null"],
+        ["ssh", "root@192.168.0.104", "pct exec 310 -- systemctl is-active axon.service 2>/dev/null"],
         capture_output=True, text=True, timeout=6
     )
     agents["axon"] = r.stdout.strip() == "active"
     r2 = subprocess.run(
-        ["ssh", "root@YOUR_PVS_HOST_IP", "pct exec 310 -- systemctl is-active sentinel-health.timer 2>/dev/null"],
+        ["ssh", "root@192.168.0.104", "pct exec 310 -- systemctl is-active sentinel-health.timer 2>/dev/null"],
         capture_output=True, text=True, timeout=6
     )
     agents["sentinel"] = r2.stdout.strip() == "active"
     r3 = subprocess.run(
-        ["ssh", "root@YOUR_PVS_HOST_IP", "pct exec 310 -- pgrep -f briefing.py 2>/dev/null"],
+        ["ssh", "root@192.168.0.104", "pct exec 310 -- pgrep -f briefing.py 2>/dev/null"],
         capture_output=True, text=True, timeout=6
     )
     agents["vigil"] = bool(r3.stdout.strip())
@@ -517,7 +550,7 @@ def _check_active_agents():
 def _check_nexus_messages():
     try:
         import psycopg2
-        db_host = os.environ.get("INBOX_DB_HOST", "YOUR_POSTGRES_IP")
+        db_host = os.environ.get("INBOX_DB_HOST", "192.168.0.108")
         db_user = os.environ.get("INBOX_DB_USER", "lumina")
         db_pass = os.environ.get("INBOX_DB_PASS", "")
         conn = psycopg2.connect(
@@ -557,7 +590,7 @@ def _check_engram_facts():
 
 
 def _check_litellm_models():
-    litellm_url = os.environ.get("LITELLM_URL", "http://YOUR_LITELLM_IP:4000")
+    litellm_url = os.environ.get("LITELLM_URL", "http://192.168.0.215:4000")
     litellm_key = os.environ.get("LITELLM_MASTER_KEY", "")
     req = _urlreq_status.Request(
         f"{litellm_url}/v1/models",
@@ -571,7 +604,7 @@ def _check_litellm_models():
 
 def _check_matrix_bridge():
     r = subprocess.run(
-        ["ssh", "root@YOUR_PVS_HOST_IP",
+        ["ssh", "root@192.168.0.104",
          "pct exec 306 -- systemctl is-active matrix-bridge.service 2>/dev/null"],
         capture_output=True, text=True, timeout=6
     )
@@ -582,7 +615,7 @@ def _check_matrix_bridge():
 def _check_refractor_categories():
     """Count actual keyword categories: lines matching '    "word": {' at 4-space indent."""
     r = subprocess.run(
-        ["ssh", "root@YOUR_PVS_HOST_IP",
+        ["ssh", "root@192.168.0.104",
          r'pct exec 305 -- grep -cP "^    \"[a-z_]+\": \{" /usr/local/bin/llm-proxy.py 2>/dev/null'],
         capture_output=True, text=True, timeout=6
     )
@@ -595,8 +628,8 @@ def _check_refractor_categories():
 
 
 def _check_plane_projects():
-    plane_url = os.environ.get("PLANE_URL", "http://YOUR_PLANE_IP")
-    plane_token = os.environ.get("PLANE_API_TOKEN", "YOUR_PLANE_API_TOKEN")
+    plane_url = os.environ.get("PLANE_URL", "http://192.168.0.232")
+    plane_token = os.environ.get("PLANE_API_TOKEN", "")
     req = _urlreq_status.Request(
         f"{plane_url}/api/v1/workspaces/moosenet/projects/",
         headers={"X-API-Key": plane_token}
@@ -608,15 +641,18 @@ def _check_plane_projects():
 
 
 @app.get("/api/status")
-def get_status():
+async def get_status():
     """Comprehensive system status — all checks run concurrently with 3s timeout each.
-    Results cached for 10s to avoid hammering services on rapid refreshes."""
+    Results served from cache (10s TTL) with background refresh. First load: live probe."""
     import time
-    global _STATUS_CACHE, _STATUS_CACHE_TS
+    # Try cache first (SP.1 caching layer)
+    if _CACHE_AVAILABLE:
+        cached = _soma_cache.get('/api/status')
+        if cached is not None:
+            return cached
 
     now = time.monotonic()
-    if _STATUS_CACHE and (now - _STATUS_CACHE_TS) < _STATUS_CACHE_TTL:
-        return _STATUS_CACHE
+    _dummy_ts = now  # unused but kept for compatibility
 
     check_fns = {
         "ironclaw_version":     _check_ironclaw,
@@ -648,8 +684,8 @@ def get_status():
     overall = "ok" if failed == 0 else ("degraded" if failed <= 2 else "critical")
     result = {"status": overall, "checks": checks, "timestamp": datetime.now(timezone.utc).isoformat()}
 
-    _STATUS_CACHE = result
-    _STATUS_CACHE_TS = now
+    if _CACHE_AVAILABLE:
+        _soma_cache.set('/api/status', result)
     return result
 
 
@@ -919,9 +955,9 @@ def list_plugins(x_soma_key: str = Header(default="")):
     """List plugins from CT214 /opt/ai-mcp/plugins/ via SSH."""
     _auth(x_soma_key)
     try:
-        # CT214 is on PVM (YOUR_PVM_HOST_IP)
+        # CT214 is on PVM (192.168.0.103)
         r = subprocess.run(
-            ["ssh", "root@YOUR_PVM_HOST_IP",
+            ["ssh", "root@192.168.0.103",
              "pct exec 214 -- find /opt/ai-mcp/plugins/ -maxdepth 1 -name '*.py' -not -name '__*' -printf '%f %s\\n' 2>/dev/null"],
             capture_output=True, text=True, timeout=10
         )
@@ -938,7 +974,7 @@ def list_plugins(x_soma_key: str = Header(default="")):
             slug = fname[:-3]
 
             r2 = subprocess.run(
-                ["ssh", "root@YOUR_PVM_HOST_IP",
+                ["ssh", "root@192.168.0.103",
                  f"pct exec 214 -- grep -c '@mcp.tool' /opt/ai-mcp/plugins/{fname} 2>/dev/null || echo 0"],
                 capture_output=True, text=True, timeout=5
             )
@@ -948,7 +984,7 @@ def list_plugins(x_soma_key: str = Header(default="")):
                 tool_count = 0
 
             r3 = subprocess.run(
-                ["ssh", "root@YOUR_PVM_HOST_IP",
+                ["ssh", "root@192.168.0.103",
                  f"pct exec 214 -- grep -c '{slug}' /opt/ai-mcp/server.py 2>/dev/null || echo 0"],
                 capture_output=True, text=True, timeout=5
             )
