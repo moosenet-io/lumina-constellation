@@ -19,12 +19,13 @@ def _load_env():
 
 _load_env()
 
-LITELLM_URL   = os.environ.get('LITELLM_URL', 'http://YOUR_LITELLM_IP:4000')
+LITELLM_URL   = os.environ.get('LITELLM_URL', '')
 LITELLM_KEY   = os.environ.get('LITELLM_MASTER_KEY', '')
-INBOX_DB_HOST = os.environ.get('INBOX_DB_HOST', 'YOUR_POSTGRES_IP')
+INBOX_DB_HOST = os.environ.get('INBOX_DB_HOST', '')
 INBOX_DB_USER = os.environ.get('INBOX_DB_USER', 'lumina_inbox_user')
 INBOX_DB_PASS = os.environ.get('INBOX_DB_PASS', '')
 OR_KEY        = os.environ.get('OPENROUTER_API_KEY', '')
+GITEA_URL     = os.environ.get('GITEA_URL', '')
 GITEA_TOKEN   = os.environ.get('GITEA_TOKEN', '')
 PLANE_TOKEN   = os.environ.get('PLANE_API_TOKEN', '')
 TOMTOM_KEY    = os.environ.get('TOMTOM_API_KEY', '')
@@ -224,7 +225,9 @@ def check_nexus_age():
         return {'status': 'warn', 'value': -1, 'message': str(e)[:60]}
 
 def check_gitea():
-    ok, msg = _http('http://YOUR_GITEA_IP:3000/api/v1/version',
+    if not GITEA_URL:
+        return {'status': 'warn', 'value': 0, 'message': 'GITEA_URL not configured'}
+    ok, msg = _http(f'{GITEA_URL}/api/v1/version',
                     headers={'Authorization': f'token {GITEA_TOKEN}'} if GITEA_TOKEN else {})
     return ({'status': 'ok', 'value': 1, 'message': 'Gitea ok'} if ok
             else {'status': 'warn', 'value': 0, 'message': f'Gitea: {msg}'})

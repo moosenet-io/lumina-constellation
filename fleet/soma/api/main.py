@@ -1035,17 +1035,17 @@ def _tmpl(request, template_name, extra_ctx=None):
     return jinja2_templates.TemplateResponse(request, template_name, ctx)
 
 @app.get("/")
-def root_page(request: Request):
-    status_data = get_status()
+async def root_page(request: Request):
+    status_data = await get_status()
     return jinja2_templates.TemplateResponse(
         request, "status.html",
         {"status": status_data, "active_page": "status"}
     )
 
 @app.get("/status")
-def status_page(request: Request):
+async def status_page(request: Request):
     """Render status dashboard with live data via Jinja2."""
-    status_data = get_status()
+    status_data = await get_status()
     return jinja2_templates.TemplateResponse(
         request, "status.html",
         {"status": status_data, "active_page": "status"}
@@ -1062,6 +1062,9 @@ def skills_page(request: Request):
 @app.get("/plugins")
 def plugins_page(request: Request):
     tmpl = TEMPLATES_DIR / "plugins.html"
+    if not tmpl.exists():
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/skills")
     return jinja2_templates.TemplateResponse(request, "plugins.html", {"active_page": "plugins"})
 
 @app.get("/sessions")
@@ -1070,6 +1073,10 @@ def sessions_page(request: Request):
 
 @app.get("/cron")
 def cron_page(request: Request):
+    return jinja2_templates.TemplateResponse(request, "cron.html", {"active_page": "cron"})
+
+@app.get("/timers")
+def timers_page(request: Request):
     return jinja2_templates.TemplateResponse(request, "cron.html", {"active_page": "cron"})
 
 @app.get("/logs")
@@ -1226,9 +1233,9 @@ def timer_output(timer_name: str, lines: int = 50, x_soma_key: str = Header(defa
 
 
 @app.get("/status/grid", response_class=HTMLResponse)
-def status_grid(request: Request):
+async def status_grid(request: Request):
     """Return just the grid cards HTML fragment for HTMX polling."""
-    status_data = get_status()
+    status_data = await get_status()
     return jinja2_templates.TemplateResponse(
         request, "status_grid.html",
         {"status": status_data}
