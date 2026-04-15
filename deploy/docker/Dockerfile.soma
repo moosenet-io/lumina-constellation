@@ -1,0 +1,29 @@
+# Dockerfile.soma — Soma admin panel container
+# Extends fleet-base
+#
+# Build: docker build -f Dockerfile.soma -t lumina-soma:latest .
+
+FROM lumina-fleet-base:latest
+
+LABEL description="Lumina Soma admin panel"
+
+# Copy soma source
+COPY fleet/soma/ /opt/lumina-fleet/soma/
+COPY fleet/shared/ /opt/lumina-fleet/shared/
+COPY fleet/agents/ /opt/lumina-fleet/agents/
+
+# Create required directories
+RUN mkdir -p \
+    /opt/lumina-fleet/soma/wiki \
+    /opt/lumina-fleet/docs \
+    /var/www/html/cost
+
+# Port
+EXPOSE 8082
+
+WORKDIR /opt/lumina-fleet/soma
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -fs http://localhost:8082/health || exit 1
+
+CMD ["python3", "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8082"]

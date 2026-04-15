@@ -1,0 +1,52 @@
+# Dockerfile.terminus — Lumina Terminus (MCP hub) container
+# INFRA-DOCKER-5 (CT214 → Docker)
+#
+# Build: docker build -f Dockerfile.terminus -t lumina-terminus:latest .
+# Run:   docker run -p 8080:8080 --env-file .env lumina-terminus:latest
+
+FROM python:3.12-slim-bookworm
+
+LABEL description="Lumina Terminus MCP hub"
+
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    sqlite3 \
+    socat \
+    ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+# MCP and tool deps
+RUN pip install --no-cache-dir \
+    fastmcp \
+    psycopg2-binary \
+    httpx \
+    requests \
+    pyyaml \
+    pytz \
+    websockets
+
+# PII gate deps (optional — errors gracefully if spacy model missing)
+RUN pip install --no-cache-dir \
+    presidio-analyzer \
+    presidio-anonymizer \
+  || true
+
+# Create directories
+RUN mkdir -p /opt/ai-mcp/plugins /opt/plane-helper
+
+WORKDIR /opt/ai-mcp
+
+# Copy MCP server files (from moosenet/lumina-terminus repo, not this one)
+# Populate via: docker run --rm -v ./terminus:/out lumina-terminus-builder
+# or via ansible-playbook lumina-ct214-deploy.yml
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python3 -c "import sys; sys.path.insert(0,'/opt/ai-mcp'); import server; print('ok')" || exit 1
+
+ENV PYTHONUNBUFFERED=1
+
+CMD ["python3", "server.py"]
