@@ -162,6 +162,46 @@ def check_daily_budget(conn, config):
     return False
 
 
+def check_debloat_regressions(conn, config):
+    """IDB-14: Detect de-bloat regressions — alert if an agent's call rate is 3x+ its 7-day baseline."""
+    threshold = config.get('alerts', {}).get('runaway_threshold_multiplier', 3)
+    today = datetime.utcnow().date().isoformat()
+    week_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()
+
+    cur = conn.cursor()
+
+    # Today's calls per agent
+    cur.execute("""
+        SELECT agent_id, COUNT(*) as calls
+        FROM usage_log WHERE timestamp >= ? AND cost_usd > 0
+        GROUP BY agent_id
+    """, (f"{today}T00:00:00",))
+    today_counts = {r[0] or 'unknown': r[1] for r in cur.fetchall()}
+
+    # 7-day average calls per agent (per day)
+    cur.execute("""
+        SELECT agent_id, COUNT(*) * 1.0 / 7.0 as daily_avg
+        FROM usage_log WHERE timestamp >= ? AND cost_usd > 0
+        GROUP BY agent_id
+    """, (week_ago,))
+    baselines = {r[0] or 'unknown': r[1] for r in cur.fetchall()}
+
+    regressions = []
+    for agent_id, today_calls in today_counts.items():
+        baseline = baselines.get(agent_id, 0)
+        if baseline > 0 and today_calls > baseline * threshold:
+            regressions.append({'agent': agent_id, 'today': today_calls, 'baseline': round(baseline, 1)})
+            send_alert(
+                f"⚠️ De-bloat regression: {agent_id} ({today_calls} calls vs {baseline:.1f}/day baseline)",
+                f"Agent '{agent_id}' made {today_calls} LLM calls today vs a 7-day daily average of "
+                f"{baseline:.1f} — {today_calls/baseline:.1f}x normal rate. Check for LLM calls "
+                f"that should be Python/template.",
+                priority='normal'
+            )
+
+    return regressions
+
+
 def main():
     print(f"[myelin-alerts] Starting alert check at {datetime.utcnow().isoformat()}")
 
@@ -180,14 +220,16 @@ def main():
     sub_alerts = check_subscription_limits(conn, config)
     runaway_alerts = check_runaway_agents(conn, config)
     budget_hit = check_daily_budget(conn, config)
+    regression_alerts = check_debloat_regressions(conn, config)
 
     conn.close()
 
-    total = len(sub_alerts) + len(runaway_alerts) + (1 if budget_hit else 0)
+    total = len(sub_alerts) + len(runaway_alerts) + (1 if budget_hit else 0) + len(regression_alerts)
     print(f"[myelin-alerts] Done. {total} alerts fired.")
     if sub_alerts: print(f"  Subscription: {sub_alerts}")
     if runaway_alerts: print(f"  Runaway: {runaway_alerts}")
     if budget_hit: print(f"  Budget: daily limit exceeded")
+    if regression_alerts: print(f"  De-bloat regressions: {regression_alerts}")
 
 
 if __name__ == '__main__':
