@@ -1,33 +1,85 @@
-{# Status grid partial — rendered inline on /status and via HTMX on /status/grid #}
+{# Status grid partial — supports both services (new) and checks (legacy) format.
+   Rendered inline on /status and via HTMX on /status/grid #}
+
+{# Format detection: prefer services dict (from refresh_status.py),
+   fall back to checks dict (from legacy get_status() path) #}
+{% if 'services' in status %}
+  {% set _ic   = status['services'].get('ironclaw',  {}) %}
+  {% set _ll   = status['services'].get('litellm',   {}) %}
+  {% set _mx   = status['services'].get('matrix',    {}) %}
+  {% set _nx   = status['services'].get('nexus',     {}) %}
+  {% set _eg   = status['services'].get('engram',    {}) %}
+  {% set _pl   = status['services'].get('plane',     {}) %}
+  {% set _ag   = status['services'].get('agents',    {}) %}
+  {% set _rf   = status['services'].get('refractor', {}) %}
+  {# Map new fields to template vars #}
+  {% set ic_ok = _ic.get('ok', False) %}  {% set ic_val = _ic.get('version') or _ic.get('tool_count') %}
+  {% set ic_err = _ic.get('error') %}     {% set ic_ms = _ic.get('latency_ms') %}
+  {% set ll_ok = _ll.get('ok', False) %}  {% set ll_val = _ll.get('model_count') %}
+  {% set ll_err = _ll.get('error') %}     {% set ll_ms = _ll.get('latency_ms') %}
+  {% set mx_ok = _mx.get('ok', False) %}  {% set mx_err = _mx.get('error') %}
+  {% set nx_ok = _nx.get('ok', False) %}  {% set nx_val = _nx.get('message_count') %}
+  {% set nx_err = _nx.get('error') %}
+  {% set eg_ok = _eg.get('ok', False) %}  {% set eg_val = _eg.get('fact_count') %}
+  {% set pl_ok = _pl.get('ok', False) %}  {% set pl_val = _pl.get('project_count') %}
+  {% set pl_err = _pl.get('error') %}     {% set pl_ms = _pl.get('latency_ms') %}
+  {% set ag_ok = _ag.get('ok', False) %}  {% set ag_agents = _ag.get('agents', {}) %}
+  {% set rf_ok = _rf.get('ok', False) %}  {% set rf_val = _rf.get('category_count') %}
+  {% set rf_err = _rf.get('error') %}
+{% else %}
+  {# Legacy checks format #}
+  {% set _ic = status.get('checks', {}).get('ironclaw_version',     {}) %}
+  {% set _ll = status.get('checks', {}).get('litellm_models',       {}) %}
+  {% set _mx = status.get('checks', {}).get('matrix_bridge',        {}) %}
+  {% set _nx = status.get('checks', {}).get('nexus_messages',       {}) %}
+  {% set _eg = status.get('checks', {}).get('engram_facts',         {}) %}
+  {% set _pl = status.get('checks', {}).get('plane_projects',       {}) %}
+  {% set _ag = status.get('checks', {}).get('active_agents',        {}) %}
+  {% set _rf = status.get('checks', {}).get('refractor_categories', {}) %}
+  {% set ic_ok = _ic.get('ok', False) %}  {% set ic_val = _ic.get('value') %}
+  {% set ic_err = _ic.get('error') %}     {% set ic_ms = None %}
+  {% set ll_ok = _ll.get('ok', False) %}  {% set ll_val = _ll.get('value') %}
+  {% set ll_err = _ll.get('error') %}     {% set ll_ms = None %}
+  {% set mx_ok = _mx.get('ok', False) %}  {% set mx_err = _mx.get('error') %}
+  {% set nx_ok = _nx.get('ok', False) %}  {% set nx_val = _nx.get('value') %}
+  {% set nx_err = _nx.get('error') %}
+  {% set eg_ok = _eg.get('ok', False) %}  {% set eg_val = _eg.get('value') %}
+  {% set pl_ok = _pl.get('ok', False) %}  {% set pl_val = _pl.get('value') %}
+  {% set pl_err = _pl.get('error') %}     {% set pl_ms = None %}
+  {% set ag_ok = _ag.get('ok', False) %}  {% set ag_agents = _ag.get('value', {}) %}
+  {% set rf_ok = _rf.get('ok', False) %}  {% set rf_val = _rf.get('value') %}
+  {% set rf_err = _rf.get('error') %}
+{% endif %}
 
 {# IronClaw #}
-{% set ic = status.checks.ironclaw_version %}
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <h3 style="margin:0;">IronClaw</h3>
-    <span class="health-dot {% if ic.ok %}healthy{% else %}dead{% endif %}"></span>
+    <span class="health-dot {% if ic_ok %}healthy{% else %}dead{% endif %}"></span>
   </div>
-  <div class="card-sub" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
-    {{ ic.value or ic.error or 'unreachable' }}
+  <div style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
+    {% if ic_ok %}
+      {{ ic_val or 'online' }}{% if ic_ms %} &middot; {{ ic_ms }}ms{% endif %}
+    {% else %}
+      <span style="color:var(--color-error);">{{ ic_err or 'unreachable' }}</span>
+      <button
+        hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
+        style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
+        &#x21BA; Retry
+      </button>
+    {% endif %}
   </div>
 </div>
 
 {# Active Agents #}
-{% set ag = status.checks.active_agents %}
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <h3 style="margin:0;">Agents</h3>
-    {% if ag.ok %}
-      <span class="health-dot healthy"></span>
-    {% elif ag.active_count is defined and ag.active_count > 0 %}
-      <span class="health-dot degraded"></span>
-    {% else %}
-      <span class="health-dot dead"></span>
-    {% endif %}
+    <span class="health-dot {% if ag_ok %}healthy{% elif ag_agents %}degraded{% else %}dead{% endif %}"></span>
   </div>
   <div style="margin-top:0.5rem;font-size:0.85rem;">
-    {% if ag.value %}
-      {% for name, running in ag.value.items() %}
+    {% if ag_agents %}
+      {% for name, running in ag_agents.items() %}
         <div style="display:flex;justify-content:space-between;padding:0.15rem 0;">
           <span style="color:var(--text-secondary);">{{ name }}</span>
           {% if running %}
@@ -38,102 +90,132 @@
         </div>
       {% endfor %}
     {% else %}
-      <span style="color:var(--text-tertiary);">{{ ag.error or 'unreachable' }}</span>
+      <span style="color:var(--text-tertiary);">No agent data</span>
+      <button
+        hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
+        style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
+        &#x21BA; Retry
+      </button>
     {% endif %}
   </div>
 </div>
 
 {# Nexus Inbox #}
-{% set nx = status.checks.nexus_messages %}
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <h3 style="margin:0;">Nexus Inbox</h3>
-    <span class="health-dot {% if nx.ok %}healthy{% else %}dead{% endif %}"></span>
+    <span class="health-dot {% if nx_ok %}healthy{% else %}dead{% endif %}"></span>
   </div>
-  <div class="card-sub" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
-    {% if nx.ok %}
-      {{ nx.value }} pending message{% if nx.value != 1 %}s{% endif %}
+  <div style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
+    {% if nx_ok %}
+      {{ nx_val or 0 }} pending message{% if nx_val != 1 %}s{% endif %}
     {% else %}
-      {{ nx.error or 'unreachable' }}
+      <span style="color:var(--color-error);">{{ nx_err or 'unreachable' }}</span>
+      <button
+        hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
+        style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
+        &#x21BA; Retry
+      </button>
     {% endif %}
   </div>
 </div>
 
 {# Engram #}
-{% set eg = status.checks.engram_facts %}
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <h3 style="margin:0;">Engram</h3>
-    <span class="health-dot {% if eg.ok %}healthy{% else %}dead{% endif %}"></span>
+    <span class="health-dot {% if eg_ok %}healthy{% else %}dead{% endif %}"></span>
   </div>
-  <div class="card-sub" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
-    {% if eg.ok %}
-      {{ eg.value }} rows
-      {% if eg.tables %}
-        across {{ eg.tables | length }} table{% if eg.tables|length != 1 %}s{% endif %}
-      {% endif %}
+  <div style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
+    {% if eg_ok %}
+      {{ eg_val or '?' }} facts
     {% else %}
-      {{ eg.error or 'unreachable' }}
+      <span style="color:var(--color-error);">DB not found</span>
+      <button
+        hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
+        style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
+        &#x21BA; Retry
+      </button>
     {% endif %}
   </div>
 </div>
 
 {# LiteLLM #}
-{% set ll = status.checks.litellm_models %}
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <h3 style="margin:0;">LiteLLM</h3>
-    <span class="health-dot {% if ll.ok %}healthy{% else %}dead{% endif %}"></span>
+    <span class="health-dot {% if ll_ok %}healthy{% else %}dead{% endif %}"></span>
   </div>
-  <div class="card-sub" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
-    {% if ll.ok %}
-      {{ ll.value }} model{% if ll.value != 1 %}s{% endif %} available
+  <div style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
+    {% if ll_ok %}
+      {{ ll_val or 0 }} model{% if ll_val != 1 %}s{% endif %} available{% if ll_ms %} &middot; {{ ll_ms }}ms{% endif %}
     {% else %}
-      {{ ll.error or 'unreachable' }}
+      <span style="color:var(--color-error);">{{ ll_err or 'unreachable' }}</span>
+      <button
+        hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
+        style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
+        &#x21BA; Retry
+      </button>
     {% endif %}
   </div>
 </div>
 
 {# Matrix Bridge #}
-{% set mb = status.checks.matrix_bridge %}
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <h3 style="margin:0;">Matrix Bridge</h3>
-    <span class="health-dot {% if mb.ok %}healthy{% else %}dead{% endif %}"></span>
+    <span class="health-dot {% if mx_ok %}healthy{% else %}dead{% endif %}"></span>
   </div>
-  <div class="card-sub" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
-    {{ mb.value or mb.error or 'unreachable' }}
+  <div style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
+    {% if mx_ok %}
+      online
+    {% else %}
+      <span style="color:var(--color-error);">{{ mx_err or 'unreachable' }}</span>
+      <button
+        hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
+        style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
+        &#x21BA; Retry
+      </button>
+    {% endif %}
   </div>
 </div>
 
 {# Refractor #}
-{% set rf = status.checks.refractor_categories %}
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <h3 style="margin:0;">Refractor</h3>
-    <span class="health-dot {% if rf.ok %}healthy{% else %}dead{% endif %}"></span>
+    <span class="health-dot {% if rf_ok %}healthy{% else %}dead{% endif %}"></span>
   </div>
-  <div class="card-sub" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
-    {% if rf.ok %}
-      {{ rf.value }} category match{% if rf.value != 1 %}es{% endif %}
+  <div style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
+    {% if rf_ok %}
+      {{ rf_val or 0 }} category match{% if rf_val != 1 %}es{% endif %}
     {% else %}
-      {{ rf.error or 'unreachable' }}
+      <span style="color:var(--color-error);">{{ rf_err or 'unreachable' }}</span>
+      <button
+        hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
+        style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
+        &#x21BA; Retry
+      </button>
     {% endif %}
   </div>
 </div>
 
 {# Plane #}
-{% set pl = status.checks.plane_projects %}
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <h3 style="margin:0;">Plane</h3>
-    <span class="health-dot {% if pl.ok %}healthy{% else %}dead{% endif %}"></span>
+    <span class="health-dot {% if pl_ok %}healthy{% else %}dead{% endif %}"></span>
   </div>
-  <div class="card-sub" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
-    {% if pl.ok %}
-      {{ pl.value }} project{% if pl.value != 1 %}s{% endif %}
+  <div style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
+    {% if pl_ok %}
+      {{ pl_val or 0 }} project{% if pl_val != 1 %}s{% endif %}{% if pl_ms %} &middot; {{ pl_ms }}ms{% endif %}
     {% else %}
-      {{ pl.error or 'unreachable' }}
+      <span style="color:var(--color-error);">{{ pl_err or 'unreachable' }}</span>
+      <button
+        hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
+        style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
+        &#x21BA; Retry
+      </button>
     {% endif %}
   </div>
 </div>

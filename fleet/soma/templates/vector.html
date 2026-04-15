@@ -1,211 +1,797 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vector — Soma</title>
-<link rel="stylesheet" href="http://YOUR_FLEET_SERVER_IP/shared/constellation.css">
-<script src="https://unpkg.com/htmx.org@1.9.10" crossorigin="anonymous"></script>
-</head>
-<body hx-headers='{"X-Soma-Key": "YOUR_SOMA_ADMIN_KEY"}'>
-<div style="max-width:1200px;margin:0 auto;padding:1.5rem;">
+{% extends "base.html" %}
 
-  <!-- FIX 5: Enriched header -->
-  <div style="margin-bottom:1.5rem;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-      <div>
-        <h1 style="font-size:1.5rem;font-weight:700;margin:0 0 0.5rem;">&#x26A1; Vector</h1>
-        <p style="color:var(--text-secondary);margin:0;max-width:600px;font-size:0.875rem;">
-          Autonomous dev loops against your codebase. Vector plans, executes, reviews, and iterates —
-          creating PRs for your review. Powered by the <strong>Ralph Loop</strong> pattern with
-          <strong>Calx behavioral correction</strong>.
-          <a href="/wiki/modules/vector" style="color:var(--accent);margin-left:0.5rem;">&#8594; Full docs</a>
-        </p>
-      </div>
-      <a href="/status" style="color:var(--text-secondary);text-decoration:none;font-size:0.875rem;">&#8592; Dashboard</a>
-    </div>
+{% block title %}Vector — Mission Control{% endblock %}
+
+{% block content %}
+<style>
+  .metric-row { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.5rem; }
+  .metric-card { background:var(--bg-secondary); border:1px solid var(--border); border-radius:8px; padding:1rem 1.25rem; }
+  .metric-val { font-size:2rem; font-weight:700; margin:0.25rem 0; }
+  .metric-label { font-size:0.8rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.05em; }
+  .metric-sub { font-size:0.8rem; color:var(--text-tertiary); margin-top:0.2rem; }
+  .pulse-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--color-success); box-shadow:0 0 6px var(--color-success); animation:pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .tab-bar { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:1.5rem; }
+  .tab-btn { padding:0.65rem 1.1rem; border:none; background:none; cursor:pointer; font-size:0.9rem;
+             border-bottom:2px solid transparent; color:var(--text-secondary); transition:all 0.15s; }
+  .tab-btn.active { border-bottom-color:var(--accent); color:var(--text-primary); font-weight:600; }
+  .tab-btn:hover:not(.active) { color:var(--text-primary); background:var(--bg-tertiary); }
+  .tab-pane { display:none; } .tab-pane.active { display:block; }
+  .loop-card { border:1px solid var(--border); border-radius:8px; padding:1rem; margin-bottom:1rem; background:var(--bg-secondary); }
+  .phase-badge { display:inline-block; padding:0.15rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:600; }
+  .phase-PLAN { background:rgba(88,166,255,0.15); color:#58a6ff; }
+  .phase-EXECUTE { background:rgba(63,185,80,0.15); color:#3fb950; }
+  .phase-REVIEW { background:rgba(210,153,34,0.15); color:#d29922; }
+  .phase-ITERATE { background:rgba(163,113,247,0.15); color:#a371f7; }
+  .process-tree { font-family:monospace; font-size:0.8rem; padding:0.75rem; background:var(--bg-primary); border-radius:6px; margin-top:0.5rem; }
+  .loop-controls { display:flex; gap:0.5rem; margin-top:0.75rem; }
+  .btn-sm { padding:0.25rem 0.75rem; border-radius:5px; border:1px solid var(--border); background:none; color:var(--text-primary); cursor:pointer; font-size:0.8rem; }
+  .btn-sm:hover { background:var(--bg-tertiary); }
+  .btn-danger { color:var(--color-error); border-color:var(--color-error); }
+  .progress-bar { height:4px; background:var(--bg-tertiary); border-radius:2px; overflow:hidden; margin-top:0.4rem; }
+  .progress-fill { height:100%; background:var(--accent); transition:width 0.3s; }
+  .oauth-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:1rem; }
+  .oauth-card { border:1px solid var(--border); border-radius:8px; padding:1rem; background:var(--bg-secondary); }
+  .pane-grid-1 { grid-template-columns:1fr; }
+  .pane-grid-2 { grid-template-columns:1fr 1fr; }
+  .pane-grid-3 { grid-template-columns:1fr 1fr; }
+  .pane-grid-4 { grid-template-columns:1fr 1fr; }
+  .council-pane { border:1px solid var(--border); border-radius:8px; padding:1rem; background:var(--bg-secondary); min-height:200px; }
+  .persona-badge { display:inline-block; padding:0.1rem 0.4rem; border-radius:4px; font-size:0.75rem; background:rgba(88,166,255,0.15); color:var(--accent); }
+  .calx-t1 { color:#58a6ff; } .calx-t2 { color:#d29922; } .calx-t3 { color:#f85149; } .calx-t4 { color:#a371f7; }
+  .empty-state { text-align:center; padding:3rem 1rem; color:var(--text-secondary); }
+  .empty-state .icon { font-size:2rem; margin-bottom:0.5rem; }
+  @media(max-width:768px) { .metric-row { grid-template-columns:1fr; } .pane-grid-2,.pane-grid-3,.pane-grid-4 { grid-template-columns:1fr; } }
+</style>
+
+<!-- Page header -->
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem;">
+  <div>
+    <h1 style="font-size:1.5rem;font-weight:700;margin:0 0 0.25rem;">&#x26A1; Vector Mission Control</h1>
+    <p style="color:var(--text-secondary);margin:0;font-size:0.875rem;">
+      Autonomous dev loops · <strong>Ralph Loop</strong> pattern · <strong>Calx</strong> behavioral correction
+      <a href="/wiki/modules/vector" style="color:var(--accent);margin-left:0.5rem;">&#8594; Docs</a>
+    </p>
   </div>
-
-  <!-- Status overview -->
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1rem;margin-bottom:1.5rem;">
-    <div class="card"
-      hx-get="/api/vector/status"
-      hx-trigger="load, every 10s"
-      hx-swap="innerHTML"
-      id="vector-status-card">
-      <div style="color:var(--text-secondary);font-size:0.875rem;">Checking Vector status...</div>
-    </div>
+  <div style="display:flex;gap:0.5rem;align-items:center;">
+    <button onclick="refreshAll()" class="btn-sm">&#x21BA; Refresh</button>
+    <span id="last-updated" style="font-size:0.75rem;color:var(--text-tertiary);"></span>
   </div>
+</div>
 
-  <!-- Tabs -->
-  <div style="display:flex;gap:0;border-bottom:1px solid var(--border-color);margin-bottom:1.5rem;">
-    <button onclick="showTab('submit')" id="tab-submit" style="padding:0.75rem 1.25rem;border:none;background:none;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--text-primary);font-weight:600;">Submit Task</button>
-    <button onclick="showTab('calx')" id="tab-calx" style="padding:0.75rem 1.25rem;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-secondary);">Calx History</button>
-    <button onclick="showTab('prs')" id="tab-prs" style="padding:0.75rem 1.25rem;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-secondary);">Open PRs</button>
+<!-- Metric header (SP.V1) -->
+<div class="metric-row" id="metric-row">
+  <div class="metric-card">
+    <div class="metric-label">Active Loops</div>
+    <div class="metric-val" id="m-loops">—</div>
+    <div class="metric-sub" id="m-loops-sub">Loading...</div>
   </div>
-
-  <!-- Submit tab -->
-  <div id="tab-submit-content" style="display:block;">
-    <div class="card" style="max-width:640px;">
-      <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Submit a task to Vector</h2>
-      <form onsubmit="submitVectorTask(event)">
-        <!-- FIX 5: Enhanced task textarea with help tooltip and cost estimate -->
-        <div style="margin-bottom:1rem;">
-          <label style="font-weight:600;display:block;margin-bottom:0.25rem;">
-            Task description
-            <span title="Describe what you want built. Vector will decompose this into steps and work through them autonomously."
-              style="cursor:help;color:var(--text-secondary);font-weight:normal;font-size:0.8rem;margin-left:0.5rem;">&#x2139;&#xFE0F; help</span>
-          </label>
-          <textarea id="task-input" rows="4" placeholder="e.g. Add rate limiting to the Nexus API endpoints..."
-            style="width:100%;padding:0.75rem;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);color:var(--text-primary);font-size:0.875rem;resize:vertical;"
-            oninput="updateCostEstimate(this.value)"></textarea>
-          <div id="cost-estimate" style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.25rem;"></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
-          <div>
-            <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Target repo</label>
-            <select id="repo-input" style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);">
-              <option value="/opt/lumina-fleet">/opt/lumina-fleet (fleet agents)</option>
-              <option value="/opt/ai-mcp">/opt/ai-mcp (Terminus tools)</option>
-              <option value="/opt/lumina-fleet/soma">/opt/lumina-fleet/soma (Soma)</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Cost budget: <span id="budget-label">$2.00</span></label>
-            <input type="range" id="budget-input" min="0.5" max="10" step="0.5" value="2"
-              oninput="document.getElementById('budget-label').textContent='$'+this.value"
-              style="width:100%;">
-          </div>
-        </div>
-        <button type="submit" class="btn-primary" style="width:100%;">&#x26A1; Submit to Vector</button>
-      </form>
-      <div id="submit-result" style="margin-top:1rem;"></div>
-    </div>
+  <div class="metric-card">
+    <div class="metric-label">Today's Cost</div>
+    <div class="metric-val" id="m-cost">—</div>
+    <div class="metric-sub" id="m-cost-sub">Loading...</div>
   </div>
-
-  <!-- Calx tab -->
-  <div id="tab-calx-content" style="display:none;">
-    <div style="display:flex;gap:0.75rem;margin-bottom:1rem;align-items:center;">
-      <select id="calx-filter" onchange="loadCalx(this.value)"
-        style="padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);">
-        <option value="">All triggers</option>
-        <option value="T1_TEST">T1 — Test compliance</option>
-        <option value="T2_STYLE">T2 — Style</option>
-        <option value="T3_SECURITY">T3 — Security (hard blocks)</option>
-      </select>
-    </div>
-    <!-- FIX 5: Empty state for Calx -->
-    <div id="calx-content"
-      hx-get="/api/vector/calx?limit=50"
-      hx-trigger="load"
-      hx-swap="innerHTML">
-      <div style="color:var(--text-secondary);text-align:center;padding:2rem;">
-        <div style="font-size:1.5rem;margin-bottom:0.5rem;">&#x1F3AF;</div>
-        <div>No Calx triggers recorded yet.</div>
-        <div style="font-size:0.875rem;margin-top:0.25rem;">Submit a task to Vector and behavioral corrections will appear here.</div>
-      </div>
-    </div>
+  <div class="metric-card">
+    <div class="metric-label">Gate Pass Rate</div>
+    <div class="metric-val" id="m-gate">—</div>
+    <div class="metric-sub">Last 7 days</div>
   </div>
+</div>
 
-  <!-- PRs tab -->
-  <div id="tab-prs-content" style="display:none;">
-    <!-- FIX 5: Empty state for PRs -->
-    <div id="prs-content"
-      hx-get="/api/vector/prs"
-      hx-trigger="load"
-      hx-swap="innerHTML">
-      <div style="color:var(--text-secondary);text-align:center;padding:2rem;">
-        <div>No open PRs from Vector yet.</div>
-        <div style="font-size:0.875rem;margin-top:0.25rem;">
-          When Vector completes tasks, PRs appear here.
-          <a href="http://YOUR_GITEA_IP:3000" target="_blank" style="color:var(--accent);">Browse Gitea &#8594;</a>
-        </div>
-      </div>
+<!-- System status card -->
+<div class="card" id="vector-system-status" style="margin-bottom:1.5rem;font-size:0.875rem;">
+  <div style="color:var(--text-secondary);">Loading system status...</div>
+</div>
+
+<!-- Active loops section (SP.V1) -->
+<div id="active-loops-section" style="margin-bottom:1.5rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+    <h2 style="font-size:1rem;font-weight:700;margin:0;">Active Loops</h2>
+    <span id="loop-count-badge" class="badge-success" style="font-size:0.75rem;padding:0.2rem 0.6rem;border-radius:4px;">Idle</span>
+  </div>
+  <div id="loops-container">
+    <div class="empty-state">
+      <div class="icon">&#x1F4A4;</div>
+      <div>No active loops</div>
+      <div style="font-size:0.85rem;margin-top:0.5rem;">Submit a task below to start a loop</div>
     </div>
   </div>
 </div>
 
+<!-- Main tab area -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('submit')" id="tb-submit">&#x1F4DD; Submit Task</button>
+  <button class="tab-btn" onclick="showTab('history')" id="tb-history">&#x1F4CB; Task History</button>
+  <button class="tab-btn" onclick="showTab('calx')" id="tb-calx">&#x1F3AF; Calx</button>
+  <button class="tab-btn" onclick="showTab('prs')" id="tb-prs">&#x1F4CE; Open PRs</button>
+  <button class="tab-btn" onclick="showTab('models')" id="tb-models">&#x1F4CA; Models</button>
+  <button class="tab-btn" onclick="showTab('council')" id="tb-council">&#x1F9D9; Council</button>
+  <button class="tab-btn" onclick="showTab('plane')" id="tb-plane">&#x1F4C8; Plane</button>
+</div>
+
+<!-- Submit Task tab (SP.V4) -->
+<div class="tab-pane active" id="pane-submit">
+  <div class="card" style="max-width:700px;">
+    <h2 style="font-size:1rem;font-weight:700;margin:0 0 1rem;">Submit a Task to Vector</h2>
+    <form onsubmit="submitTask(event)">
+      <div style="margin-bottom:1rem;">
+        <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.35rem;">Task Title</label>
+        <input id="v-title" type="text" placeholder="e.g. Add rate limiting to Nexus API"
+          style="width:100%;padding:0.6rem 0.75rem;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);font-size:0.9rem;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:1rem;">
+        <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.35rem;">
+          Description
+          <span style="font-weight:normal;color:var(--text-secondary);margin-left:0.3rem;">(Markdown supported)</span>
+        </label>
+        <textarea id="v-desc" rows="5" placeholder="Describe what you want built. Include acceptance criteria if you have them."
+          style="width:100%;padding:0.6rem 0.75rem;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);font-size:0.875rem;resize:vertical;box-sizing:border-box;"
+          oninput="updateCostEstimate(this.value)"></textarea>
+        <div id="v-cost-est" style="font-size:0.75rem;color:var(--text-tertiary);margin-top:0.25rem;"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+        <div>
+          <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.35rem;">Target Repo</label>
+          <select id="v-repo" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);">
+            <option value="/opt/lumina-fleet">/opt/lumina-fleet (agents)</option>
+            <option value="/opt/ai-mcp">/opt/ai-mcp (Terminus tools)</option>
+            <option value="/opt/lumina-fleet/soma">/opt/lumina-fleet/soma (Soma)</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.35rem;">Model Tier</label>
+          <select id="v-model" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);">
+            <option value="auto">Auto (tier selector decides)</option>
+            <option value="reasoning">Reasoning (Sonnet/Opus)</option>
+            <option value="scaffold">Scaffold (Qwen/fast)</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+        <div>
+          <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.35rem;">
+            Cost Budget: <span id="v-budget-label">$2.00</span>
+          </label>
+          <input type="range" id="v-budget" min="0.5" max="20" step="0.5" value="2"
+            oninput="document.getElementById('v-budget-label').textContent='$'+parseFloat(this.value).toFixed(2)"
+            style="width:100%;">
+        </div>
+        <div>
+          <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.35rem;">
+            Max Iterations: <span id="v-iters-label">25</span>
+          </label>
+          <input type="range" id="v-iters" min="5" max="50" step="5" value="25"
+            oninput="document.getElementById('v-iters-label').textContent=this.value"
+            style="width:100%;">
+        </div>
+      </div>
+      <div style="margin-bottom:1rem;">
+        <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.5rem;">Calx Gates</label>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem;">
+            <input type="checkbox" id="calx-t1" checked> <span class="calx-t1">T1 Tests</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem;">
+            <input type="checkbox" id="calx-t2" checked> <span class="calx-t2">T2 Style</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem;">
+            <input type="checkbox" id="calx-t3" checked> <span class="calx-t3">T3 Security</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem;">
+            <input type="checkbox" id="calx-t4" checked> <span class="calx-t4">T4 Promise</span>
+          </label>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" style="width:100%;">&#x26A1; Launch Loop</button>
+    </form>
+    <div id="v-submit-result" style="margin-top:0.75rem;"></div>
+  </div>
+</div>
+
+<!-- Task History tab (SP.V5) -->
+<div class="tab-pane" id="pane-history">
+  <div id="history-content"
+    hx-get="/api/vector/history?limit=50"
+    hx-trigger="intersect once"
+    hx-swap="innerHTML">
+    <div class="empty-state"><div class="icon">&#x23F3;</div><div>Loading task history...</div></div>
+  </div>
+</div>
+
+<!-- Calx tab (SP.V5) -->
+<div class="tab-pane" id="pane-calx">
+  <div style="display:flex;gap:0.75rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap;">
+    <div class="card" style="padding:0.6rem 1rem;display:inline-flex;gap:1.5rem;">
+      <span><span class="calx-t1">T1</span> <strong id="calx-t1-count">0</strong></span>
+      <span><span class="calx-t2">T2</span> <strong id="calx-t2-count">0</strong></span>
+      <span><span class="calx-t3">T3</span> <strong id="calx-t3-count">0</strong></span>
+      <span><span class="calx-t4">T4</span> <strong id="calx-t4-count">0</strong></span>
+    </div>
+    <select onchange="filterCalx(this.value)"
+      style="padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);">
+      <option value="">All triggers</option>
+      <option value="T1_TEST">T1 — Test compliance</option>
+      <option value="T2_STYLE">T2 — Style</option>
+      <option value="T3_SECURITY">T3 — Security</option>
+      <option value="T4_PROMISE">T4 — Promise</option>
+    </select>
+  </div>
+  <div id="calx-content"
+    hx-get="/api/vector/calx?limit=100"
+    hx-trigger="intersect once"
+    hx-swap="innerHTML">
+    <div class="empty-state"><div class="icon">&#x1F3AF;</div><div>No Calx triggers yet</div><div style="font-size:0.85rem;">Submit tasks to Vector — corrections appear here</div></div>
+  </div>
+</div>
+
+<!-- Open PRs tab (SP.V5) -->
+<div class="tab-pane" id="pane-prs">
+  <div id="prs-content"
+    hx-get="/api/vector/prs"
+    hx-trigger="intersect once"
+    hx-swap="innerHTML">
+    <div class="empty-state"><div class="icon">&#x1F4CE;</div><div>Loading PRs...</div></div>
+  </div>
+</div>
+
+<!-- Model Performance tab (SP.V5) -->
+<div class="tab-pane" id="pane-models">
+  <div id="models-content"
+    hx-get="/api/vector/models"
+    hx-trigger="intersect once"
+    hx-swap="innerHTML">
+    <div class="empty-state"><div class="icon">&#x1F4CA;</div><div>Loading model performance data...</div></div>
+  </div>
+</div>
+
+<!-- Council tab (SP.V7 — Obsidian Circle) -->
+<div class="tab-pane" id="pane-council">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+    <!-- Config panel -->
+    <div class="card">
+      <h3 style="font-size:0.95rem;font-weight:700;margin:0 0 1rem;">Start Deliberation</h3>
+
+      <div style="margin-bottom:0.75rem;">
+        <label style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:0.4rem;">Mode</label>
+        <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+          <button id="mode-multi" onclick="setCouncilMode('multi')"
+            style="flex:1;padding:0.4rem;border:none;background:var(--accent);color:#000;font-size:0.8rem;font-weight:600;cursor:pointer;">
+            Multi-Model
+          </button>
+          <button id="mode-prism" onclick="setCouncilMode('prism')"
+            style="flex:1;padding:0.4rem;border:none;background:var(--bg-secondary);color:var(--text-secondary);font-size:0.8rem;cursor:pointer;">
+            Prism
+          </button>
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-tertiary);margin-top:0.35rem;" id="mode-desc">
+          Multi-model: different providers give diverse perspectives
+        </div>
+      </div>
+
+      <div id="multi-model-config">
+        <label style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:0.4rem;">Models</label>
+        <div id="model-checkboxes" style="display:flex;flex-direction:column;gap:0.35rem;font-size:0.85rem;"></div>
+      </div>
+
+      <div id="prism-config" style="display:none;">
+        <div style="margin-bottom:0.75rem;">
+          <label style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:0.4rem;">Base Model</label>
+          <select id="prism-model" style="width:100%;padding:0.45rem;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);">
+            <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+            <option value="qwen3-32b">Qwen3-32B (local)</option>
+          </select>
+        </div>
+        <label style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:0.4rem;">Personas</label>
+        <div id="persona-checkboxes" style="display:flex;flex-direction:column;gap:0.35rem;font-size:0.85rem;"></div>
+      </div>
+
+      <div style="margin-top:0.75rem;">
+        <label style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:0.4rem;">Question</label>
+        <textarea id="council-question" rows="3" placeholder="What should the council deliberate on?"
+          style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);font-size:0.875rem;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+      <button onclick="startCouncil()" class="btn-primary" style="width:100%;margin-top:0.75rem;">
+        &#x1F9D9; Convene Council
+      </button>
+      <div id="council-result" style="margin-top:0.5rem;font-size:0.85rem;"></div>
+    </div>
+
+    <!-- OAuth status -->
+    <div class="card">
+      <h3 style="font-size:0.95rem;font-weight:700;margin:0 0 1rem;">Provider Sessions</h3>
+      <div id="oauth-status">
+        <div style="color:var(--text-secondary);font-size:0.85rem;">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Council panes (adaptive layout) -->
+  <div id="council-panes" style="margin-top:1.5rem;display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+      <h3 style="font-size:0.95rem;font-weight:700;margin:0;">Deliberation in Progress</h3>
+      <button onclick="saveCouncil()" class="btn-sm">&#x1F4BE; Save Report</button>
+    </div>
+    <div id="pane-layout" style="display:grid;gap:1rem;"></div>
+    <div id="synthesis-panel" style="margin-top:1rem;display:none;" class="card">
+      <h4 style="margin:0 0 0.5rem;font-size:0.9rem;">Synthesis</h4>
+      <div id="synthesis-text" style="font-size:0.875rem;color:var(--text-secondary);"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Plane Project Dashboard tab (SP.V3) -->
+<div class="tab-pane" id="pane-plane">
+  <div id="plane-content"
+    hx-get="/api/vector/plane"
+    hx-trigger="intersect once"
+    hx-swap="innerHTML">
+    <div class="empty-state"><div class="icon">&#x1F4C8;</div><div>Loading Plane projects...</div></div>
+  </div>
+</div>
+
 <script>
-// FIX 5: Format vector status card response
-const CALX_COLORS = {'T1_TEST': '#58a6ff', 'T2_STYLE': '#d29922', 'T3_SECURITY': '#f85149', 'T4_PROMISE': '#a371f7'};
+const TABS = ['submit','history','calx','prs','models','council','plane'];
+let _councilMode = 'multi';
+let _currentSession = null;
+const _PERSONAS = [
+  {id:'architect', name:'Architect'}, {id:'skeptic', name:'Skeptic'},
+  {id:'pragmatist', name:'Pragmatist'}, {id:'security', name:'Security'},
+  {id:'user', name:'User'}, {id:'cost', name:'Cost'},
+  {id:'devils_advocate', name:"Devil's Advocate"}
+];
 
-document.addEventListener('htmx:afterSwap', function(e) {
-  if (e.detail.elt.id === 'vector-status-card') {
-    try {
-      const data = JSON.parse(e.detail.elt.innerText);
-      const pending = data.pending_work_orders || 0;
-      const lastResult = data.last_result;
-      let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">' +
-        '<h3 style="margin:0;">Agent Status</h3>' +
-        '<span class="badge-' + (pending > 0 ? 'warning' : 'success') + '" style="font-size:0.75rem;">' +
-        (pending > 0 ? pending + ' pending' : 'idle') +
-        '</span></div>';
-      if (lastResult) {
-        html += '<div style="font-size:0.875rem;color:var(--text-secondary);">Last: ' +
-          (lastResult.tasks_completed || 0) + ' tasks, $' + (lastResult.cost || 0).toFixed(2) + '</div>';
-      } else {
-        html += '<div style="font-size:0.875rem;color:var(--text-secondary);">No tasks run yet</div>';
-      }
-      e.detail.elt.innerHTML = html;
-    } catch(err) { /* keep raw */ }
-  }
-});
-
+// ── Tab switching ─────────────────────────────────────────────────────────────
 function showTab(name) {
-  ['submit','calx','prs'].forEach(t => {
-    document.getElementById('tab-' + t + '-content').style.display = t === name ? 'block' : 'none';
-    const btn = document.getElementById('tab-' + t);
-    btn.style.borderBottomColor = t === name ? 'var(--accent)' : 'transparent';
-    btn.style.color = t === name ? 'var(--text-primary)' : 'var(--text-secondary)';
-    btn.style.fontWeight = t === name ? '600' : 'normal';
+  TABS.forEach(t => {
+    document.getElementById('pane-' + t).classList.toggle('active', t === name);
+    document.getElementById('tb-' + t).classList.toggle('active', t === name);
   });
+  if (name === 'council' && !document.getElementById('oauth-status').dataset.loaded) {
+    loadOAuth();
+    loadModelList();
+  }
 }
 
-function loadCalx(type) {
-  const url = '/api/vector/calx?limit=50' + (type ? '&trigger_type=' + type : '');
-  document.getElementById('calx-content').setAttribute('hx-get', url);
-  htmx.trigger(document.getElementById('calx-content'), 'load');
+// ── Metrics + status refresh ──────────────────────────────────────────────────
+async function refreshAll() {
+  await Promise.all([refreshMetrics(), refreshLoops()]);
+  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
 }
 
-// FIX 5: Cost estimate heuristic
-function updateCostEstimate(text) {
-  const el = document.getElementById('cost-estimate');
-  if (!el) return;
-  const words = text.trim().split(/\s+/).filter(function(w) { return w; }).length;
-  if (words === 0) { el.textContent = ''; return; }
-  const estimate = words < 10 ? '~$0.20 (simple)' : words < 30 ? '~$0.50-1.00 (medium)' : '~$1.00-2.00 (complex)';
-  el.textContent = 'Estimated cost: ' + estimate;
+async function refreshMetrics() {
+  try {
+    const r = await fetch('/api/vector/status');
+    const d = await r.json();
+    // Active loops metric
+    const loops = d.active_loop_count || 0;
+    document.getElementById('m-loops').innerHTML = loops > 0
+      ? `${loops} <span class="pulse-dot"></span>` : '0';
+    document.getElementById('m-loops-sub').textContent = loops > 0 ? `${loops} loop${loops>1?'s':''} running` : 'Idle';
+    // Cost metric
+    const cost = d.today_cost_usd || 0;
+    const costColor = cost > 5 ? 'var(--color-error)' : cost > 1 ? '#d29922' : 'var(--color-success)';
+    document.getElementById('m-cost').style.color = costColor;
+    document.getElementById('m-cost').textContent = '$' + cost.toFixed(3);
+    document.getElementById('m-cost-sub').textContent = cost < 1 ? 'Under budget' : cost < 5 ? 'Watch spend' : 'Over $5 — review';
+    // Gate pass rate
+    const gpr = d.gate_pass_rate || 100;
+    document.getElementById('m-gate').textContent = gpr + '%';
+    // System status card
+    const sc = document.getElementById('vector-system-status');
+    const runStatus = d.vector_running ? `<span class="badge-success" style="font-size:0.75rem;padding:0.15rem 0.5rem;border-radius:4px;">Running</span> PID ${d.vector_pid}` : `<span class="badge-error" style="font-size:0.75rem;padding:0.15rem 0.5rem;border-radius:4px;">Stopped</span>`;
+    sc.innerHTML = `<div style="display:flex;gap:2rem;flex-wrap:wrap;font-size:0.85rem;">
+      <span>Vector service: ${runStatus}</span>
+      <span style="color:var(--text-secondary);">Delegation: ${d.delegation_enabled ? '✓ enabled' : '✗ disabled'}</span>
+      <span style="color:var(--text-secondary);">Scaffold: ${d.scaffold_model || '?'}</span>
+      <span style="color:var(--text-secondary);">Guardrails: ${d.guardrail_count || 0}</span>
+    </div>`;
+  } catch(e) {
+    document.getElementById('vector-system-status').innerHTML = `<div style="color:var(--color-error);font-size:0.85rem;">Status unavailable — ${e.message}
+      <button onclick="refreshAll()" class="btn-sm" style="margin-left:0.5rem;">&#x21BA; Retry</button></div>`;
+  }
 }
 
-async function submitVectorTask(e) {
+async function refreshLoops() {
+  try {
+    const r = await fetch('/api/vector/loops');
+    const d = await r.json();
+    const container = document.getElementById('loops-container');
+    const badge = document.getElementById('loop-count-badge');
+    if (!d.loops || d.loops.length === 0) {
+      badge.textContent = 'Idle'; badge.className = 'badge-success';
+      badge.style.cssText = 'font-size:0.75rem;padding:0.2rem 0.6rem;border-radius:4px;';
+      container.innerHTML = `<div class="empty-state">
+        <div class="icon">&#x1F4A4;</div>
+        <div>No active loops</div>
+        <div style="font-size:0.85rem;margin-top:0.5rem;">Submit a task below to start a loop</div>
+        <button onclick="showTab('submit')" class="btn-sm" style="margin-top:0.75rem;">+ Submit Task</button>
+      </div>`;
+      return;
+    }
+    badge.textContent = d.loops.length + ' active'; badge.className = 'badge-warning';
+    badge.style.cssText = 'font-size:0.75rem;padding:0.2rem 0.6rem;border-radius:4px;';
+    container.innerHTML = d.loops.map(loop => renderLoopCard(loop)).join('');
+  } catch(e) {
+    document.getElementById('loops-container').innerHTML = `<div style="color:var(--color-error);font-size:0.85rem;padding:1rem;">
+      Failed to load loops: ${e.message}
+      <button onclick="refreshLoops()" class="btn-sm" style="margin-left:0.5rem;">&#x21BA; Retry</button></div>`;
+  }
+}
+
+function renderLoopCard(loop) {
+  const pct = Math.round((loop.iteration / Math.max(loop.max_iterations, 1)) * 100);
+  const costPct = Math.round((loop.cost_usd / Math.max(loop.budget_usd, 0.01)) * 100);
+  const delegates = loop.delegates || [];
+  return `<div class="loop-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <strong style="font-size:0.95rem;">${escHtml(loop.task)}</strong>
+        <span style="color:var(--text-tertiary);font-size:0.75rem;margin-left:0.5rem;">via ${loop.source}</span>
+      </div>
+      <span class="phase-badge phase-${loop.phase}">${loop.phase}</span>
+    </div>
+    <div style="display:flex;gap:1.5rem;margin-top:0.5rem;font-size:0.8rem;color:var(--text-secondary);">
+      <span>Iter ${loop.iteration}/${loop.max_iterations}</span>
+      <span>$${(loop.cost_usd||0).toFixed(3)}/$${loop.budget_usd}</span>
+      <span>&#x23F1; ${loop.elapsed}</span>
+      <span>${loop.model}</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    ${delegates.length > 0 ? `<div class="process-tree">
+      &#x2514;&#x2500; Loop: '${escHtml(loop.task.slice(0,40))}' [${loop.status.toUpperCase()}]<br>
+        &#x251C;&#x2500; Lead: ${loop.model} [${loop.phase} phase, iter ${loop.iteration}]
+        ${delegates.map(d => `<br>        &#x2514;&#x2500; Delegate: ${escHtml(d.model||'qwen')} [${escHtml(d.task||'working...')}]`).join('')}
+    </div>` : ''}
+    <div class="loop-controls">
+      ${loop.status === 'running' ? `<button onclick="loopControl('${loop.id}','pause')" class="btn-sm">&#x23F8; Pause</button>` : ''}
+      ${loop.status === 'paused' ? `<button onclick="loopControl('${loop.id}','resume')" class="btn-sm">&#x25B6; Resume</button>` : ''}
+      <button onclick="loopControl('${loop.id}','abort')" class="btn-sm btn-danger">&#x2715; Abort</button>
+      <button onclick="loopControl('${loop.id}','escalate')" class="btn-sm">&#x1F4E3; Escalate</button>
+      <button onclick="viewLogs('${loop.id}')" class="btn-sm">&#x1F4CB; Logs</button>
+    </div>
+  </div>`;
+}
+
+// ── Loop controls ─────────────────────────────────────────────────────────────
+async function loopControl(loopId, action) {
+  try {
+    const r = await fetch(`/api/vector/loops/${loopId}/${action}`, {method:'POST',headers:{'Content-Type':'application/json'}});
+    const d = await r.json();
+    if (d.ok) { refreshLoops(); } else { alert('Error: ' + d.error); }
+  } catch(e) { alert('Failed: ' + e.message); }
+}
+
+async function viewLogs(loopId) {
+  try {
+    const r = await fetch(`/api/vector/loops/${loopId}/logs?lines=30`);
+    const d = await r.json();
+    const lines = d.lines || ['No logs available'];
+    alert(`Logs for loop ${loopId}:\n\n${lines.join('\n')}`);
+  } catch(e) { alert('Failed to load logs: ' + e.message); }
+}
+
+// ── Task submission ───────────────────────────────────────────────────────────
+async function submitTask(e) {
   e.preventDefault();
-  const task = document.getElementById('task-input').value.trim();
-  const repo = document.getElementById('repo-input').value;
-  const budget = document.getElementById('budget-input').value;
-  const result = document.getElementById('submit-result');
-
-  if (!task) { result.innerHTML = '<div class="alert-error">Task description required</div>'; return; }
-
-  result.innerHTML = '<div class="alert-info">Submitting to Vector...</div>';
-
+  const title = document.getElementById('v-title').value.trim();
+  const desc = document.getElementById('v-desc').value.trim();
+  const task = title ? `${title}\n\n${desc}` : desc;
+  if (!task.trim()) {
+    document.getElementById('v-submit-result').innerHTML = '<div class="alert-error">Task description required</div>';
+    return;
+  }
+  document.getElementById('v-submit-result').innerHTML = '<div class="alert-info">Submitting...</div>';
   try {
     const r = await fetch('/api/vector/submit', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-Soma-Key': 'YOUR_SOMA_ADMIN_KEY'},
-      body: JSON.stringify({task, repo, cost_budget: parseFloat(budget)})
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        task, repo: document.getElementById('v-repo').value,
+        model_tier: document.getElementById('v-model').value,
+        cost_budget: parseFloat(document.getElementById('v-budget').value),
+        max_iterations: parseInt(document.getElementById('v-iters').value),
+        calx: { t1: document.getElementById('calx-t1').checked, t2: document.getElementById('calx-t2').checked,
+                t3: document.getElementById('calx-t3').checked, t4: document.getElementById('calx-t4').checked }
+      })
     });
-    const data = await r.json();
-    if (data.status === 'queued') {
-      result.innerHTML = '<div class="alert-success">&#x2713; Work order queued: ' + data.message_id + '</div>';
-      document.getElementById('task-input').value = '';
-      document.getElementById('cost-estimate').textContent = '';
+    const d = await r.json();
+    if (d.ok) {
+      document.getElementById('v-submit-result').innerHTML = `<div class="alert-success">&#x2713; Loop queued: <strong>${d.loop_id}</strong> — ${d.message}</div>`;
+      document.getElementById('v-title').value = '';
+      document.getElementById('v-desc').value = '';
+      setTimeout(refreshLoops, 2000);
     } else {
-      result.innerHTML = '<div class="alert-error">Error: ' + (data.error || JSON.stringify(data)) + '</div>';
+      document.getElementById('v-submit-result').innerHTML = `<div class="alert-error">Error: ${escHtml(d.error||JSON.stringify(d))}</div>`;
     }
-  } catch(err) {
-    result.innerHTML = '<div class="alert-error">Failed: ' + err.message + '</div>';
+  } catch(e2) {
+    document.getElementById('v-submit-result').innerHTML = `<div class="alert-error">Failed: ${e2.message}</div>`;
   }
 }
+
+function updateCostEstimate(text) {
+  const el = document.getElementById('v-cost-est');
+  if (!el) return;
+  const words = text.trim().split(/\s+/).filter(w=>w).length;
+  el.textContent = words < 5 ? '' : words < 15 ? 'Estimated: ~$0.20 (simple task)' : words < 40 ? 'Estimated: ~$0.50-1.00 (medium complexity)' : 'Estimated: ~$1.00-3.00 (complex task)';
+}
+
+// ── Calx filter ───────────────────────────────────────────────────────────────
+function filterCalx(type) {
+  const url = '/api/vector/calx?limit=100' + (type ? '&trigger_type=' + type : '');
+  const el = document.getElementById('calx-content');
+  el.setAttribute('hx-get', url);
+  htmx.trigger(el, 'load');
+}
+
+// ── HTMX response formatters ──────────────────────────────────────────────────
+document.body.addEventListener('htmx:afterSwap', function(e) {
+  const id = e.detail.target.id;
+  if (id === 'history-content') renderHistory(e.detail.target);
+  if (id === 'calx-content') renderCalx(e.detail.target);
+  if (id === 'prs-content') renderPRs(e.detail.target);
+  if (id === 'models-content') renderModels(e.detail.target);
+  if (id === 'plane-content') renderPlane(e.detail.target);
+});
+
+function renderHistory(el) {
+  try {
+    const d = JSON.parse(el.innerText);
+    if (!d.tasks || d.tasks.length === 0) {
+      el.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4CB;</div><div>No task history yet</div></div>'; return;
+    }
+    el.innerHTML = '<div class="card"><table class="table"><thead><tr><th>Task</th><th>Status</th><th>Iters</th><th>Model</th><th>Cost</th><th>Duration</th></tr></thead><tbody>' +
+      d.tasks.map(t => `<tr>
+        <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(t.task||'?')}</td>
+        <td><span class="${t.status==='done'?'badge-success':t.status==='failed'?'badge-error':'badge-warning'}" style="font-size:0.75rem;padding:0.1rem 0.4rem;border-radius:4px;">${t.status||'?'}</span></td>
+        <td>${t.iterations||0}</td>
+        <td style="font-size:0.8rem;color:var(--text-secondary);">${t.model||'?'}</td>
+        <td>$${(t.cost_usd||0).toFixed(3)}</td>
+        <td style="font-size:0.8rem;color:var(--text-secondary);">${t.duration||'?'}</td>
+      </tr>`).join('') + '</tbody></table></div>';
+  } catch(e) { el.innerHTML = '<div class="empty-state"><div>No task history yet</div></div>'; }
+}
+
+function renderCalx(el) {
+  try {
+    const d = JSON.parse(el.innerText);
+    const events = d.events || [];
+    // Update count badges
+    fetch('/api/vector/calx/stats').then(r=>r.json()).then(s => {
+      const a = s.all_time || {};
+      ['T1_TEST','T2_STYLE','T3_SECURITY','T4_PROMISE'].forEach((k,i) => {
+        const badge = document.getElementById(`calx-t${i+1}-count`);
+        if (badge) badge.textContent = a[k] || 0;
+      });
+    });
+    if (events.length === 0) {
+      el.innerHTML = '<div class="empty-state"><div class="icon">&#x1F3AF;</div><div>No Calx triggers recorded</div><div style="font-size:0.85rem;">Submit tasks to Vector — corrections appear here</div></div>'; return;
+    }
+    const COLOR = {T1_TEST:'calx-t1',T2_STYLE:'calx-t2',T3_SECURITY:'calx-t3',T4_PROMISE:'calx-t4'};
+    el.innerHTML = '<div class="card"><table class="table"><thead><tr><th>Time</th><th>Type</th><th>File</th><th>Correction</th><th>Outcome</th></tr></thead><tbody>' +
+      events.map(ev => `<tr>
+        <td style="font-size:0.8rem;white-space:nowrap;">${(ev.timestamp||'').slice(0,16)}</td>
+        <td><span class="${COLOR[ev.trigger_type]||''}" style="font-weight:600;font-size:0.85rem;">${ev.trigger_type||'?'}</span></td>
+        <td style="font-size:0.8rem;color:var(--text-secondary);">${escHtml(ev.file||'?')}</td>
+        <td style="font-size:0.8rem;max-width:250px;overflow:hidden;text-overflow:ellipsis;">${escHtml(ev.correction||'?')}</td>
+        <td><span style="font-size:0.75rem;">${ev.outcome||'?'}</span></td>
+      </tr>`).join('') + '</tbody></table></div>';
+  } catch(e) { el.innerHTML = '<div class="empty-state"><div>No Calx data</div></div>'; }
+}
+
+function renderPRs(el) {
+  try {
+    const d = JSON.parse(el.innerText);
+    if (!d.prs || d.prs.length === 0) {
+      el.innerHTML = `<div class="empty-state">
+        <div class="icon">&#x1F4CE;</div>
+        <div>No open PRs from Vector</div>
+        <div style="font-size:0.85rem;">PRs with branch prefix <code>vector/</code> appear here</div>
+      </div>`; return;
+    }
+    el.innerHTML = '<div class="card"><table class="table"><thead><tr><th>Title</th><th>Repo</th><th>Branch</th><th>Files</th><th>Created</th><th></th></tr></thead><tbody>' +
+      d.prs.map(pr => `<tr>
+        <td>${escHtml(pr.title)}</td>
+        <td style="font-size:0.8rem;color:var(--text-secondary);">${escHtml(pr.repo)}</td>
+        <td style="font-size:0.8rem;"><code>${escHtml(pr.branch)}</code></td>
+        <td>${pr.files_changed||0}</td>
+        <td style="font-size:0.8rem;color:var(--text-secondary);">${(pr.created_at||'').slice(0,10)}</td>
+        <td><a href="${pr.url}" target="_blank" style="color:var(--accent);font-size:0.8rem;">Open &#8599;</a></td>
+      </tr>`).join('') + '</tbody></table></div>';
+  } catch(e) { el.innerHTML = '<div class="empty-state"><div>No PR data available</div></div>'; }
+}
+
+function renderModels(el) {
+  try {
+    const d = JSON.parse(el.innerText);
+    if (!d.models || d.models.length === 0) {
+      el.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4CA;</div><div>No model performance data yet</div><div style="font-size:0.85rem;">Runs tasks to collect model metrics</div></div>'; return;
+    }
+    el.innerHTML = '<div class="card"><table class="table"><thead><tr><th>Model</th><th>Tasks</th><th>Total Iters</th><th>Gate Pass %</th><th>Avg Cost</th><th>Total Cost</th></tr></thead><tbody>' +
+      d.models.map(m => `<tr>
+        <td style="font-size:0.85rem;font-weight:600;">${escHtml(m.model)}</td>
+        <td>${m.tasks}</td><td>${m.total_iterations}</td>
+        <td>${m.gate_pass_rate}%</td>
+        <td>$${(m.avg_cost_usd||0).toFixed(3)}</td>
+        <td>$${(m.total_cost_usd||0).toFixed(3)}</td>
+      </tr>`).join('') + '</tbody></table></div>';
+  } catch(e) { el.innerHTML = '<div class="empty-state"><div>No model data</div></div>'; }
+}
+
+function renderPlane(el) {
+  try {
+    const d = JSON.parse(el.innerText);
+    if (!d.projects || d.projects.length === 0) {
+      el.innerHTML = `<div class="empty-state"><div class="icon">&#x1F4C8;</div><div>No Plane projects</div>
+        <button onclick="document.getElementById('plane-content').setAttribute('hx-trigger','load');htmx.trigger(document.getElementById('plane-content'),'load')" class="btn-sm" style="margin-top:0.5rem;">&#x21BA; Retry</button>
+      </div>`; return;
+    }
+    el.innerHTML = '<div class="card"><table class="table"><thead><tr><th>Project</th><th>ID</th><th>Issues</th><th>Actions</th></tr></thead><tbody>' +
+      d.projects.map(p => `<tr>
+        <td><strong>${escHtml(p.name||'?')}</strong></td>
+        <td style="font-size:0.8rem;color:var(--text-secondary);"><code>${escHtml(p.identifier||'?')}</code></td>
+        <td>${p.total_issues||0}</td>
+        <td><button onclick="loadPlaneProject('${p.id}')" class="btn-sm" style="font-size:0.75rem;">Details</button></td>
+      </tr>`).join('') + '</tbody></table></div>' +
+      '<div id="plane-project-detail" style="margin-top:1rem;"></div>';
+  } catch(e) { el.innerHTML = `<div class="empty-state"><div>Plane unavailable — ${escHtml(e.message)}</div>
+    <button onclick="htmx.trigger(document.getElementById('plane-content'),'load')" class="btn-sm" style="margin-top:0.5rem;">&#x21BA; Retry</button></div>`; }
+}
+
+async function loadPlaneProject(projectId) {
+  const el = document.getElementById('plane-project-detail');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--text-secondary);font-size:0.85rem;padding:0.5rem;">Loading...</div>';
+  try {
+    const r = await fetch(`/api/vector/plane/${projectId}`);
+    const d = await r.json();
+    if (!d.ok) { el.innerHTML = `<div class="alert-error">${escHtml(d.error||'Failed')}</div>`; return; }
+    el.innerHTML = `<div class="card"><div style="display:flex;gap:2rem;margin-bottom:1rem;">
+      <div><div style="font-size:1.5rem;font-weight:700;">${d.done}</div><div style="font-size:0.8rem;color:var(--text-secondary);">Done</div></div>
+      <div><div style="font-size:1.5rem;font-weight:700;">${d.in_progress}</div><div style="font-size:0.8rem;color:var(--text-secondary);">In Progress</div></div>
+      <div><div style="font-size:1.5rem;font-weight:700;">${d.backlog}</div><div style="font-size:0.8rem;color:var(--text-secondary);">Backlog</div></div>
+      <div><div style="font-size:1.5rem;font-weight:700;">${d.total}</div><div style="font-size:0.8rem;color:var(--text-secondary);">Total</div></div>
+    </div>
+    ${d.top_open && d.top_open.length > 0 ? '<strong style="font-size:0.85rem;">Top Open</strong><ul style="margin:0.5rem 0;padding-left:1.2rem;">' + d.top_open.map(i=>`<li style="font-size:0.85rem;">#${i.id} — ${escHtml(i.title)} <span style="color:var(--text-tertiary);">[${i.priority}]</span></li>`).join('') + '</ul>' : ''}
+    </div>`;
+  } catch(e2) { el.innerHTML = `<div class="alert-error">${escHtml(e2.message)}</div>`; }
+}
+
+// ── Council ───────────────────────────────────────────────────────────────────
+function setCouncilMode(mode) {
+  _councilMode = mode;
+  document.getElementById('mode-multi').style.background = mode === 'multi' ? 'var(--accent)' : 'var(--bg-secondary)';
+  document.getElementById('mode-multi').style.color = mode === 'multi' ? '#000' : 'var(--text-secondary)';
+  document.getElementById('mode-prism').style.background = mode === 'prism' ? 'var(--accent)' : 'var(--bg-secondary)';
+  document.getElementById('mode-prism').style.color = mode === 'prism' ? '#000' : 'var(--text-secondary)';
+  document.getElementById('multi-model-config').style.display = mode === 'multi' ? '' : 'none';
+  document.getElementById('prism-config').style.display = mode === 'prism' ? '' : 'none';
+  document.getElementById('mode-desc').textContent = mode === 'multi'
+    ? 'Multi-model: different providers give diverse perspectives'
+    : 'Prism: same model with different persona prompts';
+}
+
+async function loadModelList() {
+  try {
+    const r = await fetch('/api/vector/oauth');
+    const d = await r.json();
+    const providers = d.providers || [];
+    const modelCb = document.getElementById('model-checkboxes');
+    modelCb.innerHTML = providers.map(p => `<label style="display:flex;align-items:center;gap:0.4rem;">
+      <input type="checkbox" value="${p.key}" ${p.status !== 'not_configured' ? 'checked' : ''}>
+      <span>${escHtml(p.name)}</span>
+      <span style="font-size:0.75rem;color:${p.status==='configured'?'var(--color-success)':p.status==='not_configured'?'var(--color-error)':'var(--text-tertiary)'};">[${p.status}]</span>
+    </label>`).join('');
+    const personaCb = document.getElementById('persona-checkboxes');
+    personaCb.innerHTML = _PERSONAS.map(p => `<label style="display:flex;align-items:center;gap:0.4rem;">
+      <input type="checkbox" value="${p.id}" checked>
+      <span class="persona-badge">${escHtml(p.name)}</span>
+    </label>`).join('');
+  } catch(e) {
+    document.getElementById('model-checkboxes').innerHTML = '<div style="color:var(--text-secondary);font-size:0.85rem;">Could not load models</div>';
+  }
+}
+
+async function loadOAuth() {
+  const el = document.getElementById('oauth-status');
+  el.dataset.loaded = '1';
+  try {
+    const r = await fetch('/api/vector/oauth');
+    const d = await r.json();
+    const providers = d.providers || [];
+    el.innerHTML = providers.map(p => `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0;border-bottom:1px solid var(--border);font-size:0.85rem;">
+      <span>${escHtml(p.name)}</span>
+      <div style="display:flex;align-items:center;gap:0.5rem;">
+        <span style="color:${p.status==='configured'?'var(--color-success)':p.status==='not_configured'?'var(--color-error)':'var(--text-tertiary)'};">
+          ${p.status === 'configured' ? '✓' : p.status === 'not_configured' ? '✗ not set' : '?'}
+        </span>
+        <button onclick="reAuth('${p.key}')" class="btn-sm" style="font-size:0.7rem;">Re-auth</button>
+      </div>
+    </div>`).join('');
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--color-error);font-size:0.85rem;">Failed to load OAuth status</div>';
+  }
+}
+
+async function reAuth(provider) {
+  try {
+    const r = await fetch(`/api/vector/oauth/${provider}/refresh`, {method:'POST'});
+    const d = await r.json();
+    if (d.oauth_url) { window.open(d.oauth_url, '_blank', 'width=600,height=700'); }
+  } catch(e) { alert('Failed: ' + e.message); }
+}
+
+async function startCouncil() {
+  const question = document.getElementById('council-question').value.trim();
+  if (!question) { document.getElementById('council-result').innerHTML = '<span style="color:var(--color-error);">Question required</span>'; return; }
+  document.getElementById('council-result').innerHTML = '<span style="color:var(--text-secondary);">Starting deliberation...</span>';
+
+  let models = [], personas = [];
+  if (_councilMode === 'multi') {
+    models = Array.from(document.querySelectorAll('#model-checkboxes input:checked')).map(i=>i.value);
+  } else {
+    const baseModel = document.getElementById('prism-model').value;
+    models = [baseModel];
+    personas = Array.from(document.querySelectorAll('#persona-checkboxes input:checked')).map(i=>i.value);
+  }
+
+  try {
+    const r = await fetch('/api/council/start', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({question, models, mode: _councilMode, personas})
+    });
+    const d = await r.json();
+    if (!d.ok) { document.getElementById('council-result').innerHTML = `<span style="color:var(--color-error);">${escHtml(d.error||'Failed')}</span>`; return; }
+    _currentSession = d.session_id;
+    document.getElementById('council-result').innerHTML = `<span style="color:var(--color-success);">&#x2713; Session ${d.session_id} started</span>`;
+    renderCouncilPanes(d, question, models, personas);
+  } catch(e2) { document.getElementById('council-result').innerHTML = `<span style="color:var(--color-error);">Failed: ${e2.message}</span>`; }
+}
+
+function renderCouncilPanes(session, question, models, personas) {
+  const panelSection = document.getElementById('council-panes');
+  panelSection.style.display = '';
+  const paneLayout = document.getElementById('pane-layout');
+  const count = _councilMode === 'prism' ? personas.length : models.length;
+  const gridClass = count <= 1 ? '1fr' : count === 2 ? '1fr 1fr' : count <= 4 ? '1fr 1fr' : '1fr 1fr 1fr';
+  paneLayout.style.gridTemplateColumns = gridClass;
+  const items = _councilMode === 'prism'
+    ? personas.map(p => ({model: models[0], persona: p}))
+    : models.map(m => ({model: m, persona: null}));
+  paneLayout.innerHTML = items.map((item, i) => {
+    const personaLabel = item.persona ? `<span class="persona-badge">${escHtml(item.persona)}</span>` : '';
+    return `<div class="council-pane" id="cpane-${i}">
+      <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">${escHtml(item.model)} ${personaLabel}</div>
+      <div id="cpane-text-${i}" style="font-size:0.85rem;color:var(--text-secondary);">Waiting for response...</div>
+    </div>`;
+  }).join('');
+  // Simulate streaming (real impl would use EventSource per model)
+  items.forEach((item, i) => {
+    setTimeout(() => {
+      const el = document.getElementById(`cpane-text-${i}`);
+      if (el) el.textContent = `[${item.model}${item.persona ? ' · ' + item.persona : ''}] Deliberating on: "${question.slice(0,60)}" — response streams via SSE in production`;
+    }, 500 + i * 300);
+  });
+}
+
+async function saveCouncil() {
+  if (!_currentSession) { alert('No active session'); return; }
+  const r = await fetch(`/api/council/${_currentSession}/save`, {method:'POST'});
+  const d = await r.json();
+  if (d.ok) { alert(`Session ${_currentSession} saved to report`); }
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async function init() {
+  await refreshAll();
+  setInterval(refreshAll, 5000);  // 5s live refresh for loops
+  setInterval(refreshMetrics, 30000);  // 30s for metrics
+  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+})();
 </script>
-</body>
-</html>
+{% endblock %}

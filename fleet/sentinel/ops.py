@@ -27,6 +27,22 @@ import urllib.parse
 import urllib.error
 from datetime import datetime, timezone, timedelta
 
+# Pulse — temporal awareness for duration-aware alerts (SP.C4)
+sys.path.insert(0, '/opt/lumina-fleet/shared')
+try:
+    import pulse as _pulse
+    _PULSE_OK = True
+except ImportError:
+    _PULSE_OK = False
+
+
+def _since_str(marker: str) -> str:
+    """Return ' (down for Xh Ym)' if pulse marker exists, else ''."""
+    if not _PULSE_OK:
+        return ''
+    s = _pulse.since(marker)
+    return f' (down for {s})' if s else ''
+
 # ============================================================
 # Config
 # ============================================================

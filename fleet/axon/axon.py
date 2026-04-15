@@ -37,6 +37,14 @@ try:
 except ImportError:
     _ENGRAM_OK = False
 
+# Pulse — temporal awareness (SP.C4)
+sys.path.insert(0, '/opt/lumina-fleet/shared')
+try:
+    import pulse as _pulse
+    _PULSE_OK = True
+except ImportError:
+    _PULSE_OK = False
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
 POLL_INTERVAL = int(os.environ.get('POLL_INTERVAL', '60'))  # seconds
@@ -442,7 +450,9 @@ def main():
 
     while _running:
         try:
-            # Lightweight check
+            # Lightweight check — mark poll time for Sentinel duration tracking
+            if _PULSE_OK:
+                _pulse.mark('axon_last_poll')
             check = nexus_check()
             if 'error' in check:
                 log.warning('nexus_check failed: %s', check['error'])

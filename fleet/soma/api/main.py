@@ -1413,6 +1413,567 @@ def list_plugins(x_soma_key: str = Header(default="")):
                 "hint": "Check PVM_SSH_HOST env var and SSH access to Terminus"}
 
 
+# ── Vector API endpoints (SP.V6) ──────────────────────────────────────────────
+
+_VECTOR_DIR = FLEET_DIR / "vector"
+_VECTOR_STATE_FILE = _VECTOR_DIR / "state.json"
+_VECTOR_HISTORY_FILE = _VECTOR_DIR / "history.json"
+_VECTOR_CALX_FILE = _VECTOR_DIR / "calx.json"
+_VECTOR_CONFIG_FILE = _VECTOR_DIR / "config.json"
+_VECTOR_GUARDRAILS_FILE = _VECTOR_DIR / "guardrails.json"
+
+# Pulse import for loop timers
+_sys.path.insert(0, str(FLEET_DIR / "shared"))
+try:
+    import pulse as _pulse_mod
+    _PULSE_MOD_OK = True
+except ImportError:
+    _PULSE_MOD_OK = False
+
+
+def _read_json_file(path: Path, default=None):
+    """Read a JSON file, return default if missing or corrupt."""
+    try:
+        if path.exists():
+            return json.loads(path.read_text())
+    except Exception:
+        pass
+    return default if default is not None else {}
+
+
+def _write_json_file(path: Path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2))
+
+
+@app.get("/api/vector/status")
+def vector_status(x_soma_key: str = Header(default="")):
+    """Active loops, delegates, system health summary."""
+    state = _read_json_file(_VECTOR_STATE_FILE, {})
+    loops = state.get("loops", {})
+    active = {lid: l for lid, l in loops.items() if l.get("status") == "running"}
+
+    # Compute today's cost from history
+    today = datetime.now(timezone.utc).date().isoformat()
+    history = _read_json_file(_VECTOR_HISTORY_FILE, [])
+    if isinstance(history, dict):
+        history = history.get("tasks", [])
+    today_cost = sum(t.get("cost_usd", 0) for t in history
+                     if t.get("completed_at", "").startswith(today))
+
+    # Gate pass rate (last 7 days)
+    calx = _read_json_file(_VECTOR_CALX_FILE, [])
+    if isinstance(calx, dict):
+        calx = calx.get("events", [])
+    total_iters = sum(t.get("iterations", 0) for t in history)
+    total_corrections = len(calx)
+    gate_pass_rate = round((1 - total_corrections / max(total_iters, 1)) * 100, 1) if total_iters > 0 else 100.0
+
+    # Vector service status
+    vector_pid = None
+    vector_uptime = None
+    try:
+        result = subprocess.run(
+            ["pgrep", "-f", "vector"],
+            capture_output=True, text=True, timeout=3
+        )
+        if result.returncode == 0:
+            vector_pid = result.stdout.strip().split("\n")[0]
+    except Exception:
+        pass
+
+    cfg = _read_json_file(_VECTOR_CONFIG_FILE, {})
+
+    return {
+        "ok": True,
+        "active_loop_count": len(active),
+        "today_cost_usd": round(today_cost, 4),
+        "gate_pass_rate": gate_pass_rate,
+        "vector_running": vector_pid is not None,
+        "vector_pid": vector_pid,
+        "delegation_enabled": cfg.get("delegation_enabled", True),
+        "scaffold_model": cfg.get("scaffold_model", "qwen3-8b"),
+        "guardrail_count": len(_read_json_file(_VECTOR_GUARDRAILS_FILE, {}).get("system", [])),
+    }
+
+
+@app.get("/api/vector/loops")
+def vector_loops(x_soma_key: str = Header(default="")):
+    """List active loops with sub-process tree and elapsed times."""
+    state = _read_json_file(_VECTOR_STATE_FILE, {})
+    loops = state.get("loops", {})
+
+    result = []
+    for loop_id, loop in loops.items():
+        elapsed = "?"
+        if _PULSE_MOD_OK:
+            elapsed = _pulse_mod.timer_elapsed(f"loop_{loop_id}")
+        result.append({
+            "id": loop_id,
+            "task": loop.get("task", "Unknown task"),
+            "status": loop.get("status", "unknown"),
+            "phase": loop.get("phase", "PLAN"),
+            "iteration": loop.get("iteration", 0),
+            "max_iterations": loop.get("max_iterations", 25),
+            "model": loop.get("model", "unknown"),
+            "cost_usd": loop.get("cost_usd", 0),
+            "budget_usd": loop.get("budget_usd", 2.0),
+            "elapsed": elapsed,
+            "source": loop.get("source", "soma"),
+            "delegates": loop.get("delegates", []),
+        })
+
+    return {"ok": True, "loops": result, "count": len(result)}
+
+
+@app.get("/api/vector/loops/{loop_id}/logs")
+def vector_loop_logs(loop_id: str, lines: int = 20, x_soma_key: str = Header(default="")):
+    """Live log tail for a specific loop."""
+    log_file = _VECTOR_DIR / "logs" / f"{loop_id}.log"
+    if not log_file.exists():
+        return {"ok": True, "loop_id": loop_id, "lines": [],
+                "note": "No log file found for this loop"}
+    try:
+        content = log_file.read_text()
+        all_lines = content.strip().split("\n")
+        return {"ok": True, "loop_id": loop_id,
+                "lines": all_lines[-lines:], "total_lines": len(all_lines)}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:100]}
+
+
+@app.post("/api/vector/submit")
+async def vector_submit(request: Request, x_soma_key: str = Header(default="")):
+    """Submit a new task to Vector. Returns loop ID."""
+    data = await request.json()
+    task = data.get("task", "").strip()
+    if not task:
+        raise HTTPException(400, "task required")
+
+    loop_id = f"loop_{int(datetime.now(timezone.utc).timestamp())}"
+    state = _read_json_file(_VECTOR_STATE_FILE, {"loops": {}})
+    state.setdefault("loops", {})[loop_id] = {
+        "task": task,
+        "status": "queued",
+        "phase": "PLAN",
+        "iteration": 0,
+        "max_iterations": data.get("max_iterations", 25),
+        "model": data.get("model_tier", "auto"),
+        "cost_usd": 0.0,
+        "budget_usd": float(data.get("cost_budget", 2.0)),
+        "repo": data.get("repo", "/opt/lumina-fleet"),
+        "plane_project": data.get("plane_project"),
+        "source": "soma",
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "delegates": [],
+    }
+    _write_json_file(_VECTOR_STATE_FILE, state)
+
+    if _PULSE_MOD_OK:
+        _pulse_mod.timer_start(f"loop_{loop_id}")
+
+    return {"ok": True, "loop_id": loop_id, "status": "queued",
+            "message": f"Loop {loop_id} queued. Vector will pick it up on next poll."}
+
+
+@app.post("/api/vector/loops/{loop_id}/pause")
+def vector_loop_pause(loop_id: str, x_soma_key: str = Header(default="")):
+    state = _read_json_file(_VECTOR_STATE_FILE, {"loops": {}})
+    if loop_id not in state.get("loops", {}):
+        raise HTTPException(404, "Loop not found")
+    state["loops"][loop_id]["status"] = "paused"
+    _write_json_file(_VECTOR_STATE_FILE, state)
+    return {"ok": True, "loop_id": loop_id, "status": "paused"}
+
+
+@app.post("/api/vector/loops/{loop_id}/resume")
+def vector_loop_resume(loop_id: str, x_soma_key: str = Header(default="")):
+    state = _read_json_file(_VECTOR_STATE_FILE, {"loops": {}})
+    if loop_id not in state.get("loops", {}):
+        raise HTTPException(404, "Loop not found")
+    state["loops"][loop_id]["status"] = "running"
+    _write_json_file(_VECTOR_STATE_FILE, state)
+    return {"ok": True, "loop_id": loop_id, "status": "running"}
+
+
+@app.post("/api/vector/loops/{loop_id}/abort")
+def vector_loop_abort(loop_id: str, x_soma_key: str = Header(default="")):
+    state = _read_json_file(_VECTOR_STATE_FILE, {"loops": {}})
+    if loop_id not in state.get("loops", {}):
+        raise HTTPException(404, "Loop not found")
+    state["loops"][loop_id]["status"] = "aborted"
+    state["loops"][loop_id]["aborted_at"] = datetime.now(timezone.utc).isoformat()
+    _write_json_file(_VECTOR_STATE_FILE, state)
+    return {"ok": True, "loop_id": loop_id, "status": "aborted"}
+
+
+@app.post("/api/vector/loops/{loop_id}/escalate")
+async def vector_loop_escalate(loop_id: str, request: Request, x_soma_key: str = Header(default="")):
+    """Surface loop problem to operator via Nexus and pause the loop."""
+    state = _read_json_file(_VECTOR_STATE_FILE, {"loops": {}})
+    if loop_id not in state.get("loops", {}):
+        raise HTTPException(404, "Loop not found")
+    data = await request.json() if await request.body() else {}
+    loop = state["loops"][loop_id]
+    loop["status"] = "paused"
+    loop["escalated"] = True
+    loop["escalation_message"] = data.get("message", "Operator review requested")
+    _write_json_file(_VECTOR_STATE_FILE, state)
+    return {"ok": True, "loop_id": loop_id, "status": "paused",
+            "escalated": True, "message": loop["escalation_message"]}
+
+
+@app.get("/api/vector/history")
+def vector_history(limit: int = 50, x_soma_key: str = Header(default="")):
+    """Completed tasks from Plane/SQLite."""
+    history = _read_json_file(_VECTOR_HISTORY_FILE, [])
+    if isinstance(history, dict):
+        history = history.get("tasks", [])
+    history = sorted(history, key=lambda t: t.get("completed_at", ""), reverse=True)
+    return {"ok": True, "tasks": history[:limit], "total": len(history)}
+
+
+@app.get("/api/vector/calx")
+def vector_calx(limit: int = 100, trigger_type: str = "", x_soma_key: str = Header(default="")):
+    """Calx behavioral correction history."""
+    events = _read_json_file(_VECTOR_CALX_FILE, [])
+    if isinstance(events, dict):
+        events = events.get("events", [])
+    if trigger_type:
+        events = [e for e in events if e.get("trigger_type") == trigger_type]
+    events = sorted(events, key=lambda e: e.get("timestamp", ""), reverse=True)
+    return {"ok": True, "events": events[:limit], "total": len(events)}
+
+
+@app.get("/api/vector/calx/stats")
+def vector_calx_stats(x_soma_key: str = Header(default="")):
+    """Calx trigger counts by type and period."""
+    events = _read_json_file(_VECTOR_CALX_FILE, [])
+    if isinstance(events, dict):
+        events = events.get("events", [])
+
+    today = datetime.now(timezone.utc).date().isoformat()
+    seven_days_ago = (datetime.now(timezone.utc) - __import__('datetime').timedelta(days=7)).date().isoformat()
+
+    counts = {"T1_TEST": 0, "T2_STYLE": 0, "T3_SECURITY": 0, "T4_PROMISE": 0}
+    today_counts = dict(counts)
+    week_counts = dict(counts)
+
+    for e in events:
+        t = e.get("trigger_type", "")
+        if t in counts:
+            counts[t] += 1
+            ts = e.get("timestamp", "")[:10]
+            if ts == today:
+                today_counts[t] = today_counts.get(t, 0) + 1
+            if ts >= seven_days_ago:
+                week_counts[t] = week_counts.get(t, 0) + 1
+
+    return {"ok": True, "all_time": counts, "today": today_counts, "last_7d": week_counts}
+
+
+@app.get("/api/vector/prs")
+def vector_prs(x_soma_key: str = Header(default="")):
+    """Open PRs from Gitea with vector/ branch prefix."""
+    gitea_url = os.environ.get("GITEA_URL", "")
+    gitea_token = os.environ.get("GITEA_TOKEN", "")
+    try:
+        import urllib.request as _ur
+        req = _ur.Request(
+            f"{gitea_url}/api/v1/repos/search?limit=50&token={gitea_token}",
+            headers={"Authorization": f"token {gitea_token}"} if gitea_token else {}
+        )
+        prs = []
+        with _ur.urlopen(req, timeout=8) as r:
+            repos = json.loads(r.read()).get("data", [])
+        for repo in repos[:10]:
+            try:
+                pr_req = _ur.Request(
+                    f"{gitea_url}/api/v1/repos/{repo['full_name']}/pulls?state=open&limit=20",
+                    headers={"Authorization": f"token {gitea_token}"} if gitea_token else {}
+                )
+                with _ur.urlopen(pr_req, timeout=5) as r2:
+                    repo_prs = json.loads(r2.read())
+                for pr in repo_prs:
+                    if pr.get("head", {}).get("label", "").startswith("vector/"):
+                        prs.append({
+                            "id": pr["number"],
+                            "title": pr["title"],
+                            "repo": repo["full_name"],
+                            "branch": pr.get("head", {}).get("label", ""),
+                            "url": pr.get("html_url", ""),
+                            "created_at": pr.get("created_at", ""),
+                            "files_changed": pr.get("changed_files", 0),
+                        })
+            except Exception:
+                continue
+        return {"ok": True, "prs": prs, "count": len(prs)}
+    except Exception as e:
+        return {"ok": False, "prs": [], "count": 0, "error": str(e)[:150],
+                "note": "Set GITEA_URL and GITEA_TOKEN env vars"}
+
+
+@app.get("/api/vector/models")
+def vector_models(x_soma_key: str = Header(default="")):
+    """Model performance data from history."""
+    history = _read_json_file(_VECTOR_HISTORY_FILE, [])
+    if isinstance(history, dict):
+        history = history.get("tasks", [])
+
+    model_stats = {}
+    for task in history:
+        model = task.get("model", "unknown")
+        if model not in model_stats:
+            model_stats[model] = {"iterations": 0, "passes": 0, "cost_usd": 0, "tasks": 0}
+        model_stats[model]["iterations"] += task.get("iterations", 0)
+        model_stats[model]["passes"] += task.get("gate_passes", 0)
+        model_stats[model]["cost_usd"] += task.get("cost_usd", 0)
+        model_stats[model]["tasks"] += 1
+
+    result = []
+    for model, stats in model_stats.items():
+        iters = stats["iterations"]
+        result.append({
+            "model": model,
+            "tasks": stats["tasks"],
+            "total_iterations": iters,
+            "gate_pass_rate": round(stats["passes"] / max(iters, 1) * 100, 1),
+            "avg_cost_usd": round(stats["cost_usd"] / max(stats["tasks"], 1), 4),
+            "total_cost_usd": round(stats["cost_usd"], 4),
+        })
+
+    return {"ok": True, "models": result}
+
+
+@app.get("/api/vector/guardrails")
+def vector_guardrails(x_soma_key: str = Header(default="")):
+    """Loaded guardrails (system + project)."""
+    data = _read_json_file(_VECTOR_GUARDRAILS_FILE, {"system": [], "project": []})
+    return {"ok": True,
+            "system": data.get("system", []),
+            "project": data.get("project", []),
+            "count": len(data.get("system", [])) + len(data.get("project", []))}
+
+
+@app.put("/api/vector/config")
+async def vector_config_update(request: Request, x_soma_key: str = Header(default="")):
+    """Update Vector configuration."""
+    data = await request.json()
+    cfg = _read_json_file(_VECTOR_CONFIG_FILE, {})
+    allowed_keys = {"default_model", "scaffold_model", "delegation_enabled",
+                    "max_iterations", "cost_limit_usd", "calx_t1", "calx_t2",
+                    "calx_t3", "calx_t4", "auto_escalate_threshold"}
+    for k, v in data.items():
+        if k in allowed_keys:
+            cfg[k] = v
+    _write_json_file(_VECTOR_CONFIG_FILE, cfg)
+    return {"ok": True, "config": cfg}
+
+
+@app.get("/api/vector/oauth")
+def vector_oauth(x_soma_key: str = Header(default="")):
+    """OAuth session status for each provider."""
+    providers = [
+        {"name": "Claude (Anthropic)", "key": "claude", "status": "not_configured",
+         "note": "Use claude-code CLI for OAuth"},
+        {"name": "ChatGPT (OpenAI)", "key": "openai", "status": "not_configured"},
+        {"name": "Gemini (Google)", "key": "gemini", "status": "not_configured"},
+        {"name": "OpenRouter", "key": "openrouter",
+         "status": "configured" if os.environ.get("OPENROUTER_API_KEY") else "not_configured",
+         "has_key": bool(os.environ.get("OPENROUTER_API_KEY"))},
+        {"name": "Local Ollama", "key": "ollama",
+         "status": "configured" if os.environ.get("OLLAMA_URL") else "checking"},
+    ]
+    return {"ok": True, "providers": providers}
+
+
+@app.post("/api/vector/oauth/{provider}/refresh")
+def vector_oauth_refresh(provider: str, x_soma_key: str = Header(default="")):
+    """Trigger re-auth flow for a provider (returns redirect URL for OAuth popup)."""
+    oauth_urls = {
+        "claude": "https://claude.ai/login",
+        "openai": "https://platform.openai.com/login",
+        "gemini": "https://console.cloud.google.com/",
+        "openrouter": "https://openrouter.ai/keys",
+    }
+    if provider not in oauth_urls:
+        raise HTTPException(404, f"Unknown provider: {provider}")
+    return {"ok": True, "provider": provider,
+            "oauth_url": oauth_urls[provider],
+            "note": "Open this URL to authenticate, then update the token in Infisical"}
+
+
+@app.get("/api/vector/plane")
+def vector_plane_summary(x_soma_key: str = Header(default="")):
+    """Cross-project Plane summary (cached via SomaCache)."""
+    plane_url = os.environ.get("PLANE_API_URL", "")
+    plane_token = os.environ.get("PLANE_API_TOKEN", "")
+    try:
+        import urllib.request as _ur
+        req = _ur.Request(
+            f"{plane_url}/api/v1/workspaces/moosenet/projects/?per_page=50",
+            headers={"X-API-Key": plane_token} if plane_token else {}
+        )
+        with _ur.urlopen(req, timeout=8) as r:
+            data = json.loads(r.read())
+        projects = data.get("results", [])
+        return {
+            "ok": True,
+            "projects": [
+                {"id": p.get("id"), "name": p.get("name"), "identifier": p.get("identifier"),
+                 "total_issues": p.get("total_issues", 0)}
+                for p in projects
+            ],
+            "count": len(projects),
+        }
+    except Exception as e:
+        return {"ok": False, "projects": [], "count": 0,
+                "error": str(e)[:150]}
+
+
+@app.get("/api/vector/plane/{project_id}")
+def vector_plane_project(project_id: str, x_soma_key: str = Header(default="")):
+    """Cached Plane project metrics for a specific project."""
+    plane_url = os.environ.get("PLANE_API_URL", "")
+    plane_token = os.environ.get("PLANE_API_TOKEN", "")
+    try:
+        import urllib.request as _ur
+        req = _ur.Request(
+            f"{plane_url}/api/v1/workspaces/moosenet/projects/{project_id}/work-items/?per_page=100",
+            headers={"X-API-Key": plane_token} if plane_token else {}
+        )
+        with _ur.urlopen(req, timeout=8) as r:
+            data = json.loads(r.read())
+        items = data.get("results", [])
+        done = sum(1 for i in items if i.get("state_detail", {}).get("group") == "done")
+        in_progress = sum(1 for i in items if i.get("state_detail", {}).get("group") == "started")
+        backlog = len(items) - done - in_progress
+        return {
+            "ok": True, "project_id": project_id,
+            "total": len(items), "done": done, "in_progress": in_progress, "backlog": backlog,
+            "top_open": [
+                {"id": i.get("sequence_id"), "title": i.get("name"),
+                 "priority": i.get("priority", "none")}
+                for i in items if i.get("state_detail", {}).get("group") != "done"
+            ][:5],
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:150]}
+
+
+# ── Council endpoints (SP.C4 / SP.V7) ────────────────────────────────────────
+
+_COUNCIL_SESSIONS: dict = {}  # session_id → session state (in-memory)
+
+_COUNCIL_PERSONAS = [
+    {"id": "architect",     "name": "Architect",      "prompt": "You are a senior systems architect. Prioritize scalability, maintainability, and clean boundaries."},
+    {"id": "skeptic",       "name": "Skeptic",         "prompt": "You are a critical reviewer. Challenge assumptions, find edge cases, identify what could go wrong."},
+    {"id": "pragmatist",    "name": "Pragmatist",      "prompt": "You are a pragmatic engineer. Prioritize shipping speed, simplicity, and what works today."},
+    {"id": "security",      "name": "Security",        "prompt": "You are a security auditor. Evaluate attack surfaces, credential handling, and trust boundaries."},
+    {"id": "user",          "name": "User",            "prompt": "You are the end user. Evaluate from the perspective of someone who will use this daily."},
+    {"id": "cost",          "name": "Cost",            "prompt": "You are a cost optimizer. Evaluate inference spend, resource usage, and operational overhead."},
+    {"id": "devils_advocate","name": "Devil's Advocate","prompt": "Argue against the proposed approach. What's the strongest case for doing something completely different?"},
+]
+
+
+@app.get("/api/council/personas")
+def council_personas(x_soma_key: str = Header(default="")):
+    """List available personas (built-in + custom)."""
+    custom = _read_json_file(FLEET_DIR / "council" / "personas.json", [])
+    return {"ok": True, "builtin": _COUNCIL_PERSONAS, "custom": custom,
+            "all": _COUNCIL_PERSONAS + custom}
+
+
+@app.post("/api/council/personas")
+async def council_persona_create(request: Request, x_soma_key: str = Header(default="")):
+    """Create or update a custom persona."""
+    data = await request.json()
+    if not data.get("id") or not data.get("name") or not data.get("prompt"):
+        raise HTTPException(400, "id, name, and prompt required")
+    personas_file = FLEET_DIR / "council" / "personas.json"
+    personas = _read_json_file(personas_file, [])
+    personas = [p for p in personas if p["id"] != data["id"]]
+    personas.append({"id": data["id"], "name": data["name"], "prompt": data["prompt"]})
+    _write_json_file(personas_file, personas)
+    return {"ok": True, "persona": data}
+
+
+@app.post("/api/council/start")
+async def council_start(request: Request, x_soma_key: str = Header(default="")):
+    """Start a deliberation session. Returns session_id for SSE streams."""
+    import uuid
+    data = await request.json()
+    question = data.get("question", "").strip()
+    if not question:
+        raise HTTPException(400, "question required")
+
+    session_id = str(uuid.uuid4())[:8]
+    models = data.get("models", ["claude-sonnet-4-6"])
+    mode = data.get("mode", "multi")  # multi or prism
+    personas = data.get("personas", [])
+
+    _COUNCIL_SESSIONS[session_id] = {
+        "question": question,
+        "models": models,
+        "mode": mode,
+        "personas": personas,
+        "status": "running",
+        "responses": {},
+        "started_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    return {"ok": True, "session_id": session_id,
+            "question": question, "models": models, "mode": mode,
+            "stream_urls": [f"/api/council/{session_id}/stream/{m}" for m in models]}
+
+
+@app.get("/api/council/{session_id}/stream/{model}")
+def council_stream(session_id: str, model: str):
+    """SSE stream for a model's response in a council session."""
+    from fastapi.responses import StreamingResponse
+
+    def event_generator():
+        if session_id not in _COUNCIL_SESSIONS:
+            yield f"data: {{\"error\": \"Session {session_id} not found\"}}\n\n"
+            return
+        session = _COUNCIL_SESSIONS[session_id]
+        # Stub: in production, this streams from LiteLLM
+        yield f"data: {{\"session_id\": \"{session_id}\", \"model\": \"{model}\", \"status\": \"streaming\"}}\n\n"
+        yield f"data: {{\"text\": \"Council deliberation for: {session['question'][:50]}\"}}\n\n"
+        yield f"data: {{\"text\": \"[Model {model} response would stream here via LiteLLM]\"}}\n\n"
+        yield f"data: {{\"done\": true, \"model\": \"{model}\"}}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@app.get("/api/council/{session_id}/synthesis")
+def council_synthesis(session_id: str, x_soma_key: str = Header(default="")):
+    """Mr. Wizard synthesis after all models respond."""
+    if session_id not in _COUNCIL_SESSIONS:
+        raise HTTPException(404, "Session not found")
+    session = _COUNCIL_SESSIONS[session_id]
+    return {
+        "ok": True,
+        "session_id": session_id,
+        "question": session["question"],
+        "models": session["models"],
+        "synthesis": "Synthesis pending — all models must complete before synthesis is available.",
+        "status": session["status"],
+    }
+
+
+@app.post("/api/council/{session_id}/save")
+def council_save(session_id: str, x_soma_key: str = Header(default="")):
+    """Archive a council session as a report."""
+    if session_id not in _COUNCIL_SESSIONS:
+        raise HTTPException(404, "Session not found")
+    session = _COUNCIL_SESSIONS[session_id]
+    reports_dir = FLEET_DIR / "council" / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    report_file = reports_dir / f"{session_id}.json"
+    report_file.write_text(json.dumps(session, indent=2))
+    return {"ok": True, "session_id": session_id, "saved_to": str(report_file)}
+
 
 # ── Wiki endpoints ────────────────────────────────────────────────────────────
 

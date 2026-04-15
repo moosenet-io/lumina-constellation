@@ -13,6 +13,14 @@ import sys as _sys; _sys.path.insert(0, '/opt/lumina-fleet')
 try: from naming import display_name as _dn, constellation_name as _cn
 except: _dn = lambda x: x; _cn = lambda: 'Lumina'
 
+# Pulse — temporal context (SP.C4)
+_sys.path.insert(0, '/opt/lumina-fleet/shared')
+try:
+    import pulse as _pulse
+    _PULSE_OK = True
+except ImportError:
+    _PULSE_OK = False
+
 import json
 import os
 import sys
@@ -894,6 +902,10 @@ def run_briefing(briefing_type):
                    message=f"{briefing_type.title()} briefing {date_str}")
     write_to_gitea(briefing, f"vigil/briefings/latest-{briefing_type}.md", secrets,
                    message=f"Latest {briefing_type} briefing")
+
+    # Mark completion for Sentinel duration tracking (SP.C4)
+    if _PULSE_OK:
+        _pulse.mark(f'vigil_{briefing_type}_sent')
 
     print(f"[{_dn('vigil').lower()}] {briefing_type} briefing complete")
     print(f"  Sections: {len(section_list)}")
