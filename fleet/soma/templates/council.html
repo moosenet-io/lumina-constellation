@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Council{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+  <h1 style="font-size:1.5rem;font-weight:700;">&#x2696;&#xFE0F; Obsidian Circle</h1>
+  <div id="session-badge" style="font-size:0.8rem;color:var(--text-tertiary);"></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+
+  <!-- Convene form -->
+  <div class="card">
+    <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Convene the Circle</h2>
+    <form onsubmit="convene(event)">
+      <div style="margin-bottom:1rem;">
+        <label style="font-weight:600;display:block;margin-bottom:0.4rem;">Question</label>
+        <textarea id="q-input" rows="4"
+          placeholder="What should we decide?"
+          style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);color:var(--text-primary);resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+        <div>
+          <label style="font-weight:600;display:block;margin-bottom:0.4rem;">Circle</label>
+          <select id="q-circle"
+            style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);color:var(--text-primary);">
+            <option value="quick">quick — 1 model, fast</option>
+            <option value="architecture" selected>architecture — 3 personas</option>
+            <option value="security">security — adversarial</option>
+            <option value="cost">cost — efficiency focus</option>
+            <option value="research">research — 4 models</option>
+            <option value="full">full — 7 personas</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-weight:600;display:block;margin-bottom:0.4rem;">Budget (USD)</label>
+          <input type="number" id="q-budget" value="0.10" min="0.01" max="1.00" step="0.01"
+            style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);color:var(--text-primary);">
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" style="width:100%;" id="convene-btn">
+        &#x2696;&#xFE0F; Convene
+      </button>
+    </form>
+  </div>
+
+  <!-- Result -->
+  <div class="card" id="result-card" style="display:none;">
+    <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Recommendation</h2>
+    <div id="result-action" style="margin-bottom:0.75rem;"></div>
+    <div id="result-confidence" style="margin-bottom:0.75rem;font-size:0.85rem;color:var(--text-secondary);"></div>
+    <div id="result-text" style="font-size:0.9rem;line-height:1.6;white-space:pre-wrap;"></div>
+    <div id="result-meta" style="margin-top:1rem;font-size:0.75rem;color:var(--text-tertiary);"></div>
+  </div>
+
+  <!-- Loading placeholder (shown while convening) -->
+  <div class="card" id="loading-card" style="display:none;align-items:center;justify-content:center;min-height:200px;">
+    <div style="text-align:center;color:var(--text-secondary);">
+      <div style="font-size:2rem;margin-bottom:0.5rem;">&#x2696;&#xFE0F;</div>
+      <div id="loading-msg">The Circle is deliberating…</div>
+    </div>
+  </div>
+</div>
+
+<!-- Session history -->
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <h2 style="font-size:1rem;font-weight:700;margin:0;">Recent Sessions</h2>
+    <button class="btn-secondary" onclick="loadHistory()" style="font-size:0.8rem;padding:0.25rem 0.75rem;">Refresh</button>
+  </div>
+  <div id="history-table">
+    <span style="color:var(--text-tertiary);font-size:0.85rem;">Use council_status or council_history from IronClaw to browse sessions.</span>
+  </div>
+</div>
+
+<script>
+const API_HEADERS = {"Content-Type": "application/json", "X-Soma-Key": ""};
+
+async function convene(e) {
+  e.preventDefault();
+  const question = document.getElementById('q-input').value.trim();
+  if (!question) return;
+  const circle  = document.getElementById('q-circle').value;
+  const budget  = parseFloat(document.getElementById('q-budget').value);
+
+  document.getElementById('result-card').style.display = 'none';
+  document.getElementById('loading-card').style.display = 'flex';
+  document.getElementById('convene-btn').disabled = true;
+
+  try {
+    const resp = await fetch('/api/council/start', {
+      method: 'POST',
+      headers: API_HEADERS,
+      body: JSON.stringify({question, circle, budget})
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || resp.statusText);
+
+    // Poll synthesis
+    const sid = data.session_id;
+    document.getElementById('session-badge').textContent = 'Session: ' + sid;
+    await pollSynthesis(sid);
+  } catch (err) {
+    document.getElementById('loading-card').style.display = 'none';
+    document.getElementById('result-card').style.display = 'block';
+    document.getElementById('result-action').innerHTML = '<span class="badge-error">Error</span>';
+    document.getElementById('result-text').textContent = err.message;
+  } finally {
+    document.getElementById('convene-btn').disabled = false;
+  }
+}
+
+async function pollSynthesis(sid) {
+  for (let i = 0; i < 60; i++) {
+    await new Promise(r => setTimeout(r, 3000));
+    try {
+      const resp = await fetch(`/api/council/${sid}/synthesis`, {headers: API_HEADERS});
+      if (resp.status === 202) continue; // still deliberating
+      const data = await resp.json();
+      document.getElementById('loading-card').style.display = 'none';
+      renderResult(data);
+      return;
+    } catch {}
+  }
+  document.getElementById('loading-card').style.display = 'none';
+  document.getElementById('result-text').textContent = 'Timed out waiting for council.';
+  document.getElementById('result-card').style.display = 'block';
+}
+
+function renderResult(data) {
+  const conf = (data.confidence || 0);
+  const confPct = Math.round(conf * 100);
+  const actionColors = {
+    'auto_act': 'badge-success',
+    'ask_operator': 'badge-warn',
+    'surface_deliberation': 'badge-error',
+  };
+  const actionBadge = actionColors[data.action] || 'badge-success';
+
+  document.getElementById('result-action').innerHTML =
+    `<span class="${actionBadge}" style="padding:0.2rem 0.6rem;border-radius:4px;">${data.action || 'unknown'}</span>`;
+  document.getElementById('result-confidence').textContent =
+    `Confidence: ${confPct}%  ·  Members: ${data.member_count || '?'}  ·  Cost: $${(data.cost_usd||0).toFixed(4)}`;
+  document.getElementById('result-text').textContent = data.result || data.summary || JSON.stringify(data, null, 2);
+  document.getElementById('result-meta').textContent =
+    `Session: ${data.session_id || ''}  ·  Elapsed: ${data.elapsed_s || '?'}s`;
+  document.getElementById('result-card').style.display = 'block';
+}
+
+async function loadHistory() {
+  document.getElementById('history-table').textContent = 'Loading…';
+  try {
+    const resp = await fetch('/api/council/personas', {headers: API_HEADERS});
+    const data = await resp.json();
+    if (data.personas && data.personas.length) {
+      document.getElementById('history-table').innerHTML =
+        '<span style="color:var(--text-secondary);font-size:0.85rem;">' +
+        data.personas.length + ' custom personas configured. Use IronClaw MCP tools for full session history.</span>';
+    } else {
+      document.getElementById('history-table').innerHTML =
+        '<span style="color:var(--text-tertiary);font-size:0.85rem;">No custom personas. Built-in presets active. Use <code>council_history</code> from IronClaw.</span>';
+    }
+  } catch (err) {
+    document.getElementById('history-table').textContent = 'Error: ' + err.message;
+  }
+}
+
+loadHistory();
+</script>
+{% endblock %}

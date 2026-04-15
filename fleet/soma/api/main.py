@@ -2355,6 +2355,12 @@ def security_page(request: Request):
     return jinja2_templates.TemplateResponse(request, "security.html", {"active_page": "security"})
 
 
+@app.get("/council")
+def council_page(request: Request):
+    """Obsidian Circle — multi-model deliberation interface."""
+    return jinja2_templates.TemplateResponse(request, "council.html", {"active_page": "council"})
+
+
 if __name__ == "__main__":
     import uvicorn
     # Load env
