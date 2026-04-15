@@ -1,0 +1,157 @@
+---
+# lumina-dependencies.yml — Install system-level dependencies for Lumina
+# INFRA-ANSIBLE-3
+#
+# Run this BEFORE lumina-ct310-deploy.yml or lumina-ct214-deploy.yml.
+# Handles Debian/Ubuntu LXC containers (no systemd-boot, no snapd needed).
+#
+# Usage:
+#   ansible-playbook lumina-dependencies.yml -i hosts.ini
+#   ansible-playbook lumina-dependencies.yml -i hosts.ini -l ct310
+#   ansible-playbook lumina-dependencies.yml -i hosts.ini --check
+
+- name: Install Lumina system dependencies
+  hosts: all
+  become: true
+  vars:
+    python_bin: /usr/bin/python3
+
+  tasks:
+
+    # ── Base packages ──────────────────────────────────────────────────────────
+    - name: Update apt cache
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install base system packages
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-venv
+          - python3-yaml
+          - python3-requests
+          - python3-psutil
+          - git
+          - curl
+          - wget
+          - rsync
+          - sqlite3
+          - jq
+          - socat
+          - netcat-openbsd
+          - ca-certificates
+          - gnupg
+          - lsb-release
+          - htop
+          - unzip
+        state: present
+
+    # ── Python packages (CT310 fleet) ──────────────────────────────────────────
+    - name: Install Python packages for fleet host (CT310)
+      pip:
+        name:
+          - fastapi
+          - "uvicorn[standard]"
+          - jinja2
+          - psycopg2-binary
+          - prometheus-client
+          - httpx
+          - pyyaml
+          - pytz
+          - websockets
+        executable: pip3
+        extra_args: --break-system-packages
+      when: "'ct310' in group_names"
+
+    # ── Python packages (CT214 terminus) ──────────────────────────────────────
+    - name: Install Python packages for terminus (CT214)
+      pip:
+        name:
+          - fastmcp
+          - psycopg2-binary
+          - httpx
+          - requests
+          - pyyaml
+          - pytz
+          - websockets
+          - playwright
+        executable: pip3
+        extra_args: --break-system-packages
+      when: "'ct214' in group_names"
+
+    # ── Prometheus node exporter ───────────────────────────────────────────────
+    - name: Install Prometheus node exporter
+      apt:
+        name: prometheus-node-exporter
+        state: present
+      when: "'ct310' in group_names"
+
+    # ── systemd-journal-remote (log aggregation receiver) ─────────────────────
+    - name: Install systemd-journal-remote (CT310)
+      apt:
+        name: systemd-journal-remote
+        state: present
+      when: "'ct310' in group_names"
+
+    - name: Create journal remote directory (CT310)
+      file:
+        path: /var/log/journal/remote
+        state: directory
+        mode: '0750'
+        owner: systemd-journal-remote
+        group: systemd-journal-remote
+      when: "'ct310' in group_names"
+      ignore_errors: true
+
+    # ── Apache (web serving for reports) ──────────────────────────────────────
+    - name: Install Apache (CT310)
+      apt:
+        name: apache2
+        state: present
+      when: "'ct310' in group_names"
+
+    - name: Enable Apache mods
+      apache2_module:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - proxy
+        - proxy_http
+        - rewrite
+        - headers
+      when: "'ct310' in group_names"
+
+    # ── Docker (optional, for Spectra/future containers) ──────────────────────
+    - name: Install Docker prerequisites (CT310)
+      apt:
+        name:
+          - docker.io
+          - docker-compose
+        state: present
+      when:
+        - "'ct310' in group_names"
+        - lumina_enable_spectra | default(false)
+
+    # ── Verify ─────────────────────────────────────────────────────────────────
+    - name: Verify Python version
+      command: "{{ python_bin }} --version"
+      register: python_version
+      changed_when: false
+
+    - name: Report Python version
+      debug:
+        msg: "{{ python_version.stdout }}"
+
+    - name: Verify pip packages installed
+      command: "{{ python_bin }} -c 'import fastapi, uvicorn, yaml, psutil; print(\"OK\")'"
+      register: pip_check
+      changed_when: false
+      when: "'ct310' in group_names"
+      ignore_errors: true
+
+    - name: Report pip check
+      debug:
+        msg: "Core Python packages: {{ 'OK' if pip_check.rc == 0 else 'MISSING — check pip install errors' }}"
+      when: "'ct310' in group_names"

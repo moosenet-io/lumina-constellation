@@ -1,0 +1,57 @@
+---
+# group_vars/all.yml — Lumina defaults for all hosts
+# INFRA-ANSIBLE-4
+#
+# Override any of these in host_vars/{hostname}.yml or at the playbook level.
+
+# ── Paths ─────────────────────────────────────────────────────────────────────
+lumina_fleet_dir: /opt/lumina-fleet
+lumina_mcp_dir: /opt/ai-mcp
+lumina_plane_helper_dir: /opt/plane-helper
+lumina_backup_root: /opt/lumina-fleet/dura/backups
+
+# ── Repos ─────────────────────────────────────────────────────────────────────
+lumina_gitea_host: "{{ lookup('env', 'GITEA_URL') | default('http://YOUR_GITEA_HOST_IP:3000') }}"
+lumina_constellation_repo: "{{ lumina_gitea_host }}/moosenet/lumina-constellation.git"
+lumina_terminus_repo: "{{ lumina_gitea_host }}/moosenet/lumina-terminus.git"
+lumina_branch: main
+
+# ── Python ────────────────────────────────────────────────────────────────────
+lumina_python: /usr/bin/python3
+lumina_pip_args: --break-system-packages
+
+# ── Services ──────────────────────────────────────────────────────────────────
+lumina_soma_port: 8082
+lumina_node_exporter_port: 9100
+lumina_journal_remote_port: 19532
+
+# ── Agents ────────────────────────────────────────────────────────────────────
+lumina_primary_agent: lumina
+lumina_default_model: "anthropic/claude-sonnet-4-6"
+lumina_local_model: "qwen2.5:7b"
+
+# ── Budgets ───────────────────────────────────────────────────────────────────
+lumina_budget_daily_soft: 3.00
+lumina_budget_weekly_soft: 15.00
+lumina_budget_monthly_soft: 50.00
+
+# ── Secrets (populated from Infisical or environment) ─────────────────────────
+# These are declared here for documentation — actual values come from .env
+lumina_required_secrets:
+  - SOMA_JWT_SECRET
+  - IRONCLAW_GATEWAY_TOKEN
+  - LITELLM_MASTER_KEY
+  - GITEA_TOKEN
+  - PLANE_API_TOKEN
+  - OPENROUTER_API_KEY
+  - INBOX_DB_HOST
+  - INBOX_DB_USER
+  - INBOX_DB_PASS
+
+# ── Feature flags ─────────────────────────────────────────────────────────────
+lumina_enable_journal_aggregation: true
+lumina_enable_myelin: true
+lumina_enable_dura_backup: true
+lumina_enable_synapse: true
+lumina_enable_cortex: false    # requires code-review-graph binary
+lumina_enable_spectra: false   # requires Playwright + Docker
