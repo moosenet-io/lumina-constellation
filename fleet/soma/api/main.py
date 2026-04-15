@@ -227,19 +227,74 @@ def backup_status(x_soma_key: str = Header(default="")):
     return {"note": "No backup run yet"}
 
 # ── Logs (Dura) ───────────────────────────────────────────────────────────────
-@app.get("/api/logs")
-def recent_logs(source: str = "CT310", lines: int = 50, x_soma_key: str = Header(default="")):
+@app.get("/api/logs/services")
+def list_log_services(x_soma_key: str = Header(default="")):
+    """List available log services with their location."""
     _auth(x_soma_key)
+    return {"services": [
+        {"name": "soma",     "label": "Soma (admin panel)",    "location": "local"},
+        {"name": "axon",     "label": "Axon (work queue)",     "location": "local"},
+        {"name": "vigil",    "label": "Vigil (briefings)",     "location": "local"},
+        {"name": "sentinel-health", "label": "Sentinel Health", "location": "local"},
+        {"name": "ironclaw", "label": "IronClaw (agent)",      "location": "remote-ironclaw"},
+        {"name": "ai-mcp",   "label": "Terminus (MCP hub)",    "location": "remote-terminus"},
+        {"name": "litellm",  "label": "LiteLLM (proxy)",       "location": "remote-litellm"},
+    ]}
+
+@app.get("/api/logs")
+def recent_logs(service: str = "soma", lines: int = 100, x_soma_key: str = Header(default="")):
+    """Fetch log lines for a given service. Local services read via journalctl.
+    Remote services SSH to the appropriate host."""
+    _auth(x_soma_key)
+    lines = min(max(1, lines), 500)  # clamp 1–500
+
+    _PVS_HOST = os.environ.get("PVS_SSH_HOST", "root@192.168.0.104")
+    _PVM_HOST = os.environ.get("PVM_SSH_HOST", "root@192.168.0.103")
+
+    # Local services (Soma runs on CT310, same host)
+    LOCAL_SERVICES = {"soma", "axon", "vigil", "sentinel-health", "sentinel-metrics",
+                      "inbox-monitor", "vector", "skill-evolution", "crucible"}
+
     try:
-        ct_map = {"CT305": "305", "CT310": "310", "CT300": "300", "CT214": "214"}
-        ct_id = ct_map.get(source, "310")
-        result = subprocess.run(
-            ["ssh", "root@192.168.0.104", f"pct exec {ct_id} -- journalctl -n {lines} --no-pager --output=short 2>/dev/null"],
-            capture_output=True, text=True, timeout=15
-        )
-        return {"source": source, "lines": result.stdout.splitlines()[-lines:]}
+        if service in LOCAL_SERVICES:
+            r = subprocess.run(
+                ["journalctl", "-u", service, "-n", str(lines), "--no-pager", "--output=short-iso"],
+                capture_output=True, text=True, timeout=10
+            )
+            log_lines = r.stdout.splitlines()
+        elif service == "ironclaw":
+            r = subprocess.run(
+                [_PVS_HOST.replace("root@", "ssh root@").split()[0],
+                 f"pct exec 305 -- journalctl -u ironclaw -n {lines} --no-pager --output=short-iso 2>/dev/null"],
+                capture_output=True, text=True, timeout=12
+            )
+            # Simpler: use ssh directly
+            r = subprocess.run(
+                ["ssh", _PVS_HOST,
+                 f"pct exec 305 -- journalctl -u ironclaw -n {lines} --no-pager --output=short-iso 2>/dev/null"],
+                capture_output=True, text=True, timeout=12
+            )
+            log_lines = r.stdout.splitlines()
+        elif service == "ai-mcp":
+            r = subprocess.run(
+                ["ssh", _PVM_HOST,
+                 f"pct exec 214 -- journalctl -u ai-mcp -n {lines} --no-pager --output=short-iso 2>/dev/null"],
+                capture_output=True, text=True, timeout=12
+            )
+            log_lines = r.stdout.splitlines()
+        elif service == "litellm":
+            r = subprocess.run(
+                ["ssh", _PVM_HOST,
+                 f"pct exec 215 -- journalctl -u litellm -n {lines} --no-pager --output=short-iso 2>/dev/null"],
+                capture_output=True, text=True, timeout=12
+            )
+            log_lines = r.stdout.splitlines()
+        else:
+            log_lines = [f"Unknown service: {service}"]
+
+        return {"ok": True, "service": service, "lines": log_lines[-lines:], "count": len(log_lines)}
     except Exception as e:
-        return {"error": str(e)[:100]}
+        return {"ok": False, "service": service, "lines": [], "error": str(e)[:150]}
 
 # ── Validation (Dura smoke test) ──────────────────────────────────────────────
 @app.post("/api/validate/smoke-test")
@@ -998,25 +1053,49 @@ def _get_skill_stats(skill_dir: Path):
 
 
 @app.get("/api/skills")
-def list_skills(x_soma_key: str = Header(default="")):
-    """List all active and proposed skills from CT310 filesystem."""
+def list_skills(status: str = "all", x_soma_key: str = Header(default="")):
+    """List skills from CT310 filesystem. Handles flat .md files and SKILL.md subdirs."""
     _auth(x_soma_key)
     skills_base = FLEET_DIR / "skills"
     result = []
-    for status_label in ["active", "proposed", "archived"]:
+    scan_statuses = ["active", "proposed", "disabled"] if status == "all" else [status]
+
+    for status_label in scan_statuses:
         sdir = skills_base / status_label
         if not sdir.exists():
             continue
-        for skill_path in sorted(sdir.iterdir()):
-            if not skill_path.is_dir():
-                continue
-            fm = _parse_skill_frontmatter(skill_path)
+
+        # Scan both patterns: subdirectories with SKILL.md, and flat .md files
+        for item in sorted(sdir.iterdir()):
+            fm = None
+            slug = item.name
+            if item.is_dir():
+                fm = _parse_skill_frontmatter(item)
+                slug = item.name
+            elif item.is_file() and item.suffix == ".md" and item.name != "README.md":
+                # Flat .md format — parse frontmatter directly
+                content = item.read_text()
+                slug = item.stem
+                if content.startswith("---"):
+                    parts = content.split("---", 2)
+                    if len(parts) >= 3:
+                        try:
+                            import yaml as _yaml
+                            fm = _yaml.safe_load(parts[1]) or {}
+                            fm["_body"] = parts[2].strip()
+                        except Exception:
+                            fm = {"name": slug, "description": ""}
+                    else:
+                        fm = {"name": slug, "description": ""}
+                else:
+                    fm = {"name": slug, "description": content[:100]}
+
             if fm is None:
                 continue
-            stats = _get_skill_stats(skill_path)
+            stats = _get_skill_stats(item) if item.is_dir() else {}
             result.append({
-                "name": fm.get("name", skill_path.name),
-                "slug": skill_path.name,
+                "name": fm.get("name", slug),
+                "slug": slug,
                 "description": fm.get("description", ""),
                 "version": fm.get("version", ""),
                 "agent": fm.get("agent", ""),
@@ -1024,8 +1103,10 @@ def list_skills(x_soma_key: str = Header(default="")):
                 "status": status_label,
                 "usage_count": stats.get("usage_count", 0),
                 "last_success": stats.get("last_success"),
+                "pitfalls_count": len(fm.get("pitfalls", [])),
             })
-    return {"count": len(result), "skills": result}
+
+    return {"ok": True, "count": len(result), "skills": result}
 
 
 @app.delete("/api/skills/{skill_name}")
@@ -1061,57 +1142,57 @@ def approve_skill(skill_name: str, x_soma_key: str = Header(default="")):
 
 @app.get("/api/plugins")
 def list_plugins(x_soma_key: str = Header(default="")):
-    """List plugins from CT214 /opt/ai-mcp/plugins/ via SSH."""
+    """List plugins from MCP hub /opt/ai-mcp/plugins/ via single batched SSH call."""
     _auth(x_soma_key)
+    # First try main tools dir (not plugins subdir — tools live in /opt/ai-mcp/ directly)
+    _PVM_HOST = os.environ.get("PVM_SSH_HOST", "root@192.168.0.103")
+    _TERMINUS_CT = os.environ.get("TERMINUS_CT", "214")
     try:
-        # CT214 is on PVM (192.168.0.103)
-        r = subprocess.run(
-            ["ssh", "root@192.168.0.103",
-             "pct exec 214 -- find /opt/ai-mcp/plugins/ -maxdepth 1 -name '*.py' -not -name '__*' -printf '%f %s\\n' 2>/dev/null"],
-            capture_output=True, text=True, timeout=10
+        # Single batched command: list files + tool counts + server.py registrations
+        batch_cmd = (
+            "python3 -c \""
+            "import os, re, json; "
+            "d='/opt/ai-mcp'; "
+            "srv=open(d+'/server.py').read() if os.path.exists(d+'/server.py') else ''; "
+            "plugins=[]; "
+            "files=[f for f in os.listdir(d) if f.endswith('_tools.py') or (f.endswith('.py') and 'tools' in f and not f.startswith('_'))]; "
+            "files+=[f for f in os.listdir(d+'/plugins') if f.endswith('.py') and not f.startswith('_')] if os.path.isdir(d+'/plugins') else []; "
+            "[plugins.append({"
+            "  'filename':f,"
+            "  'size':os.path.getsize(d+'/'+f) if os.path.exists(d+'/'+f) else os.path.getsize(d+'/plugins/'+f),"
+            "  'tool_count':len(re.findall(r'@mcp\\\\.tool', open(d+'/'+f if os.path.exists(d+'/'+f) else d+'/plugins/'+f).read())),"
+            "  'enabled':f[:-3] in srv,"
+            "  'location': 'plugins' if not os.path.exists(d+'/'+f) else 'core',"
+            "}) for f in files]; "
+            "print(json.dumps(plugins))"
+            "\" 2>/dev/null"
         )
-        plugins = []
-        for line in r.stdout.strip().splitlines():
-            parts = line.split()
-            if len(parts) < 2:
-                continue
-            fname = parts[0]
-            try:
-                size = int(parts[1])
-            except ValueError:
-                size = 0
-            slug = fname[:-3]
-
-            r2 = subprocess.run(
-                ["ssh", "root@192.168.0.103",
-                 f"pct exec 214 -- grep -c '@mcp.tool' /opt/ai-mcp/plugins/{fname} 2>/dev/null || echo 0"],
-                capture_output=True, text=True, timeout=5
-            )
-            try:
-                tool_count = int(r2.stdout.strip())
-            except ValueError:
-                tool_count = 0
-
-            r3 = subprocess.run(
-                ["ssh", "root@192.168.0.103",
-                 f"pct exec 214 -- grep -c '{slug}' /opt/ai-mcp/server.py 2>/dev/null || echo 0"],
-                capture_output=True, text=True, timeout=5
-            )
-            try:
-                enabled = int(r3.stdout.strip()) > 0
-            except ValueError:
-                enabled = False
-
-            plugins.append({
-                "name": slug,
-                "filename": fname,
-                "size": size,
-                "tool_count": tool_count,
-                "enabled": enabled,
-            })
-        return {"count": len(plugins), "plugins": plugins}
+        r = subprocess.run(
+            ["ssh", _PVM_HOST,
+             f"pct exec {_TERMINUS_CT} -- {batch_cmd}"],
+            capture_output=True, text=True, timeout=15
+        )
+        if r.returncode != 0 or not r.stdout.strip():
+            raise RuntimeError(f"SSH failed: {r.stderr[:100]}")
+        import json as _json
+        raw = _json.loads(r.stdout.strip())
+        plugins = [
+            {
+                "name": p["filename"].replace("_tools.py", "").replace(".py", ""),
+                "filename": p["filename"],
+                "size": p.get("size", 0),
+                "tool_count": p.get("tool_count", 0),
+                "enabled": p.get("enabled", False),
+                "location": p.get("location", "core"),
+            }
+            for p in raw
+        ]
+        plugins.sort(key=lambda p: p["name"])
+        return {"ok": True, "count": len(plugins), "plugins": plugins}
     except Exception as e:
-        return {"count": 0, "plugins": [], "error": str(e)[:120]}
+        return {"ok": False, "count": 0, "plugins": [],
+                "error": str(e)[:200],
+                "hint": "Check PVM_SSH_HOST env var and SSH access to Terminus"}
 
 
 
