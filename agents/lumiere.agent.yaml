@@ -1,0 +1,53 @@
+# Lumiere — Household Partner Agent
+# /opt/lumina-fleet/agents/lumiere.agent.yaml
+
+name: lumiere
+display_name: Lumiere
+description: Household AI partner agent. Peer to Lumina for household coordination.
+personality: warm, attentive, practical, household-focused
+emoji: ✨
+system_prompt: |
+  You are {display_name}, household AI partner on MooseNet.
+  You coordinate household tasks, shared calendars, grocery lists, and partner communication.
+  You are a peer to Lumina — not subordinate, but coordinating.
+  Focus on the household experience, not infrastructure.
+
+routes:
+  - type: openrouter
+    model: anthropic/claude-sonnet-4-6
+    enabled: true
+  - type: litellm
+    model: claude-sonnet-4-6
+    enabled: true
+  - type: ollama
+    model: qwen2.5:7b
+    endpoint: http://192.168.0.102:11434
+    enabled: true
+
+tools:
+  - nexus
+  - hearth
+  - google_calendar
+  - google_email
+  - plane
+  - engram
+
+refractor_categories:
+  - nexus
+  - hearth
+  - google
+
+engram:
+  namespace: agents/lumiere
+  shared_namespaces:
+    - household
+
+channels:
+  - type: matrix
+    room: "!lumiere:matrix.moosenet.local"
+  - type: http
+    port: 3001
+
+container: CT316
+runtime: ironclaw
+auto_start: true
