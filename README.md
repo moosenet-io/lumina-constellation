@@ -1,345 +1,152 @@
 <p align="center">
-  <strong>Lumina Constellation</strong><br>
-  <em>A personality-first AI personal assistant — 25 modules, under a dollar a day.</em>
+  <img src="docs/assets/moosenet-badge.png" alt="MooseNet" width="120"/>
+</p>
+
+<h1 align="center">✦ Lumina Constellation ✦</h1>
+
+<p align="center">
+  <em>Cloud AI charges you per thought. Lumina thinks for free.</em>
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
-  <a href="https://github.com/moosenet-io"><img src="https://img.shields.io/badge/Built%20by-MooseNet-blueviolet?style=for-the-badge" alt="Built by MooseNet"></a>
-  <a href="#modules"><img src="https://img.shields.io/badge/Modules-25-blue?style=for-the-badge" alt="Modules"></a>
-  <a href="#cost-breakdown"><img src="https://img.shields.io/badge/Daily%20Cost-Under%20%241-success?style=for-the-badge" alt="Cost"></a>
+  <img src="docs/assets/constellation-map.svg" alt="Lumina Constellation — module map" width="580"/>
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#architecture">Architecture</a> •
-  <a href="#modules">Modules</a> •
-  <a href="#inference-de-bloating">Inference De-Bloating</a> •
-  <a href="#citations--credits">Citations & Credits</a>
+  25 modules · Local inference · Your data never leaves your house<br>
+  Built by a non-coder directing AI through voice — no IDE, no CS degree required.
+</p>
+
+<p align="center">
+  <a href="#what-your-morning-looks-like">Morning briefing</a> ·
+  <a href="#the-constellation">Modules</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#the-economics">Economics</a> ·
+  <a href="docs/architecture.md">Architecture</a> ·
+  <a href="CITATIONS.md">Credits</a>
 </p>
 
 ---
 
-## What is Lumina?
+### What your morning looks like with Lumina
 
-Lumina Constellation is a self-hosted, multi-agent AI personal assistant designed for individuals and families. It combines 25 purpose-built modules into a unified system that manages your calendar, briefings, finances, kitchen, health, travel, vehicle maintenance, learning goals, and more — running on commodity hardware with a personality that learns and adapts to you over time.
+```
+☀️  Good morning. Tuesday briefing:
 
-**Lumina is a personality-first assistant.** Unlike generic chatbots that forget you after every session, Lumina builds a persistent understanding of who you are — your preferences, communication style, schedule, goals, and household. She delegates to specialized sub-agents for execution, but the personality and relationship are continuous.
+Traffic  ·  Normal. Leave by 7:45.
+Weather  ·  68°F, clear through 5 PM. No jacket.
+Calendar ·  2 meetings (10 AM standup, 2 PM vendor call)
+Home     ·  All systems nominal. Sentinel ran 20 checks, 0 alerts.
+Budget   ·  $47 under weekly target. Groceries delivery Thursday.
+News     ·  Framework Desktop shipping notice arrived.
+            NVIDIA announced DLSS 5. SF Giants won 4-2.
 
-The core architectural insight is **inference de-bloating**: Python handles ~90% of tasks at zero inference cost, local models handle ~8%, and cloud AI is reserved for the ~2% that requires genuine reasoning. Daily operating cost: under a dollar.
+Spectra  ·  Captured 3 dashboard screenshots for your review.
+Engram   ·  12 new facts stored yesterday. 391 total.
+Cost     ·  $0.00 — all local inference.
+```
 
-## What makes this different
+This isn't a demo. This is a real briefing from a running instance. Vigil compiles it at 7 AM from live data — weather, calendar via CalDAV, traffic via TomTom, news via NewsAPI, infrastructure health via Sentinel, budget via Actual Budget — and delivers it to your phone via Matrix. Every line comes from a different module. Total inference cost: zero.
 
-- **Personality-first** — Lumina is a character, not a service. Name her. Give her a voice. She persists across conversations and gets better the longer she knows you.
-- **Inference de-bloating** — 90% of operations use Python or templates at zero cost. LLMs handle judgment only. The system earns every API dollar it spends.
-- **Multi-agent household** — Each person gets their own agent. Lumina and Lumière share household context (groceries, meals, travel) while keeping personal data private.
-- **Self-hosted backends** — Grocy, Actual Budget, LubeLogger, Honcho. No subscriptions, no external APIs for personal data. Your data stays on your hardware.
-- **Agent Skills standard** — Skills are portable ([agentskills.io](https://agentskills.io)). Write once, share across Claude Code, Cursor, Hermes, Goose, and any compatible agent.
+---
 
-## Quick Start
+### What is Lumina?
+
+Lumina Constellation is a **self-hosted, personality-first AI personal assistant** for individuals and households. She runs on your hardware, learns your routines, manages your infrastructure, tracks your budget, briefs you every morning, and does it all without sending a single token to the cloud.
+
+She's not a chatbot. She's an orchestrator — with opinions, memory, and a daily schedule.
+
+---
+
+### The constellation
+
+| Layer | Modules | What they do |
+|-------|---------|-------------|
+| **Brain** | [Engram](engram/) · [Obsidian Circle](fleet/obsidian_circle/) · [Mr. Wizard](docs/modules.md#mr-wizard) · [Cortex](fleet/cortex/) | Memory, multi-model reasoning council, deep analysis, code intelligence |
+| **Nervous system** | [Axon](fleet/axon/) · [Myelin](fleet/myelin/) · [Synapse](fleet/synapse/) · [Refractor](terminus/) | Work execution, cost governance, notifications, smart routing |
+| **Senses** | [Spectra](spectra/) · [Seer](fleet/seer/) · [Vigil](fleet/vigil/) · [Sentinel](fleet/sentinel/) | Browser automation, web research, daily briefings, monitoring |
+| **Body** | [Soma](fleet/soma/) · [Nexus](fleet/nexus/) · [Plexus](docs/modules.md#plexus) · [Terminus](terminus/) · [Dura](fleet/dura/) | Dashboard, inbox, project management, MCP hub, backup |
+| **Life** | [Vector](fleet/vector/) · [Meridian](fleet/meridian/) · [Odyssey](docs/modules.md#odyssey) · [Vitals](docs/modules.md#vitals) · [Hearth](docs/modules.md#hearth) · [Ledger](docs/modules.md#ledger) · [Relay](docs/modules.md#relay) | Dev loops, paper trading, travel, health, household, expenses, vehicle |
+| **Identity** | [Lumina](agents/) · [Lumière](agents/) | Orchestrator personality, partner agent |
+
+---
+
+### Quick start
 
 ```bash
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Clone and run
 git clone https://github.com/moosenet-io/lumina-constellation.git
-cd lumina-constellation/deploy
-docker compose --profile standard up -d
+cd lumina-constellation
+./install.sh    # detects your hardware, recommends models, configures everything
+docker compose up -d
+
+# Open the dashboard
+open http://localhost:8082
 ```
 
-Open your browser to `https://localhost` — the Soma onboarding wizard guides you through naming your assistant, connecting your chat platform, configuring AI providers, and selecting modules.
+The installer detects your hardware (Strix Halo, Apple Silicon, or discrete GPU), recommends a model fleet that fits your VRAM, sets kernel parameters, and pulls models. First boot: 10-20 minutes. After that, Lumina is always on.
 
-### Deployment Profiles
+---
 
-| Profile | Command | What you get |
-|---------|---------|-------------|
-| `minimal` | `docker compose --profile minimal up -d` | Core agent + admin panel. For evaluators. |
-| `standard` | `docker compose --profile standard up -d` | Everything except local inference. Most users. |
-| `gpu` | `docker compose --profile gpu up -d` | Full system including Ollama with GPU passthrough. |
-| `headless` | `docker compose --profile headless up -d` | API-only. For integration into existing infrastructure. |
+### The economics
 
-### Requirements
+| Setup | Hardware | Daily cost | What fits |
+|-------|----------|-----------|----------|
+| **Starter** | Any machine + cloud API | ~$1/day | Full system, cloud inference |
+| **Local 64GB** | Strix Halo / M4 Pro | **$0/day** | 35B workhorse + 9B fast + 4B embeddings |
+| **Local 128GB** | Framework Desktop / M4 Max | **$0/day** | 122B reasoning + 35B daily + 27B code + 9B fast |
+| **Homelab** | Multi-node cluster | **$0/day** | Everything, distributed |
 
-- Docker and Docker Compose
-- 4+ CPU cores, 8GB+ RAM (more for local inference)
-- Optional: NVIDIA GPU + Container Toolkit for local model serving
-- Optional: Cloud API key (Anthropic, OpenRouter) for reasoning tasks
+Cloud is the fallback, not the default. 64GB+ of unified memory = zero marginal cost.
 
-## Architecture
+---
 
-```
-┌─────────────────────────────────────────────────────┐
-│              Lumina (Personal Assistant)             │
-│       Personality-first · Remembers · Delegates     │
-├──────────┬──────────┬──────────┬────────────────────┤
-│   Axon   │  Vigil   │ Sentinel │   Vector / Seer    │
-│  (work)  │(briefing)│  (ops)   │  (dev) / (research)│
-└────┬─────┴────┬─────┴────┬─────┴────────┬───────────┘
-     │          │          │              │
-┌────▼──────────▼──────────▼──────────────▼───────────┐
-│              Terminus (MCP Tool Hub)                 │
-│        20 tool files · 200+ tools · FastMCP          │
-├─────────────────────────────────────────────────────┤
-│  Nexus (Inbox)  │  Engram (Memory)  │  Refractor    │
-│  Flag-graded    │  Multi-namespace  │  Smart proxy   │
-│  priority queue │  knowledge store  │  18 categories │
-└─────────────────┴───────────────────┴───────────────┘
-```
-
-Lumina runs on [IronClaw](https://github.com/nearai/ironclaw), a security-first agent runtime with WASM sandboxing, credential isolation, and endpoint allowlisting.
-
-### Multi-Agent Household
-
-Lumina supports multiple agents sharing one infrastructure. Each person gets their own assistant with their own personality, calendar, and private data — but household resources like grocery lists, meal plans, travel plans, and budgets are shared.
-
-Each agent is defined by a single `.agent.yaml` file. Adding a new agent: drop one file, start the container, and they're guided through a naming ceremony on first launch.
-
-## Repositories
-
-| Directory | Contents | Deploys to |
-|-----------|----------|-----------|
-| [terminus/](terminus/) | MCP tool hub — 20 tool modules, FastMCP server | `/opt/ai-mcp/` on your MCP hub |
-| [fleet/](fleet/) | All agent processes — Axon, Vigil, Sentinel, Vector, Seer, Cortex, Myelin, Dura, Soma | `/opt/lumina-fleet/` on your fleet host |
-| [agents/](agents/) | Agent definitions (`.agent.yaml`) | Reference |
-| [engram/](engram/) | Knowledge base, journals, behavioral patterns | `/opt/lumina-fleet/engram/` on your fleet host |
-| [deploy/](deploy/) | Docker Compose deployment, Dockerfiles, Caddyfile | Docker host |
-| [docs/](docs/) | Built-in help system, module docs, guides | Served by Soma |
-| [specs/](specs/) | System design specifications and PRDs | Reference |
-| [skills/](skills/) | Agent Skills (agentskills.io format) | Auto-discovered |
-
-## Agent Skills
-
-Lumina uses the [agentskills.io](https://agentskills.io/specification) open standard for skills — portable, shareable task procedures compatible with Claude Code, Cursor, Hermes, Goose, and other agents.
-
-Skills live in `skills/` and are auto-discovered at startup. See [skills/README.md](skills/README.md).
-
-## Modules
-
-### Orchestration
-
-| What it does for you | Module |
-|----------------------|--------|
-| Priority inbox every 5 min. Critical alerts wake you. Flags: critical / urgent / normal / low. | **Nexus** |
-| Remembers you across every session. Preferences, patterns, history. Gets better over time. | **Engram** |
-| Picks up tasks, dispatches to agents, reports back. You assign, Axon executes. | **Axon** |
-| Your primary interface. Personality-first orchestrator. Delegates so you don't have to. | **Lumina** |
-| Multi-model reasoning for hard problems. Four AI architectures deliberate independently. | **Mr. Wizard** |
-
-### Daily Life
-
-| What it does for you | Module |
-|----------------------|--------|
-| Morning briefing: weather, calendar, commute, news, sports. One summary, zero effort. | **Vigil** |
-| Traffic alert when your commute is worse than baseline. Silent when normal. | **Commute** |
-| Pantry tracking, recipe matching from what you have, meal planning, shopping lists. | **Hearth** |
-| Budget tracking, spending alerts at 50/80/100%. Category reports without subscriptions. | **Ledger** |
-
-### Lifestyle
-
-| What it does for you | Module |
-|----------------------|--------|
-| Course and book tracking, reading queue, streaks, hobby goals. Learning without guilt. | **Crucible** |
-| Bucket list travel, deal monitoring, loyalty point tracking, card portfolio. | **Odyssey** |
-| Health data import, coaching nudges, training programs. Templates, not nagging. | **Vitals** |
-| Service history, fuel log, maintenance reminders. Your vehicle's memory. | **Relay** |
-| Paper trading sandbox with AI reasoning journal. Learn to trade without losing money. | **Meridian** |
-
-### Intelligence
-
-| What it does for you | Module |
-|----------------------|--------|
-| Multi-source web research, synthesized reports. Seer does the reading. | **Seer** |
-| Code intelligence: AST analysis, blast radius, review certificates, audit reports. | **Cortex** |
-| Cost tracking per agent. Runaway detection. Observes and advises — never silently blocks. | **Myelin** |
-| Daily read-only dashboard: weather, calendar, health grid, cost summary. | **Dashboard** |
-
-### Infrastructure
-
-| What it does for you | Module |
-|----------------------|--------|
-| Cluster health in 30s. Alerts only on failure. No LLM cost for healthy checks. | **Sentinel** |
-| Autonomous dev loops with feedback gates. Vector writes, tests, and commits. | **Vector** |
-| Backups, smoke tests, log aggregation, secret rotation, data export. | **Dura** |
-| Web admin panel. Onboarding wizard, status dashboard, skills/plugin management, report viewer, chat widget, built-in wiki, Vector management. | **Soma** |
-| Smart LLM proxy. 18+ keyword categories reduce tool context per turn. | **Refractor** |
-| MCP tool hub. 20 tool modules, FastMCP with stdio transport. | **Terminus** |
-| Work queue backed by Plane CE. Structured task dispatch across agents. | **The Plexus** |
-| Shared `constellation.css`. Auto light/dark. All HTML surfaces use the same tokens. | **Design System** |
-
-## Inference De-Bloating
-
-Before every function: can Python handle this? If yes, no LLM. Can a local model? If yes, no cloud. Cloud AI only for genuine reasoning.
-
-```
-         ┌──────────────────┐
-         │  Cloud Opus       │  <0.1% — Architecture, security audits
-         ├──────────────────┤
-         │  Cloud Sonnet /   │  ~2% — Research, synthesis, reasoning
-         │  Haiku            │
-         ├──────────────────┤
-         │  Local models ($0)│  ~8% — Parsing, classification
-         ├──────────────────┤
-         │  Python +         │  ~90% — API calls, math, SQL,
-         │  Templates ($0)   │  templates, cron, threshold checks
-         └──────────────────┘
-```
-
-Most "AI tasks" don't need AI. A Python script checking disk usage is faster, cheaper, and more reliable than asking an LLM to do it. Health coaching messages use a pre-written template library, not fresh generation. Budget alerts are threshold comparisons, not inference calls. The system only reaches for AI when it genuinely needs to think.
-
-## Cost Breakdown
-
-| Tier | Frequency | Cost |
-|------|-----------|------|
-| Python / templates / SQL | ~90% of operations | $0.00 |
-| Local Ollama models | ~8% of operations | $0.00 |
-| Cloud Haiku / small models | ~2% of operations | ~$0.10–0.30/day |
-| Cloud Sonnet | Reasoning tasks | ~$0.20–0.50/day |
-| Cloud Opus | Gated — architecture only | Subscription |
-| **Total daily target** | | **under $1.00** |
-
-## Key Design Decisions
-
-**Personality-first.** Lumina remembers you. Engram accumulates knowledge across every session. Your assistant gets better over time — not because the model improved, but because it knows you better.
-
-**Python first, LLM last.** Templates replace generated text. Lookup tables replace classification. Threshold checks replace AI judgment. 98% of work costs $0.
-
-**Multi-agent household.** Multiple people, multiple agents, shared infrastructure. Private where personal, shared where helpful. One `.agent.yaml` per agent.
-
-**Observe and advise, never block.** Myelin tracks costs but never silently stops inference. The human always decides.
-
-**CalDAV/IMAP over OAuth.** Google integration uses a single App Password. Simpler, works in containers, no token refresh complexity.
-
-**Multi-model, multi-provider.** The Obsidian Circle runs four different AI architectures simultaneously. Their disagreements are genuine — different training, different reasoning. Swap any provider without changing architecture.
-
-## Repository Structure
+### Project structure
 
 ```
 lumina-constellation/
-├── terminus/          # MCP tool hub
-│   ├── server.py      # FastMCP server
-│   ├── *_tools.py     # 20 tool modules (200+ tools)
-│   └── fetch-secrets.sh
-├── fleet/             # Agent fleet
-│   ├── axon/          # Work queue
-│   ├── vigil/         # Briefings
-│   ├── sentinel/      # Ops monitoring
-│   ├── vector/        # Dev loops
-│   ├── seer/          # Research
-│   ├── cortex/        # Code intelligence
-│   ├── myelin/        # Cost governance
-│   ├── dura/          # Resilience
-│   └── shared/        # Templates, design system, agent loader
-├── agents/            # Agent definitions (.agent.yaml)
-├── engram/            # Knowledge base, journals, behavioral patterns
-├── deploy/            # Docker deployment
-│   ├── docker-compose.yml
-│   ├── Dockerfile.*
-│   └── Caddyfile
-├── docs/              # Built-in help system
-│   ├── getting-started/
-│   ├── modules/
-│   ├── guides/
-│   └── reference/
-├── skills/            # Agent Skills (agentskills.io format)
-├── specs/             # System design specifications
-└── README.md
+├── agents/          # Agent personalities and identity (Lumina, Lumière)
+├── deploy/          # Docker Compose, Dockerfiles, install script, Caddyfile
+├── docs/            # Architecture guides, module docs, hardware guide
+├── engram/          # Memory and knowledge store (sqlite-vec, Zettelkasten)
+├── fleet/           # Agent fleet services (Axon, Vigil, Sentinel, Vector, Soma, ...)
+├── plugins/         # Plugin loader and community plugins
+├── skills/          # Agent skill definitions
+├── spectra/         # Browser automation (Playwright, noVNC, session recording)
+├── specs/           # 30 specification documents (the design bible)
+├── terminus/        # MCP tool hub (38 modules, 272+ tools)
+└── tests/           # Integration and adversarial test suites
 ```
 
-## Contributing
+Each subdirectory has its own README with module-specific docs. See the full [architecture guide](docs/architecture.md).
 
-We welcome contributions. Browse the [spec library](specs/) for system design context. File issues for bugs or feature requests. Skills can be shared at [agentskills.io](https://agentskills.io).
+---
 
-## Citations & Credits
+### Philosophy
 
-Lumina Constellation builds on ideas and tools from the broader AI agent ecosystem.
+**Inference de-bloating** — Python handles ~90% of tasks at zero cost. Local Qwen models handle ~8%. Cloud AI is reserved for the ~2% requiring genuine frontier reasoning. The result: a system that runs 25 modules on a single box for $0/day.
 
-### Architectural Influences
+**Personality first** — Lumina isn't a tool you configure. She's an agent you meet. The naming ceremony on first launch creates a relationship, not a setup wizard. She remembers your preferences, learns your patterns, and develops opinions about how your household should run.
 
-**Ralph Loop Pattern** — Geoffrey Huntley. Autonomous agent loop where a coding agent runs repeatedly against a spec until complete, with memory persisting via git history.
-- [ghuntley.com/loop](https://ghuntley.com/loop/) · [snarktank/ralph](https://github.com/snarktank/ralph)
-
-**NPCSH** — NPC Worldwide. Composable multi-agent shell with portable agent definitions, team orchestration, and knowledge graphs. Inspired Lumina's `.agent.yaml` format, conversation review, help system, and Docker deployment.
-- [NPC-Worldwide/npcsh](https://github.com/NPC-Worldwide/npcsh) · [npc-shell.readthedocs.io](https://npc-shell.readthedocs.io/)
-
-**SkillClaw** — Ma, Z. et al. (2026). Collective skill evolution in multi-user agent ecosystems. Inspired Lumina's planned skill evolution system.
-- [arxiv.org/abs/2604.08377](https://arxiv.org/abs/2604.08377) · [AMAP-ML/SkillClaw](https://github.com/AMAP-ML/SkillClaw)
-
-**Agentic Code Reasoning** — Ugare, S. & Chandra, S., Meta (2026). Semi-formal structured reasoning with certificate templates. Implemented in Lumina's Cortex module and Obsidian Circle.
-- [arxiv.org/abs/2603.01896](https://arxiv.org/abs/2603.01896)
-
-**code-review-graph** — Tirth Patel. Tree-sitter AST knowledge graph with blast-radius analysis. Powers Cortex.
-- [tirth8205/code-review-graph](https://github.com/tirth8205/code-review-graph)
-
-**Zettelkasten Method** — The interconnected note-taking system that inspired both A-MEM and Engram's knowledge network. Each memory creates structured attributes (context, keywords, tags) and establishes links to related memories, enabling knowledge to evolve as new information is added.
-
-**ARCADE** — Predecessor autonomous dev loop agent. Ralph-inspired loop with behavioral correction (Calx), feedback gates, and inference tier selection. Vector is ARCADE's successor, ported to the Lumina infrastructure with pluggable backends, Nexus integration, and agentskills.io skill discovery.
-- [Archived](https://github.com/LeMajesticMoose/arcade)
-
-### Runtime & Frameworks
-
-**IronClaw** — [NEAR AI](https://github.com/nearai/ironclaw). Lumina's agent runtime. IronClaw is a Rust-based, security-first reimplementation of OpenClaw focused on privacy and data sovereignty. We chose IronClaw over OpenClaw for three reasons: (1) WASM sandbox isolation — every tool runs in its own WebAssembly container with capability-based permissions, (2) credential protection — secrets are injected at the host boundary and never exposed to tool code, and (3) endpoint allowlisting — HTTP requests only go to explicitly approved hosts. For a system managing personal calendars, finances, and health data, these aren't optional. IronClaw runs with 272+ tools connected via MCP.
-
-| Project | Role in Lumina | Source |
-|---------|---------------|--------|
-| **IronClaw** | Agent runtime — WASM sandboxing, credential isolation, endpoint allowlisting | [nearai/ironclaw](https://github.com/nearai/ironclaw) |
-| **FastMCP** | MCP server framework for Terminus | [jlowin/fastmcp](https://github.com/jlowin/fastmcp) |
-| **LiteLLM** | Unified LLM proxy (100+ providers) | [BerriAI/litellm](https://github.com/BerriAI/litellm) |
-| **Ollama** | Local model serving | [ollama/ollama](https://github.com/ollama/ollama) |
-| **Caddy** | Automatic HTTPS reverse proxy | [caddyserver/caddy](https://github.com/caddyserver/caddy) |
-
-### Self-Hosted Backends
-
-| Project | Powers module | Source |
-|---------|--------------|--------|
-| **Actual Budget** | Ledger (finance) | [actualbudget/actual](https://github.com/actualbudget/actual) |
-| **Grocy** | Hearth (kitchen) | [grocy/grocy](https://github.com/grocy/grocy) |
-| **LubeLogger** | Relay (vehicle) | [hargata/lubelog](https://github.com/hargata/lubelog) |
-| **SearXNG** | Seer (research) | [searxng/searxng](https://github.com/searxng/searxng) |
-| **Homepage** | Dashboard | [gethomepage/homepage](https://github.com/gethomepage/homepage) |
-| **Plane CE** | The Plexus (work queue) | [makeplane/plane](https://github.com/makeplane/plane) |
-| **Tuwunel** | Matrix communication | [matrix-construct/tuwunel](https://github.com/matrix-construct/tuwunel) |
-
-### Academic References
-
-- Ugare, S. & Chandra, S. (2026). "Agentic Code Reasoning." arXiv:2603.01896.
-- Ma, Z. et al. (2026). "SkillClaw: Let Skills Evolve Collectively with Agentic Evolver." arXiv:2604.08377.
-- Huang, J. et al. (2023). "Large Language Models Cannot Self-Correct Reasoning Yet." arXiv:2310.01798.
-- Ugare, S. & Chandra, S. (2026). "Agentic Code Reasoning." arXiv:2603.01896.
-- Xu, W., Liang, Z., Mei, K., Gao, H., Tan, J., & Zhang, Y. (2025). "A-MEM: Agentic Memory for LLM Agents." NeurIPS 2025. arXiv:2502.12110. Zettelkasten-inspired memory with dynamic indexing, linking, and memory evolution. Influenced Engram's interconnected knowledge network design.
-- Yu, Y., Yao, L., Xie, Y., Tan, Q., Feng, J., Li, Y., & Wu, L. (2026). "Agentic Memory: Learning Unified Long-Term and Short-Term Memory Management for LLM Agents." arXiv:2601.01885. Unified LTM/STM framework with memory operations as tool-based actions and progressive RL training. Informed Lumina's memory provider interface design.
-- Hardwick, S. (2026). "The Behavioral Plane: Why Learned Corrections Don't Transfer Between Agents." Zenodo. DOI: 10.5281/zenodo.19142179. Explains why behavioral corrections (like Calx triggers) are agent-local and don't generalize across different LLM architectures. Informed Vector's per-project guardrails scoping design.
-
-### Further Reading
-
-- "Long-term Memory in Agentic Systems" — Moxo (moxo.com/blog/agentic-ai-memory). Two-layer memory architecture patterns for production agents.
-- "7 Steps to Mastering Memory in Agentic AI Systems" — Machine Learning Mastery (machinelearningmastery.com). Practical implementation guide.
-- "What Is AI Agent Memory?" — IBM Think (ibm.com/think/topics/ai-agent-memory). Enterprise perspective on agent memory components.
-
-## Contributors
-
-- **Peter Boose** ([@LeMajesticMoose](https://github.com/LeMajesticMoose)) — Creator, architect, and product lead. Designed and directed the entire system via voice transcription and AI-assisted development.
-- **Claude** ([Anthropic](https://anthropic.com)) — Co-developer. Specifications, implementation, autonomous build sessions, and infrastructure debugging via Claude Code.
-
-## Disclaimer
-
-Lumina Constellation is self-hosted software that integrates with services managing sensitive personal data — including health records (Vitals), financial accounts (Ledger/Actual Budget), vehicle information (Relay/LubeLogger), and household inventory (Hearth/Grocy). **You are solely responsible for securing your deployment.**
-
-By using this software, you acknowledge:
-
-- **No warranty.** This software is provided "as is" under the MIT License, without warranty of any kind. The authors are not liable for any data loss, security breach, or damages arising from its use.
-- **Security is your responsibility.** Self-hosted deployments require proper network isolation, firewall configuration, credential management, and regular updates. The default configuration prioritizes ease of setup, not hardened security.
-- **Sensitive data at rest.** Engram, Honcho, and other memory systems store personal information in local databases. Encrypt your disks, restrict physical access, and maintain backups.
-- **AI outputs are not professional advice.** Health information from Vitals is not medical advice. Financial data from Ledger is not financial advice. Trading signals from Meridian are not investment advice. Always consult qualified professionals for medical, financial, and legal decisions.
-- **Third-party API keys.** Cloud inference providers, calendar services, news APIs, and other integrations require API keys that grant access to external accounts. Store these in a secrets manager (e.g., Infisical), never in code or config files.
-- **LLM limitations apply.** AI agents can hallucinate, misinterpret instructions, and take unintended actions. Human review of agent-initiated changes — especially to financial, health, or infrastructure systems — is strongly recommended.
-
-Use at your own risk.
-
-## License
-
-MIT License. See [LICENSE](LICENSE) for details.
-
-Copyright (c) 2026 Peter Boose
+**Built by directing AI** — The entire system was built by a field marketing manager with no coding background, directing Claude through voice transcription and agentic development loops. 30 specification documents, 850+ Plane work items, 17 build sessions. If you can describe what you want clearly, you can build this.
 
 ---
 
 <p align="center">
-  <em>Personality-first AI · Powered by inference de-bloating · Under a dollar a day</em>
+  <a href="docs/architecture.md">Architecture</a> ·
+  <a href="docs/modules.md">All modules</a> ·
+  <a href="docs/hardware-guide.md">Hardware guide</a> ·
+  <a href="docs/inference-debloating.md">Inference de-bloating</a> ·
+  <a href="CITATIONS.md">Citations & credits</a> ·
+  <a href="LICENSE">MIT License</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"/>
+  <img src="https://img.shields.io/badge/modules-25-7F77DD" alt="25 modules"/>
+  <img src="https://img.shields.io/badge/daily_cost-$0-378ADD" alt="$0/day"/>
+  <img src="https://img.shields.io/badge/built_by-MooseNet-1D9E75" alt="Built by MooseNet"/>
 </p>
