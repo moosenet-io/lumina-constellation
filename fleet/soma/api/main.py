@@ -1047,37 +1047,100 @@ def logs_page(request: Request):
 
 
 @app.get("/api/sessions")
-def list_sessions(limit: int = 20, x_soma_key: str = Header(default="")):
+def list_sessions(page: int = 1, limit: int = 20, x_soma_key: str = Header(default="")):
+    """List conversation sessions from IronClaw on the agent host."""
     _auth(x_soma_key)
+    limit = min(limit, 100)
+    offset = (page - 1) * limit
+    _PVS_HOST = os.environ.get("PVS_SSH_HOST", "root@192.168.0.104")
+    _IC_CT = os.environ.get("IRONCLAW_CT", "305")
     try:
-        db_path = Path("/root/.ironclaw/ironclaw.db")
-        if db_path.exists():
-            import sqlite3
-            conn = sqlite3.connect(str(db_path)); conn.row_factory = sqlite3.Row
-            try:
-                rows = conn.execute("SELECT id, channel, created_at FROM sessions ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
-                sessions = [dict(r) for r in rows]
-            except Exception: sessions = []
-            conn.close()
-            return {"count": len(sessions), "sessions": sessions}
-        return {"count": 0, "sessions": [], "note": "IronClaw DB not on CT310"}
+        # Query IronClaw SQLite DB on the agent host via SSH
+        query = (
+            f"python3 -c \""
+            f"import sqlite3,json,os; "
+            f"db=[p for p in ['/root/.ironclaw/ironclaw.db','/opt/ironclaw/ironclaw.db'] if os.path.exists(p)]; "
+            f"conn=sqlite3.connect(db[0]) if db else None; "
+            f"rows=[]; total=0; "
+            f"[rows.extend(conn.execute('SELECT id,channel,created_at,message_count FROM sessions ORDER BY created_at DESC LIMIT {limit} OFFSET {offset}').fetchall()) or setattr(conn,'_ok',True) for _ in [1]] if conn else None; "
+            f"[total:=conn.execute('SELECT COUNT(*) FROM sessions').fetchone()[0] for _ in [1]] if conn else None; "
+            f"print(json.dumps({{'sessions':[dict(zip(['id','channel','created_at','message_count'],r)) for r in rows],'total':total,'db':db[0] if db else None}})) if conn else print(json.dumps({{'sessions':[],'total':0,'db':None,'note':'ironclaw.db not found'}}))"
+            f"\" 2>/dev/null"
+        )
+        r = subprocess.run(
+            ["ssh", _PVS_HOST, f"pct exec {_IC_CT} -- {query}"],
+            capture_output=True, text=True, timeout=12
+        )
+        if r.returncode == 0 and r.stdout.strip():
+            data = json.loads(r.stdout.strip())
+            return {
+                "ok": True,
+                "sessions": data.get("sessions", []),
+                "total": data.get("total", 0),
+                "page": page,
+                "limit": limit,
+                "note": data.get("note"),
+            }
+        return {"ok": True, "sessions": [], "total": 0,
+                "note": "Session history unavailable — IronClaw DB not accessible via SSH"}
     except Exception as e:
-        return {"count": 0, "error": str(e)[:100]}
+        return {"ok": False, "sessions": [], "total": 0,
+                "error": str(e)[:150],
+                "note": "Check PVS_SSH_HOST and IRONCLAW_CT env vars"}
+
+@app.get("/api/sessions/search")
+def search_sessions(q: str = "", x_soma_key: str = Header(default="")):
+    """Full-text search across session messages."""
+    _auth(x_soma_key)
+    if not q:
+        return {"ok": False, "error": "q parameter required", "results": []}
+    # For now return guidance — full FTS5 requires IronClaw schema knowledge
+    return {"ok": True, "results": [], "note": f"Search for '{q}' — FTS requires IronClaw schema access"}
 
 
 @app.get("/api/timers")
 def list_timers(x_soma_key: str = Header(default="")):
+    """List all systemd timers with status and schedule."""
     _auth(x_soma_key)
     try:
-        result = subprocess.run(["systemctl", "list-timers", "--all", "--no-pager"], capture_output=True, text=True, timeout=10)
+        r = subprocess.run(
+            ["systemctl", "list-timers", "--all", "--no-pager", "--output=json"],
+            capture_output=True, text=True, timeout=10
+        )
         timers = []
-        for line in result.stdout.splitlines():
-            if ".timer" in line and "UNIT" not in line and "timers listed" not in line:
-                name = next((p for p in line.split() if p.endswith(".timer")), None)
-                if name: timers.append({"name": name, "raw": line[:120].strip()})
-        return {"count": len(timers), "timers": timers}
+        if r.returncode == 0 and r.stdout.strip().startswith("["):
+            raw = json.loads(r.stdout)
+            for t in raw:
+                name = t.get("unit", "")
+                if not name.endswith(".timer"):
+                    continue
+                timers.append({
+                    "name": name,
+                    "description": t.get("description", ""),
+                    "active": t.get("active", "") == "active",
+                    "enabled": t.get("enabled", "") in ("enabled", "static"),
+                    "next": t.get("next", ""),
+                    "last": t.get("last", ""),
+                    "passed": t.get("passed", ""),
+                    "unit": name.replace(".timer", ".service"),
+                })
+        else:
+            # Fallback: parse text output
+            for line in r.stdout.splitlines():
+                if ".timer" not in line or "UNIT" in line or "timers listed" in line:
+                    continue
+                parts = line.split()
+                name = next((p for p in parts if p.endswith(".timer")), None)
+                if name:
+                    timers.append({
+                        "name": name,
+                        "active": True,
+                        "raw": line[:120].strip(),
+                        "unit": name.replace(".timer", ".service"),
+                    })
+        return {"ok": True, "count": len(timers), "timers": timers}
     except Exception as e:
-        return {"count": 0, "timers": [], "error": str(e)[:100]}
+        return {"ok": False, "count": 0, "timers": [], "error": str(e)[:100]}
 
 
 @app.post("/api/timers/{timer_name}/trigger")
@@ -1087,9 +1150,48 @@ def trigger_timer(timer_name: str, x_soma_key: str = Header(default="")):
     if not safe.endswith(".service"): safe += ".service"
     try:
         result = subprocess.run(["systemctl", "start", safe], capture_output=True, text=True, timeout=15)
-        return {"triggered": result.returncode == 0, "service": safe}
+        return {"ok": result.returncode == 0, "triggered": result.returncode == 0,
+                "service": safe, "error": result.stderr[:100] if result.returncode != 0 else None}
     except Exception as e:
-        return {"triggered": False, "error": str(e)[:100]}
+        return {"ok": False, "triggered": False, "error": str(e)[:100]}
+
+@app.post("/api/timers/{timer_name}/enable")
+def enable_timer(timer_name: str, x_soma_key: str = Header(default="")):
+    _auth(x_soma_key)
+    safe = timer_name.replace("/","").replace("..","")
+    if not safe.endswith(".timer"): safe += ".timer"
+    try:
+        r = subprocess.run(["systemctl", "enable", "--now", safe], capture_output=True, text=True, timeout=10)
+        return {"ok": r.returncode == 0, "timer": safe}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:100]}
+
+@app.post("/api/timers/{timer_name}/disable")
+def disable_timer(timer_name: str, x_soma_key: str = Header(default="")):
+    _auth(x_soma_key)
+    safe = timer_name.replace("/","").replace("..","")
+    if not safe.endswith(".timer"): safe += ".timer"
+    try:
+        r = subprocess.run(["systemctl", "disable", "--now", safe], capture_output=True, text=True, timeout=10)
+        return {"ok": r.returncode == 0, "timer": safe}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:100]}
+
+@app.get("/api/timers/{timer_name}/output")
+def timer_output(timer_name: str, lines: int = 50, x_soma_key: str = Header(default="")):
+    """Return last N lines of the associated service journal."""
+    _auth(x_soma_key)
+    safe = timer_name.replace(".timer",".service").replace("/","").replace("..","")
+    if not safe.endswith(".service"): safe += ".service"
+    lines = min(max(1, lines), 500)
+    try:
+        r = subprocess.run(
+            ["journalctl", "-u", safe, "-n", str(lines), "--no-pager", "--output=short-iso"],
+            capture_output=True, text=True, timeout=10
+        )
+        return {"ok": True, "service": safe, "lines": r.stdout.splitlines()}
+    except Exception as e:
+        return {"ok": False, "service": safe, "lines": [], "error": str(e)[:100]}
 
 
 @app.get("/status/grid", response_class=HTMLResponse)
