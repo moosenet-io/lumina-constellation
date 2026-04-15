@@ -556,7 +556,7 @@ jinja2_templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 @app.get("/setup")
 @app.get("/wizard")  # kept for backward compat, redirects to /setup
 def wizard_page():
-    """Setup wizard — 9-step onboarding and configuration flow."""
+    """Setup wizard — 10-step onboarding and configuration flow."""
     wizard_file = TEMPLATES_DIR / "wizard.html"
     if wizard_file.exists():
         return FileResponse(str(wizard_file), media_type="text/html")
@@ -595,6 +595,66 @@ def disclaimer_status():
         except Exception:
             pass
     return {"accepted": False}
+
+@app.get("/api/setup/ollama-status")
+def setup_ollama_status():
+    """Query Ollama for installed models and compare against recommended list."""
+    import urllib.request
+    ollama_host = os.environ.get("OLLAMA_URL", "")
+    # Recommended models for Lumina (name, size label, note)
+    RECOMMENDED = [
+        {"name": "qwen2.5:7b",       "size": "~4.7 GB", "note": "Primary local model (Lumina Fast)"},
+        {"name": "qwen2.5-coder:7b", "size": "~4.7 GB", "note": "Vector code tasks"},
+        {"name": "nomic-embed-text",  "size": "~274 MB", "note": "Embeddings (Engram/Synapse)"},
+    ]
+    if not ollama_host:
+        return {"ok": False, "error": "OLLAMA_URL not configured", "host": "", "installed": [], "missing": RECOMMENDED}
+    try:
+        req = urllib.request.urlopen(f"{ollama_host}/api/tags", timeout=4)
+        data = json.loads(req.read())
+        models = data.get("models", [])
+        installed_names = {m["name"].split(":")[0] for m in models}
+        installed = [
+            {"name": m["name"],
+             "size": f'{m["size"] / 1024**3:.1f} GB' if m.get("size") else ""}
+            for m in sorted(models, key=lambda x: x["name"])
+        ]
+        missing = [
+            r for r in RECOMMENDED
+            if r["name"].split(":")[0] not in installed_names
+        ]
+        return {"ok": True, "host": ollama_host, "installed": installed, "missing": missing}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "host": ollama_host, "installed": [], "missing": RECOMMENDED}
+
+
+@app.post("/api/setup/ollama-pull")
+def setup_ollama_pull(request_body: dict = Body(...)):
+    """Queue an Ollama model pull via the Ollama API."""
+    import urllib.request
+    model = request_body.get("model", "").strip()
+    if not model:
+        raise HTTPException(400, "model required")
+    # Only allow known-safe model names (alphanumeric, colon, hyphen, dot)
+    import re
+    if not re.match(r'^[a-zA-Z0-9._:/-]{1,80}$', model):
+        raise HTTPException(400, "Invalid model name")
+    ollama_host = os.environ.get("OLLAMA_URL", "")
+    if not ollama_host:
+        raise HTTPException(400, "OLLAMA_URL not configured")
+    try:
+        payload = json.dumps({"name": model, "stream": False}).encode()
+        req = urllib.request.Request(
+            f"{ollama_host}/api/pull",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=10)
+        return {"ok": True, "model": model, "note": "Pull queued on Ollama host"}
+    except Exception as e:
+        return {"ok": False, "model": model, "error": str(e)}
+
 
 @app.post("/api/wizard/apply")
 def wizard_apply(config: dict = Body(...), x_soma_key: str = Header(default="")):
@@ -2389,6 +2449,116 @@ def security_page(request: Request):
 def council_page(request: Request):
     """Obsidian Circle — multi-model deliberation interface."""
     return jinja2_templates.TemplateResponse(request, "council.html", {"active_page": "council"})
+
+
+# ── Spectra — Browser Agent (BA.8, BA.12) ────────────────────────────────────
+
+SPECTRA_URL_BASE = os.environ.get("SPECTRA_URL", "")
+SPECTRA_NOVNC_INTERNAL = os.environ.get("SPECTRA_NOVNC_URL", "")  # Docker-internal noVNC
+
+@app.get("/spectra")
+def spectra_page(request: Request):
+    """Spectra — browser agent Live View, sessions, usage."""
+    return jinja2_templates.TemplateResponse(request, "spectra.html", {
+        "active_page": "spectra",
+        "spectra_url": SPECTRA_URL_BASE,
+    })
+
+@app.get("/spectra/recordings")
+def spectra_recordings_page(request: Request):
+    """Spectra — rrweb session recording playback."""
+    return jinja2_templates.TemplateResponse(request, "spectra_recordings.html", {
+        "active_page": "spectra",
+    })
+
+@app.get("/spectra/config")
+def spectra_config_page(request: Request):
+    """Spectra — consumer access control + audit log."""
+    return jinja2_templates.TemplateResponse(request, "spectra_config.html", {
+        "active_page": "spectra",
+    })
+
+@app.get("/api/spectra/status")
+def spectra_status(x_soma_key: str = Header(default="")):
+    """Proxy Spectra health + session list."""
+    _auth(x_soma_key)
+    if not SPECTRA_URL_BASE:
+        return {"ok": False, "error": "SPECTRA_URL not configured"}
+    try:
+        import urllib.request as _ur
+        with _ur.urlopen(f"{SPECTRA_URL_BASE}/health", timeout=5) as r:
+            health = json.loads(r.read())
+        with _ur.urlopen(f"{SPECTRA_URL_BASE}/sessions?consumer_key=MY.1", timeout=5) as r:
+            sess = json.loads(r.read())
+        return {"ok": True, "health": health, "sessions": sess.get("sessions", [])}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+@app.get("/api/spectra/recordings")
+def spectra_recordings(x_soma_key: str = Header(default="")):
+    """Proxy Spectra recording list."""
+    _auth(x_soma_key)
+    if not SPECTRA_URL_BASE:
+        return {"ok": False, "error": "SPECTRA_URL not configured", "recordings": []}
+    try:
+        import urllib.request as _ur
+        with _ur.urlopen(f"{SPECTRA_URL_BASE}/recordings?consumer_key=MY.1", timeout=5) as r:
+            return json.loads(r.read())
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200], "recordings": []}
+
+@app.get("/api/spectra/config")
+def spectra_config_api(x_soma_key: str = Header(default="")):
+    """Proxy Spectra config (consumer table, budgets)."""
+    _auth(x_soma_key)
+    if not SPECTRA_URL_BASE:
+        return {"ok": False, "error": "SPECTRA_URL not configured"}
+    try:
+        import urllib.request as _ur
+        with _ur.urlopen(f"{SPECTRA_URL_BASE}/config?consumer_key=MY.1", timeout=5) as r:
+            return json.loads(r.read())
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+@app.get("/api/spectra/audit")
+def spectra_audit(filter_key: str = "", action: str = "", limit: int = 50,
+                  x_soma_key: str = Header(default="")):
+    """Proxy Spectra audit log query."""
+    _auth(x_soma_key)
+    if not SPECTRA_URL_BASE:
+        return {"ok": False, "entries": []}
+    try:
+        import urllib.request as _ur
+        url = (f"{SPECTRA_URL_BASE}/audit?consumer_key=MY.1"
+               f"&filter_key={filter_key}&action={action}&limit={limit}")
+        with _ur.urlopen(url, timeout=5) as r:
+            return json.loads(r.read())
+    except Exception as e:
+        return {"ok": False, "entries": [], "error": str(e)[:200]}
+
+@app.websocket("/ws/spectra/novnc")
+async def spectra_novnc_proxy(websocket):
+    """WebSocket proxy to Docker-internal noVNC — adds JWT auth gate."""
+    from fastapi import WebSocket
+    import websockets as _ws
+    if not SPECTRA_NOVNC_INTERNAL:
+        await websocket.close(code=1011, reason="SPECTRA_NOVNC_URL not configured")
+        return
+    await websocket.accept()
+    try:
+        async with _ws.connect(SPECTRA_NOVNC_INTERNAL.replace("http://", "ws://") + "/websockify") as remote:
+            async def forward(src, dst):
+                async for msg in src:
+                    await dst.send(msg)
+            import asyncio
+            await asyncio.gather(
+                forward(websocket.iter_bytes(), remote),
+                forward(remote, websocket),
+            )
+    except Exception as e:
+        pass
+    finally:
+        await websocket.close()
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@
     <!-- Progress bar -->
     <div style="margin-bottom:2rem;">
       <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
-        <span id="step-label" style="color:var(--text-secondary);font-size:0.875rem;">Step 1 of 8</span>
+        <span id="step-label" style="color:var(--text-secondary);font-size:0.875rem;">Step 1 of 10</span>
         <span id="step-pct" style="color:var(--text-secondary);font-size:0.875rem;">0%</span>
       </div>
       <div style="background:var(--bg-tertiary);border-radius:4px;height:6px;">
@@ -45,7 +45,7 @@
 const WIZ_KEY = 'lumina-wizard-state';
 let state = JSON.parse(localStorage.getItem(WIZ_KEY) || '{}');
 let currentStep = state.step || 1;
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 10;
 
 function saveState() {
   state.step = currentStep;
@@ -116,7 +116,7 @@ function resetWizard() {
 // Render each step
 function renderStep(n) {
   updateProgress();
-  const steps = [null, step1, step1b, step2, step3, step4, step5, step6, step7, step8];
+  const steps = [null, step1, step1b, step2, step3, step4, step5, step5b, step6, step7, step8];
   document.getElementById('step-content').innerHTML = steps[n]();
 
   // Re-process HTMX on new content
@@ -127,7 +127,7 @@ function renderStep(n) {
   nextBtn.textContent = n === TOTAL_STEPS ? 'Launch Lumina' : 'Next \u2192';
 
   // Show/hide skip for optional steps
-  document.getElementById('btn-skip').style.display = [6].includes(n) ? 'block' : 'none';
+  document.getElementById('btn-skip').style.display = [7, 8].includes(n) ? 'block' : 'none';
 }
 
 // ── Step 1: Welcome ────────────────────────────────────────────────────────
@@ -337,6 +337,91 @@ function step5() {
     '</div>' +
     '</div>';
 }
+
+// ── Step 5b: Ollama model provisioning ────────────────────────────────────
+function step5b() {
+  return '<div style="padding:1rem;">' +
+    '<h2 style="font-size:1.375rem;font-weight:700;margin-bottom:0.5rem;">Local model check <span class="badge-secondary">Optional</span></h2>' +
+    '<p style="color:var(--text-secondary);margin-bottom:1.25rem;">Checking which Ollama models are installed and comparing against your LiteLLM config.</p>' +
+    '<div id="ollama-results" style="min-height:80px;">' +
+    '<div style="text-align:center;padding:1.5rem;color:var(--text-secondary);">&#x29D6; Querying Ollama...</div>' +
+    '</div>' +
+    '<div id="ollama-provision" style="display:none;margin-top:1rem;"></div>' +
+    '</div>';
+}
+
+// Load Ollama data when step5b renders
+document.addEventListener('htmx:afterSwap', function() {});
+
+function loadOllamaStatus() {
+  var el = document.getElementById('ollama-results');
+  if (!el) return;
+  fetch('/api/setup/ollama-status', {headers: {'X-Soma-Key': window._somaKey || ''}})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) {
+        el.innerHTML = '<div class="alert-info" style="font-size:0.875rem;">&#x26A0; Ollama not reachable at ' + (data.host || 'default host') + '. You can skip this step — models can be provisioned later from the Config page.</div>';
+        return;
+      }
+      var installed = data.installed || [];
+      var missing = data.missing || [];
+      var html = '';
+      if (installed.length) {
+        html += '<div style="margin-bottom:1rem;">';
+        html += '<div style="font-size:0.75rem;color:var(--text-tertiary);margin-bottom:0.5rem;text-transform:uppercase;font-weight:600;">Installed</div>';
+        html += installed.map(function(m) {
+          return '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0;font-size:0.875rem;">' +
+            '<span style="color:#3fb950;">&#x2713;</span>' +
+            '<span style="font-weight:600;">' + m.name + '</span>' +
+            (m.size ? '<span style="color:var(--text-tertiary);font-size:0.75rem;">' + m.size + '</span>' : '') +
+            '</div>';
+        }).join('');
+        html += '</div>';
+      }
+      if (missing.length) {
+        html += '<div>';
+        html += '<div style="font-size:0.75rem;color:var(--text-tertiary);margin-bottom:0.5rem;text-transform:uppercase;font-weight:600;">Recommended for Lumina</div>';
+        html += missing.map(function(m) {
+          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.4rem 0;font-size:0.875rem;border-bottom:1px solid var(--bg-tertiary);">' +
+            '<div>' +
+            '<span style="color:var(--text-secondary);">&#x25CB; ' + m.name + '</span>' +
+            (m.size ? '<span style="color:var(--text-tertiary);font-size:0.75rem;margin-left:0.5rem;">' + m.size + '</span>' : '') +
+            (m.note ? '<div style="font-size:0.72rem;color:var(--text-tertiary);">' + m.note + '</div>' : '') +
+            '</div>' +
+            '<button onclick="pullOllamaModel(\'' + m.name + '\',this)" style="font-size:0.75rem;padding:0.25rem 0.6rem;border:1px solid var(--accent);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">Pull</button>' +
+            '</div>';
+        }).join('');
+        html += '</div>';
+      }
+      if (!installed.length && !missing.length) {
+        html = '<div style="color:var(--text-tertiary);font-size:0.875rem;">No model recommendations — Ollama is running but no gaps detected.</div>';
+      }
+      el.innerHTML = html;
+    })
+    .catch(function(e) {
+      el.innerHTML = '<div class="alert-info" style="font-size:0.875rem;">&#x26A0; Could not reach Ollama endpoint. Skip this step to continue — models can be added later.</div>';
+    });
+}
+
+function pullOllamaModel(name, btn) {
+  btn.textContent = 'Pulling...';
+  btn.disabled = true;
+  fetch('/api/setup/ollama-pull', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-Soma-Key': window._somaKey || ''},
+    body: JSON.stringify({model: name})
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    btn.textContent = data.ok ? '&#x2713; Queued' : 'Failed';
+    btn.style.color = data.ok ? '#3fb950' : 'var(--danger,#f85149)';
+  }).catch(function() { btn.textContent = 'Error'; });
+}
+
+// Auto-load Ollama status when step5b is rendered
+var _origRenderStep = renderStep;
+renderStep = function(n) {
+  _origRenderStep(n);
+  if (n === 7) { setTimeout(loadOllamaStatus, 50); }
+};
 
 // ── Step 6: Google integration (optional) ─────────────────────────────────
 function step6() {
