@@ -3,7 +3,7 @@ import json
 
 # ============================================================
 # Odyssey Tools — Trip Planning MCP Tools
-# Runs on CT214, SSHes to CT310 to execute odyssey.py.
+# Runs on terminus-host, SSHes to fleet-host to execute odyssey.py.
 # Handles destination research (via Seer), bucket list,
 # loyalty points, card optimization, trip logging, deals.
 # ============================================================
@@ -14,7 +14,7 @@ ODYSSEY_ENV = "source /opt/lumina-fleet/axon/.env && "
 
 
 def _ssh_exec(cmd, timeout=300):
-    """Execute a command on CT310 via SSH."""
+    """Execute a command on fleet-host via SSH."""
     full_cmd = f"ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no {ODYSSEY_HOST} '{cmd}'"
     try:
         result = subprocess.run(
@@ -28,7 +28,7 @@ def _ssh_exec(cmd, timeout=300):
 
 
 def _run_odyssey(args_str: str, timeout: int = 120) -> dict:
-    """Run odyssey.py with given args on CT310 and parse JSON output."""
+    """Run odyssey.py with given args on fleet-host and parse JSON output."""
     cmd = f"{ODYSSEY_ENV}{ODYSSEY_SCRIPT} {args_str}"
     result = _ssh_exec(cmd, timeout=timeout)
     if result.get("error"):

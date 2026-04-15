@@ -3,7 +3,7 @@ from datetime import date, datetime
 
 # ============================================================
 # Ledger Tools — Personal Finance via Actual Budget
-# CT214 SSHes to CT310, calls actual-http-api directly.
+# terminus-host SSHes to fleet-host, calls actual-http-api directly.
 # ALL tools return pre-formatted strings — no LLM synthesis needed.
 # De-bloat: Python does math + formatting. LLM just presents result.
 # ============================================================
@@ -15,7 +15,7 @@ ACTUAL_BUDGET_ID = os.environ.get('ACTUAL_BUDGET_ID', '')
 
 
 def _actual(endpoint, method='GET', data=None, timeout=30):
-    """Call actual-http-api on CT310 via SSH. Returns parsed JSON."""
+    """Call actual-http-api on fleet-host via SSH. Returns parsed JSON."""
     auth = f'-H "x-api-key: {ACTUAL_KEY}"' if ACTUAL_KEY else ''
     if ACTUAL_BUDGET_ID and not endpoint.startswith('/v1'):
         url = f'{ACTUAL_URL}/v1/budgets/{ACTUAL_BUDGET_ID}{endpoint}'

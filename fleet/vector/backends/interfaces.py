@@ -71,7 +71,7 @@ class MessageBus(ABC):
     """Sends and receives messages between Vector and other agents.
 
     Standalone: stdout + log file.
-    Integrated: Nexus inbox (direct psycopg2 to CT300).
+    Integrated: Nexus inbox (direct psycopg2 to postgres-host).
     """
 
     @abstractmethod

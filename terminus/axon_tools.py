@@ -6,8 +6,8 @@ import uuid
 # Axon Tools — Work Queue Agent
 # MCP tools for Lumina to submit work orders to Axon via Nexus
 # and monitor their execution status.
-# Axon runs on CT310 /opt/lumina-fleet/axon/axon.py.
-# Communication via Nexus inbox (Postgres on CT300).
+# Axon runs on fleet-host /opt/lumina-fleet/axon/axon.py.
+# Communication via Nexus inbox (Postgres on postgres-host).
 # ============================================================
 
 # Axon work order payload schema:

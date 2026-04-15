@@ -180,8 +180,8 @@ def check_plane():
 
 def check_ollama_cpu():
     ok, msg = _http('http://YOUR_CPU_OLLAMA_IP:11434/api/version', timeout=5)
-    return ({'status': 'ok', 'value': 1, 'message': 'CT110 CPU online'} if ok
-            else {'status': 'warn', 'value': 0, 'message': f'CT110 CPU offline: {msg}'})
+    return ({'status': 'ok', 'value': 1, 'message': 'ollama-cpu-host CPU online'} if ok
+            else {'status': 'warn', 'value': 0, 'message': f'ollama-cpu-host CPU offline: {msg}'})
 
 # ── Agents ─────────────────────────────────────────────────────────────────────
 
@@ -253,14 +253,14 @@ CHECKS = {
     'ollama_gpu': (check_ollama_gpu, 'critical', 'VM901 GPU (runaway check)'),
     'llm_cost':   (check_llm_cost,   'critical', 'LLM daily cost'),
     # Infrastructure
-    'ironclaw':   (check_ironclaw,   'critical', 'IronClaw CT305'),
-    'terminus':   (check_terminus,   'critical', 'Terminus CT214'),
-    'litellm':    (check_litellm,    'high',     'LiteLLM CT215'),
-    'postgres':   (check_postgres,   'critical', 'Postgres CT300'),
-    'matrix':     (check_matrix,     'high',     'Matrix CT306'),
-    'docker':     (check_docker,     'high',     'Docker CT310'),
+    'ironclaw':   (check_ironclaw,   'critical', 'IronClaw ironclaw-host'),
+    'terminus':   (check_terminus,   'critical', 'Terminus terminus-host'),
+    'litellm':    (check_litellm,    'high',     'LiteLLM litellm-host'),
+    'postgres':   (check_postgres,   'critical', 'Postgres postgres-host'),
+    'matrix':     (check_matrix,     'high',     'Matrix matrix-host'),
+    'docker':     (check_docker,     'high',     'Docker fleet-host'),
     'plane':      (check_plane,      'medium',   'Plane CE'),
-    'ollama_cpu': (check_ollama_cpu, 'medium',   'Ollama CPU CT110'),
+    'ollama_cpu': (check_ollama_cpu, 'medium',   'Ollama CPU ollama-cpu-host'),
     # Agents
     'sentinel':   (check_sentinel,   'critical', 'Sentinel self-check'),
     'soma':       (check_soma,       'high',     'Soma admin panel'),

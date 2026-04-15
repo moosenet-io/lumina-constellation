@@ -30,7 +30,7 @@ All managed secrets are defined in `fleet/security/secrets_registry.yaml`. The r
 
 ### Daily timer
 
-`secret-rotation-check.timer` runs at 08:17 AM daily on CT310. It calls `rotation.py run` which rotates expired secrets and sends warnings for those approaching expiry.
+`secret-rotation-check.timer` runs at 08:17 AM daily on the fleet host. It calls `rotation.py run` which rotates expired secrets and sends warnings for those approaching expiry.
 
 Check timer status: `systemctl status secret-rotation-check.timer`
 
@@ -62,14 +62,14 @@ lumina-secrets run --dry-run     # Preview without making changes
     - "systemctl restart soma"
 ```
 
-2. Add the secret to Infisical at `http://192.168.0.227:8080` (workspace: moosenet-services, env: prod).
+2. Add the secret to Infisical at `YOUR_INFISICAL_HOST:8080` (workspace: moosenet-services, env: prod).
 
 3. Add a stub line to the relevant `.env` file so `fetch-mcp-secrets.sh` knows to pull it:
 ```
 MY_NEW_SECRET=PLACEHOLDER
 ```
 
-4. Deploy: `pct push 310 fleet/security/secrets_registry.yaml /opt/lumina-fleet/security/secrets_registry.yaml`
+4. Deploy: `push fleet/security/secrets_registry.yaml /opt/lumina-fleet/security/secrets_registry.yaml`
 
 5. Run initial check: `lumina-secrets check`
 
@@ -80,7 +80,7 @@ MY_NEW_SECRET=PLACEHOLDER
 The PII gate prevents personal information from reaching external LLM providers (OpenRouter, cloud models). It operates at three layers:
 
 ### Layer 1 — Pre-send filter (Refractor / LiteLLM)
-Before any request leaves CT215 (LiteLLM proxy), the payload is scanned for PII patterns. Matches are replaced with `[REDACTED]` or the request is blocked entirely depending on the configured action.
+Before any request leaves the LiteLLM proxy, the payload is scanned for PII patterns. Matches are replaced with `[REDACTED]` or the request is blocked entirely depending on the configured action.
 
 ### Layer 2 — Engram namespace isolation
 Memory stored in Engram uses namespaced keys (`agents/vigil/...`, `personal/...`). Namespaces tagged `pii` or `personal` are never included in LLM context windows by the engram retrieval functions.
@@ -89,7 +89,7 @@ Memory stored in Engram uses namespaced keys (`agents/vigil/...`, `personal/...`
 Agent prompts (in `.agent.yaml` persona fields and IronClaw LUMINA.md) are written to avoid requesting or repeating personal details. The operator's name and role are referenced symbolically.
 
 ### Configuring PII patterns
-PII patterns are regex-based and live in the LiteLLM config on CT215:
+PII patterns are regex-based and live in the LiteLLM config on the LiteLLM proxy host:
 ```
 /srv/litellm/config.yaml → pii_masking: patterns: [...]
 ```
@@ -101,7 +101,7 @@ Common patterns already configured: email addresses, phone numbers, home address
 ## Dev/Prod Workflow
 
 ### Gitea (private, internal)
-- URL: `http://192.168.0.223:3000` (git.moosenet.online)
+- URL: `YOUR_GITEA_HOST:3000` (git.moosenet.online)
 - All work-in-progress and infrastructure code lives here
 - Contains secrets in `.env` files (never committed — `.gitignore` enforced)
 - Primary remote: `gitea` alias in all repos
@@ -127,7 +127,7 @@ To bypass (legitimate use — internal IPs in config files): `git commit --no-ve
 
 ## Infisical Secret Management
 
-All production secrets are stored in Infisical at `http://192.168.0.227:8080`.
+All production secrets are stored in Infisical at `YOUR_INFISICAL_HOST:8080`.
 
 - **Workspace:** `moosenet-services`
 - **Environment:** `prod`
@@ -135,7 +135,7 @@ All production secrets are stored in Infisical at `http://192.168.0.227:8080`.
 
 ### Fetching secrets to a container
 
-CT214 (Terminus): `/opt/ai-mcp/fetch-mcp-secrets.sh`
+Terminus host: `/opt/ai-mcp/fetch-mcp-secrets.sh`
 
 For other containers, the pattern is:
 ```bash

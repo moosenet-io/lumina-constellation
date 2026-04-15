@@ -15,7 +15,7 @@ Vector's **integrated mode** connects to the full Lumina stack: Plane CE for tas
 Set in `/opt/lumina-fleet/axon/.env` (shared with Axon):
 
 ```bash
-INBOX_DB_HOST=192.168.0.x   # <postgres-host> Postgres
+INBOX_DB_HOST=YOUR_POSTGRES_HOST_IP   # postgres-host
 INBOX_DB_USER=lumina_inbox
 INBOX_DB_PASS=...
 PLANE_TOKEN_LUMINA=plane_api_...

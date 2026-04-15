@@ -3,7 +3,7 @@ import json
 
 # ============================================================
 # Crucible Tools — Learning & Skills Tracker (Module 11)
-# MCP tools that SSH to CT310 and run crucible.py.
+# MCP tools that SSH to fleet-host and run crucible.py.
 # All data stored in Engram (sqlite-vec). No external backend.
 # ============================================================
 
@@ -13,7 +13,7 @@ CRUCIBLE_ENV = "source /opt/lumina-fleet/axon/.env && export LITELLM_MASTER_KEY 
 
 
 def _ssh_exec(cmd, timeout=60):
-    """Execute a command on CT310 via SSH."""
+    """Execute a command on fleet-host via SSH."""
     full_cmd = f"ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no {CRUCIBLE_HOST} '{cmd}'"
     try:
         result = subprocess.run(

@@ -4,7 +4,7 @@ llm_runaway_guard.py — Sentinel LLM Runaway Detection and Circuit Breaker
 
 Monitors LLM API spending via LiteLLM and OpenRouter APIs.
 Detects and kills runaway processes making excessive inference calls.
-Runs as part of the Sentinel health check cycle on CT310.
+Runs as part of the Sentinel health check cycle on fleet-host.
 
 Thresholds (configurable via env vars):
   RUNAWAY_HOURLY_LIMIT   — max $ per hour before alert (default: $2.00)

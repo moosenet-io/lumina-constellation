@@ -7,8 +7,8 @@ from datetime import datetime
 # ============================================================
 # Nexus Tools — Inter-Agent Inbox (Lumina Nexus)
 # MCP tools providing the 5-function Nexus API over Postgres.
-# Backend: lumina_inbox database on CT300 (YOUR_POSTGRES_IP).
-# Registered in Terminus server.py on CT214.
+# Backend: lumina_inbox database on postgres-host (YOUR_POSTGRES_IP).
+# Registered in Terminus server.py on terminus-host.
 # from_agent is enforced by Terminus context for non-lumina agents
 # ============================================================
 

@@ -64,7 +64,7 @@ def generate_mcp_tools_doc() -> str:
         f'',
         f'*Auto-generated from `/opt/ai-mcp/server.py` on {datetime.now().strftime("%Y-%m-%d")}.*',
         f'',
-        f'Terminus (CT214) provides these MCP tools to IronClaw. Total: see count below.',
+        f'Terminus (terminus-host) provides these MCP tools to IronClaw. Total: see count below.',
         f'',
     ]
 
@@ -109,7 +109,7 @@ def generate_api_endpoints_doc() -> str:
         f'*Auto-generated from `/opt/lumina-fleet/gateway/gateway.py` on {datetime.now().strftime("%Y-%m-%d")}.*',
         '',
         'All endpoints require `X-API-Key: {DASHBOARD_API_KEY}` header.',
-        'Base URL: `http://YOUR_FLEET_SERVER_IP:8080` (CT310 gateway)',
+        'Base URL: `http://YOUR_FLEET_SERVER_IP:8080` (fleet-host gateway)',
         '',
     ]
 
@@ -222,7 +222,7 @@ def generate_agent_yaml_doc() -> str:
         '  - type: http',
         '    port: 3001',
         '',
-        'container: CT305       # Where this agent runs (CT number)',
+        'container: ironclaw-host       # Where this agent runs (CT number)',
         'runtime: ironclaw      # ironclaw | subprocess | systemd',
         'auto_start: true       # Start automatically on container boot',
         '',
@@ -243,7 +243,7 @@ def generate_agent_yaml_doc() -> str:
         '# Get full agent object',
         'agent = get_agent("lumina")',
         'print(agent.primary_model)   # → "anthropic/claude-sonnet-4-6"',
-        'print(agent.container)       # → "CT305"',
+        'print(agent.container)       # → "ironclaw-host"',
         '',
         '# List all agents',
         'from agent_loader import load_agents',

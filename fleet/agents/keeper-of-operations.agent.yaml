@@ -33,6 +33,6 @@ engram:
 persona_file: /opt/lumina-fleet/wizard/council/keeper-of-operations.md
 council_seat: true
 parent_agent: wizard
-container: CT310
+container: fleet-host
 runtime: subprocess
 auto_start: false

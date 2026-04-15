@@ -35,7 +35,7 @@ from pathlib import Path
 ENGRAM_DB_PATH = Path(os.environ.get("ENGRAM_DB_PATH", "/opt/lumina-fleet/engram/engram.db"))
 NEXUS_DB_PATH  = Path(os.environ.get("NEXUS_DB_PATH", "/opt/lumina-fleet/nexus/nexus.db"))
 SENTINEL_STATE = Path(os.environ.get("SENTINEL_STATE_PATH", "/opt/lumina-fleet/sentinel/state.json"))
-OLLAMA_URL     = os.environ.get("OLLAMA_BASE_URL", "http://192.168.0.225:11434")
+OLLAMA_URL     = os.environ.get("OLLAMA_BASE_URL", "")
 OLLAMA_MODEL   = os.environ.get("SKILL_LLM_MODEL", "qwen2.5:7b")
 
 NAMESPACE = "project-ideas"
@@ -183,7 +183,7 @@ def _generate_fallback_ideas() -> list[dict]:
         {
             "rank": 1,
             "title": "Ollama model health monitor",
-            "description": "Automate checks for Ollama availability on VM901/CT110. Alert via Synapse when models go offline.",
+            "description": "Automate checks for Ollama availability on VM901/ollama-cpu-host. Alert via Synapse when models go offline.",
             "effort": "small",
             "category": "infrastructure",
         },

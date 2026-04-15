@@ -1,7 +1,7 @@
 """
 meridian_tools.py — MCP tools for Meridian paper trading sandbox.
 SIMULATED ONLY — no real trades ever executed.
-All tools SSH to CT310 and return results with SIMULATED label.
+All tools SSH to fleet-host and return results with SIMULATED label.
 """
 import subprocess
 import json
@@ -11,7 +11,7 @@ REAL_TRADING = False
 
 
 def _run_ct310(cmd: str, timeout: int = 60) -> str:
-    """Run a command on CT310 via SSH to PVS then pct exec."""
+    """Run a command on fleet-host via SSH to PVS then pct exec."""
     full_cmd = f'ssh pvs "pct exec 310 -- bash -c \'set -a && source /opt/lumina-fleet/axon/.env && set +a && cd /opt/lumina-fleet/meridian && {cmd}\' 2>&1"'
     try:
         result = subprocess.run(full_cmd, shell=True, capture_output=True, text=True, timeout=timeout)

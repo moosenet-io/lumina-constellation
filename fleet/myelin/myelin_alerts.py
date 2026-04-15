@@ -2,7 +2,7 @@
 """
 Myelin alert engine — runs every 30 min after collection.
 Checks subscription limits, runaway agents, efficiency issues.
-Sends alerts via Nexus inbox (psycopg2 to CT300 PostgreSQL).
+Sends alerts via Nexus inbox (psycopg2 to postgres-host PostgreSQL).
 """
 import os, sys, json, sqlite3, urllib.request
 from datetime import datetime, timedelta

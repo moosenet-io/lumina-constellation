@@ -5,7 +5,7 @@ Analyzes completed conversation logs for patterns with 5+ tool calls.
 Extracts candidate skills in agentskills.io format.
 
 Part of Lumina Constellation's Skill Evolution system (Session 12).
-Runs as part of the 2 AM batch schedule on CT310.
+Runs as part of the 2 AM batch schedule on fleet-host.
 
 Inference de-bloat: pattern detection is pure Python heuristics.
 Only skill description generation uses Qwen local model.

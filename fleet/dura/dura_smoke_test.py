@@ -57,7 +57,7 @@ def _nexus_alert(title, body, priority='normal'):
 
 def _call_mcp_tool(tool_name: str, input_data: dict, timeout: int = 30) -> dict:
     """
-    Call an MCP tool on CT214 via SSH.
+    Call an MCP tool on terminus-host via SSH.
     Simulates what IronClaw does when routing to a tool.
     Uses the tool's register function directly.
     """
@@ -132,7 +132,7 @@ except Exception as e:
         capture_output=True, text=True, timeout=timeout
     )
 
-    # For now just check that we can reach CT214 and the .env loads
+    # For now just check that we can reach terminus-host and the .env loads
     if result.returncode == 0:
         return {'smoke_test': 'reachable', 'tool': tool_name}
     return {'error': result.stderr[:100]}

@@ -10,7 +10,7 @@ Plugin format: exports register_plugin(mcp).
 import sys
 import os
 
-# Pulse lives in /opt/lumina-fleet/shared/ on CT310, but on CT214 we import
+# Pulse lives in /opt/lumina-fleet/shared/ on fleet-host, but on terminus-host we import
 # from the local copy deployed alongside this plugin.
 _PULSE_PATHS = [
     "/opt/lumina-fleet/shared",

@@ -24,7 +24,7 @@ RULES = [
     ('postgres',   'critical', 'CRITICAL: Postgres/Nexus DB unreachable — all inbox operations failing'),
     ('matrix',     'critical', 'CRITICAL: Matrix bridge down — no Matrix communication'),
     ('terminus',   'critical', 'CRITICAL: Terminus MCP hub down — IronClaw has no tools'),
-    ('docker',     'critical', 'CRITICAL: Critical Docker containers down on CT310'),
+    ('docker',     'critical', 'CRITICAL: Critical Docker containers down on fleet-host'),
     ('axon_db',    'warn',     'WARN: Axon running but no recent DB poll activity'),
     ('nexus_age',  'warn',     'WARN: Nexus has many unacked messages or very old pending messages'),
     ('soma',       'critical', 'WARN: Soma admin panel not responding'),

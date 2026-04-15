@@ -58,7 +58,7 @@ def _load_env():
 
 _load_env()
 
-BASE_URL     = os.environ.get("PLANE_BASE_URL", "http://192.168.0.232/api/v1")
+BASE_URL     = os.environ.get("PLANE_BASE_URL", "")
 TOKEN        = os.environ.get("PLANE_API_TOKEN", "")
 WORKSPACE    = os.environ.get("PLANE_WORKSPACE", "moosenet")
 PLANE_RPM    = int(os.environ.get("PLANE_RPM", "60"))

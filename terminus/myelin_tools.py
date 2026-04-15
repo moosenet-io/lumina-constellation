@@ -2,7 +2,7 @@ import subprocess, json, os
 
 # ============================================================
 # Myelin Tools — Token Governance and Cost Intelligence
-# CT214 SSHes to CT310 to query myelin.py
+# terminus-host SSHes to fleet-host to query myelin.py
 # ============================================================
 
 MYELIN_HOST = 'root@YOUR_FLEET_SERVER_IP'
@@ -10,7 +10,7 @@ MYELIN_DIR = '/opt/lumina-fleet/myelin'
 
 
 def _myelin(cmd, timeout=20):
-    """Run a command on CT310 in the myelin directory."""
+    """Run a command on fleet-host in the myelin directory."""
     env_setup = 'source /opt/lumina-fleet/axon/.env && export LITELLM_MASTER_KEY INBOX_DB_HOST INBOX_DB_USER INBOX_DB_PASS OPENROUTER_API_KEY'
     full = f"ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no {MYELIN_HOST} '{env_setup} && {cmd}'"
     try:
@@ -26,7 +26,7 @@ def _myelin(cmd, timeout=20):
 
 
 def _db_query(query, params=()):
-    """Query myelin.db on CT310 directly."""
+    """Query myelin.db on fleet-host directly."""
     safe_query = query.replace("'", "\\'")
     cmd = f"python3 -c \"import sqlite3,json; conn=sqlite3.connect('/opt/lumina-fleet/myelin/myelin.db'); cur=conn.cursor(); cur.execute('{safe_query}'); rows=cur.fetchall(); print(json.dumps(rows))\""
     return _myelin(cmd)

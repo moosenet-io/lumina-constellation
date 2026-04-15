@@ -2,7 +2,7 @@
 """
 Commute Check — replaces 4 IronClaw commute routines
 TomTom API + Engram baseline. Zero inference. Templated Matrix alerts.
-CT310 /opt/lumina-fleet/commute/commute_check.py
+fleet-host /opt/lumina-fleet/commute/commute_check.py
 """
 import os, sys, json, argparse, sqlite3, urllib.request, urllib.parse
 from datetime import datetime, date

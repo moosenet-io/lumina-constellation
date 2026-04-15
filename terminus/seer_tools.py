@@ -3,7 +3,7 @@ import json
 
 # ============================================================
 # Seer Tools — Research Engine
-# MCP tools that trigger Seer research jobs on CT310.
+# MCP tools that trigger Seer research jobs on fleet-host.
 # ============================================================
 
 SEER_HOST = 'root@YOUR_FLEET_SERVER_IP'

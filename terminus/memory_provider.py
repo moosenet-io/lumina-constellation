@@ -51,7 +51,7 @@ class MemoryProvider(ABC):
 
 
 class EngramProvider(MemoryProvider):
-    """Default memory provider using Engram (sqlite-vec on CT310)."""
+    """Default memory provider using Engram (sqlite-vec on fleet-host)."""
 
     def __init__(self):
         self._engram = None
@@ -104,7 +104,7 @@ class EngramProvider(MemoryProvider):
 
 
 class HonchoProvider(MemoryProvider):
-    """Optional memory provider using Honcho self-hosted (CT310:8100)."""
+    """Optional memory provider using Honcho self-hosted (fleet-host:8100)."""
 
     def __init__(self):
         self.base_url = os.environ.get('HONCHO_API_URL', 'http://YOUR_FLEET_SERVER_IP:8100')

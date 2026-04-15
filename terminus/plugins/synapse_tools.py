@@ -7,7 +7,7 @@ Tools:
   synapse_mute     — suppress Synapse for N hours
 
 Plugin format: exports register_plugin(mcp).
-Runs on CT214 (Terminus). Synapse process lives on CT310 — commands sent via SSH.
+Runs on terminus-host (Terminus). Synapse process lives on fleet host — commands sent via SSH.
 """
 
 import json
@@ -18,8 +18,8 @@ from pathlib import Path
 from typing import Optional
 
 
-# CT310 SSH target
-CT310_SSH = os.environ.get("CT310_SSH_HOST", "root@192.168.0.120")
+# fleet host SSH target
+FLEET_SSH = os.environ.get("FLEET_SSH_HOST", "")
 SYNAPSE_SCAN = "/opt/lumina-fleet/synapse/synapse_scan.py"
 SYNAPSE_LOG  = "/opt/lumina-fleet/synapse/gate_log.json"
 PULSE_MARKERS = "/opt/lumina-fleet/pulse/markers.json"
@@ -33,9 +33,9 @@ REFRACTOR_KEYWORDS = [
 
 
 def _ssh_run(cmd: str, timeout: int = 15) -> tuple[int, str, str]:
-    """Run command on CT310 via SSH. Returns (returncode, stdout, stderr)."""
+    """Run command on fleet host via SSH. Returns (returncode, stdout, stderr)."""
     r = subprocess.run(
-        ["ssh", CT310_SSH, cmd],
+        ["ssh", FLEET_SSH, cmd],
         capture_output=True, text=True, timeout=timeout
     )
     return r.returncode, r.stdout.strip(), r.stderr.strip()
@@ -50,7 +50,7 @@ def register_plugin(mcp):
         last message was sent. Zero cost — reads config + log files.
         """
         try:
-            # Read config from CT310
+            # Read config from fleet-host
             rc, out, err = _ssh_run(
                 f"python3 -c \""
                 f"import yaml,json; "

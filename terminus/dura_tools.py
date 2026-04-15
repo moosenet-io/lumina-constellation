@@ -55,9 +55,9 @@ def register_dura_tools(mcp):
         return {'backup_dir': bdir, 'listing': result.get('output', str(result))}
 
     @mcp.tool()
-    def dura_log_query(query: str = 'error', source: str = 'CT310', lines: int = 20) -> dict:
-        """Search journald logs. source: CT310|CT305|CT300|CT214|CT215"""
-        ct = {'CT305':'305','CT310':'310','CT300':'300','CT214':'214','CT215':'215'}.get(source,'310')
+    def dura_log_query(query: str = 'error', source: str = 'fleet-host', lines: int = 20) -> dict:
+        """Search journald logs. source: ironclaw-host|fleet-host|postgres-host|terminus-host|litellm-host"""
+        ct = {'ironclaw-host':'305','fleet-host':'310','postgres-host':'300','terminus-host':'214','litellm-host':'215'}.get(source,'310')
         cmd = f"ssh root@YOUR_PVS_HOST_IP 'pct exec {ct} -- journalctl -n 200 --no-pager 2>/dev/null | grep -i \"{query}\" | tail -{lines}'"
         try:
             r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)

@@ -2,7 +2,7 @@
 """
 Axon — Work Queue Agent
 Polls Nexus inbox (direct Postgres), executes work orders, reports results.
-Runs on CT310 as axon.service (systemd).
+Runs on fleet-host as axon.service (systemd).
 
 Work order payload schema:
   {"op": "plane_op"|"gitea_op"|"maintenance",
@@ -10,7 +10,7 @@ Work order payload schema:
    "params": dict,
    "description": str}
 
-Nexus backend: lumina_inbox Postgres on CT300 (YOUR_POSTGRES_IP).
+Nexus backend: lumina_inbox Postgres on postgres-host (YOUR_POSTGRES_IP).
 Direct psycopg2 connection — no MCP SSH bridge needed.
 """
 

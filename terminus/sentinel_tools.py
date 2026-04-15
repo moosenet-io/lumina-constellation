@@ -3,9 +3,9 @@ import json
 
 # ============================================================
 # Sentinel Tools (Sentinel / formerly Agent Ops)
-# MCP tools that trigger operational checks and logging on CT310.
+# MCP tools that trigger operational checks and logging on fleet-host.
 # IronClaw routines call these instead of running checks via LLM.
-# Runs on CT214, SSHes to CT310 to execute ops.py.
+# Runs on terminus-host, SSHes to fleet-host to execute ops.py.
 # After health checks, triggers status_generator.py to update
 # the live status page at http://YOUR_FLEET_SERVER_IP/status/
 # ============================================================
@@ -26,7 +26,7 @@ VALID_OPS = [
 
 
 def _ssh_exec(cmd, timeout=120):
-    """Execute a command on CT310 via SSH."""
+    """Execute a command on fleet-host via SSH."""
     full_cmd = f"ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no {SENTINEL_HOST} '{cmd}'"
     try:
         result = subprocess.run(
@@ -40,7 +40,7 @@ def _ssh_exec(cmd, timeout=120):
 
 
 def _trigger_status_page():
-    """Trigger status page regeneration on CT310 in the background."""
+    """Trigger status page regeneration on fleet-host in the background."""
     cmd = (
         "source /opt/lumina-fleet/axon/.env && "
         "export INBOX_DB_PASS PLANE_TOKEN_LUMINA && "
@@ -53,7 +53,7 @@ def register_sentinel_tools(mcp):
 
     @mcp.tool()
     def sentinel_run(operation: str, args: str = "") -> dict:
-        """Run an operational check or logging task via Sentinel on CT310.
+        """Run an operational check or logging task via Sentinel on fleet-host.
         Operations: plex-health, self-health, vm901-watchdog, gitea-health,
         system-snapshot, commute-tracker, daily-log, reflection,
         tool-usage-log, memory-curation.

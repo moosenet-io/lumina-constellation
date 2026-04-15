@@ -5,7 +5,7 @@ import os
 # ============================================================
 # Wizard Tools — Mr. Wizard Deep Reasoning Agent
 # MCP tools for Lumina to consult Mr. Wizard and the
-# Obsidian Circle. Runs on CT214, SSHes to CT310.
+# Obsidian Circle. Runs on terminus-host, SSHes to fleet-host.
 # ============================================================
 
 WIZARD_HOST = 'root@YOUR_FLEET_SERVER_IP'

@@ -2,7 +2,7 @@ import subprocess, json, os
 
 # ============================================================
 # Relay Tools — Vehicle Maintenance via LubeLogger
-# CT214 SSHes to CT310, calls LubeLogger at localhost:5000
+# terminus-host SSHes to fleet-host, calls LubeLogger at localhost:5000
 # LubeLogger has EnableAuth=false, no token needed
 # ============================================================
 

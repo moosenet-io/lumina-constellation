@@ -3,7 +3,7 @@
 Odyssey — Trip Planning System
 Destination research via Seer, bucket list, adventure log.
 All data in Engram. HTML output on Apache /travel/
-CT310 /opt/lumina-fleet/odyssey/odyssey.py
+fleet-host /opt/lumina-fleet/odyssey/odyssey.py
 """
 
 import os, sys, json, argparse, subprocess, re
@@ -262,7 +262,7 @@ tr:hover td{{background:#1a1a1a}}
 <tr><th>Destination</th><th>Priority</th><th>Best Season</th><th>Budget</th><th>Status</th><th>Notes</th></tr>
 {rows or '<tr><td colspan="6" style="color:#555;text-align:center">No destinations yet. Ask Lumina to add some!</td></tr>'}
 </table>
-<div class="footer">Odyssey v1.0 &middot; CT310 &middot; <a href="http://YOUR_FLEET_SERVER_IP/" style="color:#3B82F6">Lumina Home</a></div>
+<div class="footer">Odyssey v1.0 &middot; fleet-host &middot; <a href="http://YOUR_FLEET_SERVER_IP/" style="color:#3B82F6">Lumina Home</a></div>
 </body></html>'''
 
     (OUTPUT_DIR / 'bucket-list' / 'index.html').write_text(html)
@@ -312,7 +312,7 @@ a{{color:#3B82F6;text-decoration:none}}
 <p>{"Top: " + ", ".join(e["destination"] for e in entries[:3]) if entries else "No destinations yet"}</p></div>
 <div class="card"><h3>&#x1F4F0; <a href="../research/">Recent Research Reports</a></h3><p>Destination research via Seer engine</p></div>
 {trip_cards}
-<div class="footer">Odyssey v1.0 &middot; CT310 &middot; <a href="http://YOUR_FLEET_SERVER_IP/">Lumina Home</a></div>
+<div class="footer">Odyssey v1.0 &middot; fleet-host &middot; <a href="http://YOUR_FLEET_SERVER_IP/">Lumina Home</a></div>
 </body></html>'''
 
     (OUTPUT_DIR / 'index.html').write_text(html)

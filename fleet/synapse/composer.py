@@ -32,12 +32,12 @@ _MATRIX_SEND_PATH = Path(os.environ.get(
     "/opt/lumina-fleet/shared/matrix_send.py"
 ))
 
-OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://192.168.0.225:11434")
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "")
 OLLAMA_MODEL    = os.environ.get("SYNAPSE_LLM_MODEL", "qwen2.5:7b")
 FALLBACK_MODEL  = os.environ.get("SYNAPSE_FALLBACK_MODEL", "openrouter/google/gemini-flash-1.5")
 MATRIX_ROOM     = os.environ.get("MATRIX_ROOM_ID", "")
 MATRIX_TOKEN    = os.environ.get("MATRIX_TOKEN", "")
-MATRIX_SERVER   = os.environ.get("MATRIX_SERVER", "http://192.168.0.208:8008")
+MATRIX_SERVER   = os.environ.get("MATRIX_SERVER", "")
 
 # ---------------------------------------------------------------------------
 # Message templates (fallback when Ollama is down)

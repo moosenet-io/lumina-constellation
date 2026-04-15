@@ -5,9 +5,9 @@ from datetime import datetime
 
 # ============================================================
 # Honcho Tools — Pluggable Memory Provider (Honcho self-hosted)
-# MCP tools for Honcho dialectic user modeling on CT310:8100.
+# MCP tools for Honcho dialectic user modeling on fleet-host:8100.
 # Falls back gracefully if Honcho is not yet deployed.
-# Deploy Honcho first: see LM-327 (requires CT310 disk expansion)
+# Deploy Honcho first: see LM-327 (requires fleet-host disk expansion)
 # ============================================================
 
 HONCHO_URL = os.environ.get('HONCHO_API_URL', 'http://YOUR_FLEET_SERVER_IP:8100')
@@ -33,7 +33,7 @@ def _honcho_request(path, method='GET', data=None, timeout=8):
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return {'ok': True, 'data': json.load(r), 'status': r.status}
     except urllib.error.URLError as e:
-        return {'ok': False, 'error': f'Honcho unavailable: {e.reason}', 'deploy_info': 'See LM-327 to deploy Honcho on CT310'}
+        return {'ok': False, 'error': f'Honcho unavailable: {e.reason}', 'deploy_info': 'See LM-327 to deploy Honcho on fleet-host'}
     except Exception as e:
         return {'ok': False, 'error': str(e)[:200]}
 
@@ -51,7 +51,7 @@ def register_honcho_tools(mcp):
                 'status': 'unavailable',
                 'url': HONCHO_URL,
                 'error': r['error'],
-                'note': 'Honcho requires CT310 disk expansion (LM-347). See LUMINA.md for deployment instructions.',
+                'note': 'Honcho requires fleet-host disk expansion (LM-347). See LUMINA.md for deployment instructions.',
                 'fallback': 'Engram (engram_query) is active as memory provider.',
             }
         return {

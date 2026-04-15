@@ -4,7 +4,7 @@ import os
 
 # ============================================================
 # Cortex Tools — Code Intelligence via code-review-graph
-# CT214 SSHes to CT310 to call cortex.py
+# terminus-host SSHes to fleet-host to call cortex.py
 # 10 MCP tools for blast radius, review context, external audits
 # ============================================================
 
@@ -13,7 +13,7 @@ CORTEX_SCRIPT = '/opt/lumina-fleet/cortex/cortex.py'
 
 
 def _cortex(cmd: str, args: list = None, timeout: int = 90) -> dict:
-    """Run a cortex.py command on CT310 via SSH."""
+    """Run a cortex.py command on fleet-host via SSH."""
     arg_str = ' '.join(f'"{a}"' for a in (args or []))
     remote_cmd = f'python3 {CORTEX_SCRIPT} {cmd} {arg_str}'
     full_cmd = f'ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no {CORTEX_HOST} \'{remote_cmd}\''
@@ -128,7 +128,7 @@ def register_cortex_tools(mcp):
         """Get recently changed high-risk files in a repo.
         Uses git log + graph coupling to surface files that need attention.
         repo: 'lumina-fleet' or 'lumina-terminus'"""
-        # Get recent git changes from CT310's cloned repo
+        # Get recent git changes from fleet-host's cloned repo
         repo_path = f'/opt/lumina-fleet/cortex/repos/{repo}'
         git_cmd = f'git -C {repo_path} log --name-only --pretty=format: -20 2>/dev/null | grep ".py" | sort | uniq -c | sort -rn | head -10'
         full = f'ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no {CORTEX_HOST} \'{git_cmd}\''

@@ -1,4 +1,4 @@
-"""Integrated MessageBus using Nexus (direct psycopg2 to CT300)."""
+"""Integrated MessageBus using Nexus (direct psycopg2 to postgres-host)."""
 import os, json, psycopg2, psycopg2.extras, uuid
 from datetime import datetime
 from backends.interfaces import MessageBus

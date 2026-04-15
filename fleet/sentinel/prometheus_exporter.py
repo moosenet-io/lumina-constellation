@@ -3,7 +3,7 @@
 prometheus_exporter.py — Prometheus /metrics endpoint for Lumina Constellation.
 
 Pure Python, no prometheus_client dependency — just formats the text exposition format.
-Runs as sentinel_metrics.service on CT310, port 9100.
+Runs as sentinel_metrics.service on fleet-host, port 9100.
 
 Metrics exposed:
   lumina_service_up{service,container}
@@ -53,17 +53,17 @@ def generate_metrics() -> str:
 
     # Service up/down gauge
     SERVICE_MAP = {
-        'ironclaw': ('ironclaw', 'CT305'),
-        'terminus': ('terminus', 'CT214'),
-        'litellm': ('litellm', 'CT215'),
-        'postgres': ('postgres', 'CT300'),
-        'matrix': ('matrix', 'CT306'),
-        'docker': ('docker_ct310', 'CT310'),
-        'plane': ('plane', 'CT315'),
+        'ironclaw': ('ironclaw', 'ironclaw-host'),
+        'terminus': ('terminus', 'terminus-host'),
+        'litellm': ('litellm', 'litellm-host'),
+        'postgres': ('postgres', 'postgres-host'),
+        'matrix': ('matrix', 'matrix-host'),
+        'docker': ('docker_ct310', 'fleet-host'),
+        'plane': ('plane', 'plane-host'),
         'ollama_gpu': ('ollama_gpu', 'VM901'),
-        'ollama_cpu': ('ollama_cpu', 'CT110'),
-        'soma': ('soma', 'CT310'),
-        'gitea': ('gitea', 'CT223'),
+        'ollama_cpu': ('ollama_cpu', 'ollama-cpu-host'),
+        'soma': ('soma', 'fleet-host'),
+        'gitea': ('gitea', 'gitea-host'),
     }
 
     lines.append('# HELP lumina_service_up Whether a service is reachable (1=up, 0=down)')

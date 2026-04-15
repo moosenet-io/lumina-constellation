@@ -8,7 +8,7 @@ Usage:
     r = Report(
         title='Sentinel Health Check',
         module='sentinel',
-        metadata={'model': 'python-only', 'cost': '$0.00', 'host': 'CT310'}
+        metadata={'model': 'python-only', 'cost': '$0.00', 'host': 'fleet-host'}
     )
     r.add_kpi('Services healthy', '11', style='success')
     r.add_kpi('Services down', '0', style='error')

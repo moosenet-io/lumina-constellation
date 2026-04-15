@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Vigil — MooseNet Briefing Sub-Agent v4
-Runs on CT310. Modular section-based briefing system.
+Runs on fleet-host. Modular section-based briefing system.
 Each section is an independent gather + format pipeline.
 
 Usage:
@@ -370,7 +370,7 @@ def gather_stock_movers():
 def gather_ansible_log():
     """Check for recent Ansible run logs. Reads from Gitea if available."""
     # Placeholder — needs Ansible log file access or MCP tool
-    return {"note": "Ansible log integration pending. Connect via CT214 MCP tools."}
+    return {"note": "Ansible log integration pending. Connect via terminus-host MCP tools."}
 
 
 def gather_reflection(gitea_token):
@@ -393,7 +393,7 @@ def gather_reflection(gitea_token):
 
 
 def gather_crucible():
-    """Get current learning streak and top active tracks from Crucible (CT310)."""
+    """Get current learning streak and top active tracks from Crucible (fleet-host)."""
     try:
         import subprocess
         streak_result = subprocess.run(

@@ -47,13 +47,13 @@ def _http_check(url, timeout=5, expected_status=200):
 def collect_statuses():
     services = []
 
-    # Lumina (CT305)
+    # Lumina (ironclaw-host)
     def check_lumina():
         r, m = _http_check('http://YOUR_IRONCLAW_IP:3001/health', timeout=3)
         return r, m
     services.append(check_service('Lumina', check_lumina))
 
-    # Nexus/Postgres (CT300)
+    # Nexus/Postgres (postgres-host)
     def check_nexus():
         try:
             import psycopg2
@@ -66,37 +66,37 @@ def collect_statuses():
             return 'healthy', f'Connected, {pending} pending messages'
         except Exception as e:
             return 'down', str(e)[:60]
-    services.append(check_service('Nexus (CT300)', check_nexus))
+    services.append(check_service('Nexus (postgres-host)', check_nexus))
 
-    # Terminus/MCP (CT214) — check via HTTP if available
+    # Terminus/MCP (terminus-host) — check via HTTP if available
     def check_terminus():
         r, m = _http_check('http://YOUR_TERMINUS_IP:8000/health', timeout=3)
         return r, m
-    services.append(check_service('Terminus (CT214)', check_terminus))
+    services.append(check_service('Terminus (terminus-host)', check_terminus))
 
-    # LiteLLM (CT215)
+    # LiteLLM (litellm-host)
     def check_litellm():
         r, m = _http_check('http://YOUR_LITELLM_IP:4000/health', timeout=3)
         return r, m
-    services.append(check_service('LiteLLM (CT215)', check_litellm))
+    services.append(check_service('LiteLLM (litellm-host)', check_litellm))
 
-    # Tuwunel/Matrix (CT306)
+    # Tuwunel/Matrix (matrix-host)
     def check_matrix():
         r, m = _http_check('http://YOUR_MATRIX_IP:6167/_matrix/client/versions', timeout=3)
         return r, m
-    services.append(check_service('Matrix (CT306)', check_matrix))
+    services.append(check_service('Matrix (matrix-host)', check_matrix))
 
-    # Plane (CT315)
+    # Plane (plane-host)
     def check_plane():
         r, m = _http_check('http://YOUR_PLANE_IP/', timeout=3)
         return r, m
-    services.append(check_service('Plane (CT315)', check_plane))
+    services.append(check_service('Plane (plane-host)', check_plane))
 
-    # Gitea (CT223)
+    # Gitea (gitea-host)
     def check_gitea():
         r, m = _http_check('http://YOUR_GITEA_IP:3000/api/v1/version', timeout=3)
         return r, m
-    services.append(check_service('Gitea (CT223)', check_gitea))
+    services.append(check_service('Gitea (gitea-host)', check_gitea))
 
     # VM901 GPU (Ollama)
     def check_vm901():
@@ -104,13 +104,13 @@ def collect_statuses():
         return r, m
     services.append(check_service('VM901 GPU (Ollama)', check_vm901))
 
-    # Axon (CT310 self-check)
+    # Axon (fleet-host self-check)
     def check_axon():
         result = subprocess.run(['systemctl', 'is-active', 'axon'],
             capture_output=True, text=True, timeout=3)
         active = result.stdout.strip() == 'active'
         return ('healthy' if active else 'down'), ('running' if active else 'stopped')
-    services.append(check_service('Axon (CT310)', check_axon))
+    services.append(check_service('Axon (fleet-host)', check_axon))
 
     # Vigil - check last briefing file age
     def check_vigil():
@@ -127,10 +127,10 @@ def collect_statuses():
         elif age_hours < 48:
             return 'degraded', f'Stale — {age_hours:.1f}h ago'
         return 'down', f'Very stale — {age_hours:.1f}h ago'
-    services.append(check_service('Vigil (CT310)', check_vigil))
+    services.append(check_service('Vigil (fleet-host)', check_vigil))
 
     # Sentinel self
-    services.append({'name': f'{_dn("sentinel")} (CT310)', 'status': 'healthy',
+    services.append({'name': f'{_dn("sentinel")} (fleet-host)', 'status': 'healthy',
                      'message': 'Running (self-report)',
                      'checked_at': datetime.now().strftime('%H:%M:%S')})
 
@@ -209,7 +209,7 @@ def generate_status_html(services=None):
 {cards}
     </div>
 </div>
-<div class="lumina-footer">{_dn('sentinel')} v1.0 · CT310 · moosenet.online</div>
+<div class="lumina-footer">{_dn('sentinel')} v1.0 · fleet-host · moosenet.online</div>
 </body>
 </html>'''
 

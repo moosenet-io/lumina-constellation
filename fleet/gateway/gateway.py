@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Lumina API Gateway — aggregates all module data for Homepage dashboard.
-FastAPI on CT310 port 8080. Caches responses to protect backing services.
+FastAPI on fleet-host port 8080. Caches responses to protect backing services.
 Authentication via DASHBOARD_API_KEY header.
 """
 
@@ -93,7 +93,7 @@ def get_health(x_api_key: str = Header(default='')):
     _check_auth(x_api_key)
     def fetch():
         services = []
-        # Check Lumina via IronClaw gateway tunnel (CT305:3001 via socat)
+        # Check Lumina via IronClaw gateway tunnel (ironclaw-host:3001 via socat)
         try:
             import socket as _sock
             with _sock.create_connection(('YOUR_IRONCLAW_IP', 3001), timeout=3):

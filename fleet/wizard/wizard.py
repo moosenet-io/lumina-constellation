@@ -2,7 +2,7 @@
 """
 Mr. Wizard — Deep Reasoning Agent
 Convenes the Obsidian Circle council for complex problems.
-Runs on CT310 as part of lumina-fleet.
+Runs on fleet-host as part of lumina-fleet.
 """
 
 import os, sys, json, uuid, time, argparse

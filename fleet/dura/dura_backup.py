@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Dura — Lumina Nexus Backup System (Phase 1)
-Runs on CT310. Hourly critical backups, daily full backups.
+Runs on fleet-host. Hourly critical backups, daily full backups.
 NFS target: PVS host /mnt/nfs/lumina-backup/ (via rsync)
 Local fallback: /opt/lumina-fleet/dura/backups/
 
@@ -33,7 +33,7 @@ CT_PLANE_DB = 315    # Plane CE — uses Docker container
 
 PVS_HOST = "root@YOUR_PVS_HOST_IP"
 
-# SQLite databases on CT310
+# SQLite databases on fleet-host
 SQLITE_DBS = {
     "nexus":  "/opt/lumina-fleet/nexus/nexus.db",
     "engram": "/opt/lumina-fleet/engram/engram.db",
@@ -46,7 +46,7 @@ SQLITE_DBS_EXTRA = {
     "cortex_fleet":    "/opt/lumina-fleet/cortex/graphs/lumina-fleet.db",
 }
 
-# Postgres databases on CT300
+# Postgres databases on postgres-host
 POSTGRES_DBS = [
     {"name": "lumina_inbox", "ct_id": 300, "user": "lumina_inbox_user", "pass_env": "INBOX_DB_PASS"},
     {"name": "ironclaw",     "ct_id": 300, "user": "ironclaw",          "pass_env": ""},
@@ -95,7 +95,7 @@ def get_backup_dir(subdir="") -> str:
 
 
 def nfs_available() -> bool:
-    """Check if NFS is reachable from CT310 via SSH to PVS host."""
+    """Check if NFS is reachable from fleet-host via SSH to PVS host."""
     try:
         result = subprocess.run(
             ["ssh", "-o", "ConnectTimeout=3", "-o", "BatchMode=yes",
@@ -116,7 +116,7 @@ def rsync_to_nfs(local_dir: str) -> bool:
             f"rsync -a --delete /mnt/nfs/lumina-backup/ /mnt/nfs/lumina-backup/ 2>/dev/null; "
             f"echo rsync_placeholder"
         ]
-        # Actual rsync: push from CT310 to PVS host path
+        # Actual rsync: push from fleet-host to PVS host path
         result = subprocess.run(
             ["rsync", "-rltz", "--delete",
              "--no-perms", "--no-owner", "--no-group",
@@ -227,7 +227,7 @@ def backup_postgres(db_name: str, ct_id: int, db_user: str, output_dir: str, db_
 
 def backup_plane_postgres(output_dir: str) -> dict:
     """
-    Backup Plane's Postgres from the Docker container on CT315.
+    Backup Plane's Postgres from the Docker container on plane-host.
     docker exec plane-app-plane-db-1 pg_dump ...
     """
     result = {"name": "plane_db", "ct_id": 315, "status": "error"}
@@ -240,7 +240,7 @@ def backup_plane_postgres(output_dir: str) -> dict:
     ssh_cmd = f'ssh -o BatchMode=yes -o ConnectTimeout=10 {PVS_HOST} "pct exec 315 -- {pg_cmd}"'
     full_cmd = f'{ssh_cmd} | gzip > {tmp_file}'
 
-    log.info("Postgres backup: plane_db from CT315 via Docker")
+    log.info("Postgres backup: plane_db from plane-host via Docker")
     try:
         proc = subprocess.run(
             full_cmd, shell=True, capture_output=True, text=True, timeout=300
@@ -433,13 +433,13 @@ def run_daily():
         r = backup_sqlite(path, daily_dir, name)
         results.append(r)
 
-    # Postgres on CT300
+    # Postgres on postgres-host
     for db in POSTGRES_DBS:
         db_pass = os.environ.get(db.get("pass_env", ""), "") if db.get("pass_env") else ""
         r = backup_postgres(db["name"], db["ct_id"], db["user"], daily_dir, db_pass=db_pass)
         results.append(r)
 
-    # Plane Postgres (Docker on CT315)
+    # Plane Postgres (Docker on plane-host)
     r = backup_plane_postgres(daily_dir)
     results.append(r)
 

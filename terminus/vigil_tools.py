@@ -3,10 +3,10 @@ import json
 
 # ============================================================
 # Vigil Tools (Vigil / formerly Agent Briefly)
-# MCP tools that trigger briefing generation on CT310 and
+# MCP tools that trigger briefing generation on fleet-host and
 # check status. IronClaw routines call these to generate
 # briefings on demand.
-# Runs on CT214, SSHes to CT310 to execute briefing.py.
+# Runs on terminus-host, SSHes to fleet-host to execute briefing.py.
 # ============================================================
 
 VIGIL_HOST = "root@YOUR_FLEET_SERVER_IP"
@@ -14,7 +14,7 @@ VIGIL_SCRIPT = "/usr/bin/python3 /opt/lumina-fleet/vigil/briefing.py"
 
 
 def _ssh_exec(cmd, timeout=120):
-    """Execute a command on CT310 via SSH."""
+    """Execute a command on fleet-host via SSH."""
     full_cmd = f"ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no {VIGIL_HOST} '{cmd}'"
     try:
         result = subprocess.run(
@@ -31,7 +31,7 @@ def register_vigil_tools(mcp):
 
     @mcp.tool()
     def vigil_generate(briefing_type: str = "morning") -> dict:
-        """Generate a briefing by triggering Vigil on CT310.
+        """Generate a briefing by triggering Vigil on fleet-host.
         briefing_type: 'morning' or 'afternoon'.
         Gathers live data (news, weather, commute, crypto, sports),
         formats with Haiku, and writes to Gitea lumina-vigil repo.
@@ -75,7 +75,7 @@ def register_vigil_tools(mcp):
         if briefing_type not in ("morning", "afternoon"):
             return {"error": f"Invalid briefing type: {briefing_type}. Use 'morning' or 'afternoon'."}
 
-        # Check if the file exists on Gitea by reading its metadata via CT310
+        # Check if the file exists on Gitea by reading its metadata via fleet-host
         check_cmd = (
             f"source /opt/briefing-agent/.infisical-auth && "
             f"TOKEN=$(curl -s -X POST $INFISICAL_URL/api/v1/auth/universal-auth/login "

@@ -3,7 +3,7 @@
 Crucible — Learning & Skills Tracker
 Tracks courses, books, certs, hobbies, and reading queue.
 All data in Engram (sqlite-vec). No external backend needed.
-CT310 /opt/lumina-fleet/crucible/crucible.py
+fleet-host /opt/lumina-fleet/crucible/crucible.py
 """
 
 import os, sys, json, argparse, re
@@ -247,7 +247,7 @@ h1{{font-size:1.4em;margin-bottom:4px}}.subtitle{{color:#888;font-size:.85em;mar
 {tracks_html or '<p style="color:#555;font-size:.85em">No active tracks yet. Ask Lumina to create one!</p>'}
 <div class="section-title">Reading Queue ({len(reading)} unread)</div>
 <ul class="reading-list">{reading_html or '<li style="color:#555">Queue is empty</li>'}</ul>
-<div class="footer">Crucible v1.0 · CT310 · <a href="http://YOUR_FLEET_SERVER_IP/status/" style="color:#3B82F6">System Status</a></div>
+<div class="footer">Crucible v1.0 · fleet-host · <a href="http://YOUR_FLEET_SERVER_IP/status/" style="color:#3B82F6">System Status</a></div>
 </body></html>'''
 
     path = OUTPUT_DIR / 'index.html'

@@ -12,7 +12,7 @@ from typing import Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeout
 
 # IronClaw gateway token (from DB: channels.gateway_auth_token)
-IRONCLAW_URL = os.environ.get("IRONCLAW_URL", "http://192.168.0.217:3001")
+IRONCLAW_URL = os.environ.get("IRONCLAW_URL", "")
 IRONCLAW_TOKEN = os.environ.get("IRONCLAW_GATEWAY_TOKEN", "")
 
 # ── Cache layer (SP.1) ───────────────────────────────────────────────────────
@@ -192,7 +192,7 @@ def inference_status(x_soma_key: str = Header(default="")):
     _auth(x_soma_key)
     try:
         import urllib.request
-        litellm_url = os.environ.get("LITELLM_URL", "http://192.168.0.215:4000")
+        litellm_url = os.environ.get("LITELLM_URL", "")
         litellm_key = os.environ.get("LITELLM_MASTER_KEY", "")
         req = urllib.request.Request(f"{litellm_url}/v1/models",
             headers={"Authorization": f"Bearer {litellm_key}"})
@@ -248,10 +248,10 @@ def recent_logs(service: str = "soma", lines: int = 100, x_soma_key: str = Heade
     _auth(x_soma_key)
     lines = min(max(1, lines), 500)  # clamp 1–500
 
-    _PVS_HOST = os.environ.get("PVS_SSH_HOST", "root@192.168.0.104")
-    _PVM_HOST = os.environ.get("PVM_SSH_HOST", "root@192.168.0.103")
+    _PVS_HOST = os.environ.get("PVS_SSH_HOST", os.environ.get("PVS_SSH_HOST", ""))
+    _PVM_HOST = os.environ.get("PVM_SSH_HOST", os.environ.get("PVM_SSH_HOST", ""))
 
-    # Local services (Soma runs on CT310, same host)
+    # Local services (Soma runs on fleet host)
     LOCAL_SERVICES = {"soma", "axon", "vigil", "sentinel-health", "sentinel-metrics",
                       "inbox-monitor", "vector", "skill-evolution", "crucible"}
 
@@ -468,7 +468,7 @@ def list_docs(x_soma_key: str = Header(default='')):
 def get_doc(path: str, x_soma_key: str = Header(default='')):
     """Serve documentation from Gitea lumina-docs repo."""
     _auth(x_soma_key)
-    gitea_url = 'http://192.168.0.223:3000'
+    gitea_url = os.environ.get('GITEA_URL', '')
     gitea_token = os.environ.get('GITEA_TOKEN', '')
     # Try to fetch from Gitea first
     try:
@@ -680,11 +680,11 @@ def wizard_scan_status():
             return {'service': name, 'status': 'unreachable', 'detail': str(ex)[:60]}
 
     checks.append(_ping('Soma API', 'http://localhost:8082/health'))
-    checks.append(_ping('LiteLLM', 'http://192.168.0.215:4000/health'))
-    checks.append(_ping('Terminus MCP', 'http://192.168.0.226:8080/health'))
+    checks.append(_ping('LiteLLM', (os.environ.get('LITELLM_URL','') + '/health')))
+    checks.append(_ping('Terminus MCP', (os.environ.get('TERMINUS_MCP_URL','') + '/health')))
 
     try:
-        s = socket.create_connection(('192.168.0.104', 5432), timeout=3)
+        s = socket.create_connection((os.environ.get('INBOX_DB_HOST',''), 5432), timeout=3)
         s.close()
         checks.append({'service': 'Postgres', 'status': 'ok'})
     except Exception as ex:
@@ -739,7 +739,7 @@ def _run_check(fn, timeout=3):
 
 def _check_ironclaw():
     r = subprocess.run(
-        ["ssh", "root@192.168.0.104",
+        ["ssh", os.environ.get("PVS_SSH_HOST", ""),
          "pct exec 305 -- /usr/local/bin/ironclaw --version 2>&1"],
         capture_output=True, text=True, timeout=6
     )
@@ -750,17 +750,17 @@ def _check_ironclaw():
 def _check_active_agents():
     agents = {}
     r = subprocess.run(
-        ["ssh", "root@192.168.0.104", "pct exec 310 -- systemctl is-active axon.service 2>/dev/null"],
+        ["ssh", os.environ.get("PVS_SSH_HOST", ""), "pct exec 310 -- systemctl is-active axon.service 2>/dev/null"],
         capture_output=True, text=True, timeout=6
     )
     agents["axon"] = r.stdout.strip() == "active"
     r2 = subprocess.run(
-        ["ssh", "root@192.168.0.104", "pct exec 310 -- systemctl is-active sentinel-health.timer 2>/dev/null"],
+        ["ssh", os.environ.get("PVS_SSH_HOST", ""), "pct exec 310 -- systemctl is-active sentinel-health.timer 2>/dev/null"],
         capture_output=True, text=True, timeout=6
     )
     agents["sentinel"] = r2.stdout.strip() == "active"
     r3 = subprocess.run(
-        ["ssh", "root@192.168.0.104", "pct exec 310 -- pgrep -f briefing.py 2>/dev/null"],
+        ["ssh", os.environ.get("PVS_SSH_HOST", ""), "pct exec 310 -- pgrep -f briefing.py 2>/dev/null"],
         capture_output=True, text=True, timeout=6
     )
     agents["vigil"] = bool(r3.stdout.strip())
@@ -829,7 +829,7 @@ def _check_engram_facts():
 
 
 def _check_litellm_models():
-    litellm_url = os.environ.get("LITELLM_URL", "http://192.168.0.215:4000")
+    litellm_url = os.environ.get("LITELLM_URL", "")
     litellm_key = os.environ.get("LITELLM_MASTER_KEY", "")
     req = _urlreq_status.Request(
         f"{litellm_url}/v1/models",
@@ -843,7 +843,7 @@ def _check_litellm_models():
 
 def _check_matrix_bridge():
     r = subprocess.run(
-        ["ssh", "root@192.168.0.104",
+        ["ssh", os.environ.get("PVS_SSH_HOST", ""),
          "pct exec 306 -- systemctl is-active matrix-bridge.service 2>/dev/null"],
         capture_output=True, text=True, timeout=6
     )
@@ -856,7 +856,7 @@ def _check_refractor_categories():
     # Strategy: grep for top-level dict keys that look like category names
     # These appear as '    "categoryname": [' or '    "categoryname": {'
     r = subprocess.run(
-        ["ssh", "root@192.168.0.104",
+        ["ssh", os.environ.get("PVS_SSH_HOST", ""),
          "pct exec 305 -- python3 -c \""
          "import re, sys; "
          "src=open('/usr/local/bin/llm-proxy.py').read(); "
@@ -1083,7 +1083,7 @@ def list_sessions(page: int = 1, limit: int = 20, x_soma_key: str = Header(defau
     _auth(x_soma_key)
     limit = min(limit, 100)
     offset = (page - 1) * limit
-    _PVS_HOST = os.environ.get("PVS_SSH_HOST", "root@192.168.0.104")
+    _PVS_HOST = os.environ.get("PVS_SSH_HOST", os.environ.get("PVS_SSH_HOST", ""))
     _IC_CT = os.environ.get("IRONCLAW_CT", "305")
     try:
         # Query IronClaw SQLite DB on the agent host via SSH
@@ -1270,7 +1270,7 @@ def _get_skill_stats(skill_dir: Path):
 
 @app.get("/api/skills")
 def list_skills(status: str = "all", x_soma_key: str = Header(default="")):
-    """List skills from CT310 filesystem. Handles flat .md files and SKILL.md subdirs."""
+    """List skills from fleet host filesystem. Handles flat .md files and SKILL.md subdirs."""
     _auth(x_soma_key)
     skills_base = FLEET_DIR / "skills"
     result = []
@@ -1361,7 +1361,7 @@ def list_plugins(x_soma_key: str = Header(default="")):
     """List plugins from MCP hub /opt/ai-mcp/plugins/ via single batched SSH call."""
     _auth(x_soma_key)
     # First try main tools dir (not plugins subdir — tools live in /opt/ai-mcp/ directly)
-    _PVM_HOST = os.environ.get("PVM_SSH_HOST", "root@192.168.0.103")
+    _PVM_HOST = os.environ.get("PVM_SSH_HOST", os.environ.get("PVM_SSH_HOST", ""))
     _TERMINUS_CT = os.environ.get("TERMINUS_CT", "214")
     try:
         # Single batched command: list files + tool counts + server.py registrations

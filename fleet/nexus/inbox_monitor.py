@@ -2,7 +2,7 @@
 """
 Inbox Monitor — replaces inbox-monitor IronClaw routine
 Direct SQL on Postgres. Zero inference. Sends Matrix alert on critical messages.
-CT310 /opt/lumina-fleet/nexus/inbox_monitor.py
+fleet-host /opt/lumina-fleet/nexus/inbox_monitor.py
 """
 import os, sys, json, urllib.request, time
 from datetime import datetime, timedelta

@@ -4,7 +4,7 @@ Cortex — Code Intelligence Engine for Lumina Constellation.
 Wraps code-review-graph (Tree-sitter AST) for blast-radius analysis,
 structural review, and external repo auditing.
 
-CT310 /opt/lumina-fleet/cortex/cortex.py
+fleet-host /opt/lumina-fleet/cortex/cortex.py
 """
 
 import os

@@ -51,12 +51,12 @@ def refresh_status() -> dict:
     Probe all Constellation services. Returns structured status dict.
     Pure Python — $0 inference cost.
     """
-    ironclaw_url  = os.environ.get('IRONCLAW_URL', 'http://192.168.0.217:3001')
+    ironclaw_url  = os.environ.get('IRONCLAW_URL', '')
     ironclaw_token = os.environ.get('IRONCLAW_GATEWAY_TOKEN', '')
-    litellm_url   = os.environ.get('LITELLM_URL', 'http://192.168.0.215:4000')
+    litellm_url   = os.environ.get('LITELLM_URL', '')
     litellm_key   = os.environ.get('LITELLM_MASTER_KEY', '')
     nexus_db_url  = os.environ.get('NEXUS_API_URL', 'http://localhost:8083')
-    matrix_url    = os.environ.get('MATRIX_URL', 'http://192.168.0.208:8008')
+    matrix_url    = os.environ.get('MATRIX_URL', '')
 
     services = {}
     overall_ok = True
@@ -97,7 +97,7 @@ def refresh_status() -> dict:
         'error': mx_data.get('error') if not mx_ok else None,
     }
 
-    # Nexus (local DB-backed service on CT310)
+    # Nexus (local DB-backed service on fleet host)
     nx_ok, nx_data, nx_ms = _probe_http(f'{nexus_db_url}/health')
     services['nexus'] = {
         'name': 'Nexus', 'ok': nx_ok,

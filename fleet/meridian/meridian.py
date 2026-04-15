@@ -128,7 +128,7 @@ h3{{color:#aaa;font-size:.85em;text-transform:uppercase;letter-spacing:.1em;marg
 <table><tr><th>Asset</th><th>Qty</th><th>Avg Entry</th><th>Current</th><th>P&amp;L</th></tr>
 {positions_html or "<tr><td colspan='5' style='color:#555;text-align:center'>No open positions</td></tr>"}
 </table></div>
-<div class="footer">Meridian v1.0 · SIMULATED · CT310 · <a href="http://YOUR_FLEET_SERVER_IP/" style="color:#3B82F6">Lumina Home</a></div>
+<div class="footer">Meridian v1.0 · SIMULATED · fleet-host · <a href="http://YOUR_FLEET_SERVER_IP/" style="color:#3B82F6">Lumina Home</a></div>
 </body></html>'''
 
     (OUTPUT_DIR / 'index.html').write_text(html)

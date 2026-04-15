@@ -4,14 +4,14 @@ import os
 
 # ============================================================
 # Engram Tools -- Semantic Memory System
-# MCP tools for querying and writing to Engram memory on CT310.
-# Runs on CT214, SSHes to CT310 to execute engram.py.
+# MCP tools for querying and writing to Engram memory on fleet-host.
+# Runs on terminus-host, SSHes to fleet-host to execute engram.py.
 # Multi-claw: uses LUMINA_AGENT_ID from server.py context
 #             to scope reads/writes to the calling agent.
 #
 # Provider interface: MEMORY_PROVIDER env var selects backend.
-# Default: 'engram' (direct SSH to CT310).
-# Alternative: 'honcho' (Honcho REST API on CT310:8100).
+# Default: 'engram' (direct SSH to fleet-host).
+# Alternative: 'honcho' (Honcho REST API on fleet-host:8100).
 # ============================================================
 
 ENGRAM_HOST = 'root@YOUR_FLEET_SERVER_IP'

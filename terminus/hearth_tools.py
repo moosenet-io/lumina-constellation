@@ -2,7 +2,7 @@ import subprocess, json, os
 
 # ============================================================
 # Hearth Tools — Kitchen Management via Grocy
-# CT214 SSHes to CT310, calls Grocy at 172.17.0.1:9283
+# terminus-host SSHes to fleet-host, calls Grocy at 172.17.0.1:9283
 # ============================================================
 
 HEARTH_HOST = 'root@YOUR_FLEET_SERVER_IP'

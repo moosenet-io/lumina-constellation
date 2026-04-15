@@ -1,7 +1,7 @@
 """
-soma_tools.py — Soma Admin Panel MCP tools for Terminus (CT214)
+soma_tools.py — Soma Admin Panel MCP tools for Terminus (terminus-host)
 7 tools for managing the Lumina Constellation admin panel.
-Soma runs on CT310:8082. Auth via X-Soma-Key header.
+Soma runs on fleet-host:8082. Auth via X-Soma-Key header.
 """
 
 import os

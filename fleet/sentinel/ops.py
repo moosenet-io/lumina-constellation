@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Agent Ops — MooseNet Operational Monitoring Sub-Agent
-Runs on CT310. Performs health checks, system snapshots, and logging
+Runs on fleet-host. Performs health checks, system snapshots, and logging
 using Prometheus metrics + direct API calls + local Qwen for summarization.
 Writes results to Gitea repos.
 
@@ -271,7 +271,7 @@ def op_vm901_watchdog(secrets):
     status = "healthy" if gpu_ok else "degraded"
     report = f"# VM901 Watchdog — {now.strftime('%Y-%m-%d %H:%M PT')}\n\n**Status:** {status}\n\n"
     report += f"## GPU Ollama (VM901)\n- {'✅ Models: ' + ', '.join(checks['gpu_ollama']['models']) if gpu_ok else '❌ ' + checks['gpu_ollama'].get('error', '?')}\n"
-    report += f"\n## CPU Ollama (CT110)\n- {'✅ Models: ' + ', '.join(checks['cpu_ollama']['models']) if checks['cpu_ollama']['status'] == 'healthy' else '❌ ' + checks['cpu_ollama'].get('error', '?')}\n"
+    report += f"\n## CPU Ollama (ollama-cpu-host)\n- {'✅ Models: ' + ', '.join(checks['cpu_ollama']['models']) if checks['cpu_ollama']['status'] == 'healthy' else '❌ ' + checks['cpu_ollama'].get('error', '?')}\n"
     report += f"\n## Node Health\n"
     for name, info in targets.items():
         report += f"- {'✅' if info['up'] else '❌'} {name} (node_exporter)\n"

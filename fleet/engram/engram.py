@@ -3,7 +3,7 @@
 Engram — Semantic memory system for Lumina agents.
 Three layers: knowledge base (facts), activity journal (events), patterns (conventions).
 Uses sqlite-vec for embedding storage and cosine similarity search.
-CT310 /opt/lumina-fleet/engram/engram.py
+fleet-host /opt/lumina-fleet/engram/engram.py
 """
 
 import os
