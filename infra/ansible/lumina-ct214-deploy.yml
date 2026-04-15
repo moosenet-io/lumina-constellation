@@ -10,7 +10,7 @@
 # Prerequisites:
 #   - CT214 running Debian/Ubuntu
 #   - SSH access as root
-#   - Gitea accessible at http://192.168.0.223:3000
+#   - Gitea accessible at http://YOUR_GITEA_HOST_IP:3000
 #   - /opt/ai-mcp/.env populated with secrets (not in this playbook)
 #   - socat or ironclaw stdio bridge on CT305 configured separately
 
@@ -19,8 +19,8 @@
   become: true
   vars:
     mcp_dir: /opt/ai-mcp
-    terminus_repo: http://192.168.0.223:3000/moosenet/lumina-terminus.git
-    fleet_repo: http://192.168.0.223:3000/moosenet/lumina-constellation.git
+    terminus_repo: http://YOUR_GITEA_HOST_IP:3000/moosenet/lumina-terminus.git
+    fleet_repo: http://YOUR_GITEA_HOST_IP:3000/moosenet/lumina-constellation.git
     fleet_branch: main
     python_bin: /usr/bin/python3
     mcp_port: 8080

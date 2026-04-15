@@ -18,7 +18,7 @@
   become: true
   vars:
     fleet_dir: /opt/lumina-fleet
-    fleet_repo: http://192.168.0.223:3000/moosenet/lumina-constellation.git
+    fleet_repo: http://YOUR_GITEA_HOST_IP:3000/moosenet/lumina-constellation.git
     fleet_branch: main
     fleet_user: root
     python_bin: /usr/bin/python3
