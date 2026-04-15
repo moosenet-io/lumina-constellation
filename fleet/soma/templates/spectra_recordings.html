@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Spectra — Recordings{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Spectra Recordings</h1>
+  <p class="page-subtitle">Session replay using rrweb (7-day retention)</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>Recorded Sessions</h3>
+    <div style="display:flex;gap:0.5rem">
+      <button class="btn btn-secondary btn-sm"
+              hx-get="/api/spectra/recordings" hx-target="#recordings-list" hx-swap="innerHTML">
+        Refresh
+      </button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div id="recordings-list"
+         hx-get="/api/spectra/recordings" hx-trigger="load" hx-swap="innerHTML">
+      <span class="text-secondary">Loading recordings...</span>
+    </div>
+  </div>
+</div>
+
+<!-- Playback panel -->
+<div class="card" style="margin-top:1.5rem" id="playback-panel" style="display:none">
+  <div class="card-header">
+    <h3 id="playback-title">Playback</h3>
+    <button class="btn btn-secondary btn-sm" onclick="closePlayback()">Close</button>
+  </div>
+  <div class="card-body">
+    <!-- rrweb-player loaded from vendored files (no CDN) -->
+    <script src="/rrweb-player.min.js"></script>
+    <link rel="stylesheet" href="/rrweb-player.css">
+    <div id="rrweb-player-container"></div>
+    <p class="text-secondary text-sm" style="margin-top:0.5rem">
+      Playback uses rrweb-player (vendored, no external CDN).
+    </p>
+  </div>
+</div>
+
+<script>
+document.body.addEventListener('htmx:afterSwap', function(e) {
+  if (e.detail.target.id === 'recordings-list') {
+    try {
+      const d = JSON.parse(e.detail.xhr.response);
+      const recs = d.recordings || [];
+      if (recs.length === 0) {
+        e.detail.target.innerHTML = `
+          <div class="alert alert-info">
+            No recordings yet. Sessions are recorded automatically when Spectra navigates.
+            Recordings are kept for 7 days.
+          </div>`;
+        return;
+      }
+      const rows = recs.map(r => `
+        <div class="table-row" style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid var(--border)">
+          <div>
+            <span class="font-mono text-sm">${r.session_id}</span>
+            <span class="text-secondary text-sm" style="margin-left:1rem">
+              ${new Date(r.modified).toLocaleString()} · ${(r.size_bytes/1024).toFixed(1)} KB
+            </span>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="loadRecording('${r.session_id}')">
+            Play
+          </button>
+        </div>`).join('');
+      e.detail.target.innerHTML = `<div>${rows}</div>`;
+    } catch(err) {
+      e.detail.target.innerHTML = '<div class="text-secondary">Could not load recordings</div>';
+    }
+  }
+});
+
+function loadRecording(sessionId) {
+  document.getElementById('playback-panel').style.display = 'block';
+  document.getElementById('playback-title').textContent = 'Playback: ' + sessionId;
+  document.getElementById('rrweb-player-container').innerHTML =
+    '<div class="text-secondary text-sm">Recording playback requires Spectra service connection.</div>';
+}
+
+function closePlayback() {
+  document.getElementById('playback-panel').style.display = 'none';
+}
+</script>
+{% endblock %}

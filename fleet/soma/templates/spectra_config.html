@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Spectra — Config{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Spectra Config</h1>
+  <p class="page-subtitle">Consumer access control, rate limits, audit log</p>
+</div>
+
+<!-- Consumer Access Table -->
+<div class="card">
+  <div class="card-header">
+    <h3>Consumer Access</h3>
+    <small class="text-secondary">Changes hot-reload within ~5s — no container restart needed</small>
+  </div>
+  <div class="card-body">
+    <div id="consumer-table"
+         hx-get="/api/spectra/config" hx-trigger="load" hx-swap="innerHTML">
+      <span class="text-secondary">Loading consumer config...</span>
+    </div>
+  </div>
+</div>
+
+<!-- Audit Log -->
+<div class="card" style="margin-top:1.5rem">
+  <div class="card-header">
+    <h3>Audit Log</h3>
+    <div style="display:flex;gap:0.5rem">
+      <select id="audit-filter-key" class="form-control form-control-sm" style="width:auto">
+        <option value="">All consumers</option>
+        <option>MY.1</option><option>MY.2</option><option>MY.4</option>
+        <option>MY.5</option><option>MY.6</option><option>MY.7</option>
+      </select>
+      <select id="audit-filter-action" class="form-control form-control-sm" style="width:auto">
+        <option value="">All actions</option>
+        <option>navigate</option><option>screenshot</option>
+        <option>extract_text</option><option>accessibility_snapshot</option>
+        <option>store_content</option><option>hitl_request</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="loadAudit()">Filter</button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div id="audit-log">
+      <span class="text-secondary">Select filters and click Filter to load audit log.</span>
+    </div>
+  </div>
+</div>
+
+<script>
+document.body.addEventListener('htmx:afterSwap', function(e) {
+  if (e.detail.target.id === 'consumer-table') {
+    try {
+      const d = JSON.parse(e.detail.xhr.response);
+      const consumers = d.config ? d.config.consumers || {} : {};
+      if (!Object.keys(consumers).length) {
+        e.detail.target.innerHTML = '<div class="text-secondary">No consumer config available</div>';
+        return;
+      }
+      const headerRow = `<div class="table-row table-header" style="display:grid;grid-template-columns:80px 1fr 80px 100px 100px;gap:1rem;padding:0.5rem 0;font-weight:600;border-bottom:2px solid var(--border)">
+        <span>Key</span><span>Consumer</span><span>Enabled</span><span>Budget/Day</span><span>Rate/s</span>
+      </div>`;
+      const rows = Object.entries(consumers).map(([key, c]) => `
+        <div class="table-row" style="display:grid;grid-template-columns:80px 1fr 80px 100px 100px;gap:1rem;padding:0.4rem 0;border-bottom:1px solid var(--border)">
+          <span class="font-mono text-sm">${key}</span>
+          <span>${c.name || '—'}</span>
+          <span class="badge ${c.enabled ? 'badge-success' : 'badge-warning'}">${c.enabled ? 'On' : 'Off'}</span>
+          <span class="text-secondary text-sm">${c.daily_budget < 0 ? '∞' : c.daily_budget}</span>
+          <span class="text-secondary text-sm">${c.rate_limit_per_sec}</span>
+        </div>`).join('');
+      e.detail.target.innerHTML = `<div>${headerRow}${rows}</div>
+        <p class="text-secondary text-sm" style="margin-top:0.75rem">
+          Edit /opt/spectra/spectra_config.yaml to change limits — auto-reloaded within ~5s.
+        </p>`;
+    } catch(err) {
+      e.detail.target.innerHTML = '<div class="text-secondary">Could not parse config</div>';
+    }
+  }
+});
+
+function loadAudit() {
+  const key = document.getElementById('audit-filter-key').value;
+  const action = document.getElementById('audit-filter-action').value;
+  const container = document.getElementById('audit-log');
+  container.innerHTML = '<span class="text-secondary">Loading...</span>';
+
+  fetch(`/api/spectra/audit?filter_key=${key}&action=${action}&limit=50`, {
+    headers: {'X-Soma-Key': window.__somaKey || ''}
+  }).then(r => r.json()).then(d => {
+    const entries = d.entries || [];
+    if (!entries.length) {
+      container.innerHTML = '<div class="text-secondary">No matching audit entries</div>';
+      return;
+    }
+    const rows = entries.slice().reverse().map(e => `
+      <div style="display:grid;grid-template-columns:140px 60px 1fr 80px;gap:0.5rem;padding:0.3rem 0;border-bottom:1px solid var(--border);font-size:0.8rem">
+        <span class="text-secondary">${e.ts ? e.ts.slice(0,19) : '?'}</span>
+        <span class="font-mono">${e.consumer_key}</span>
+        <span>${e.action} ${e.url ? '→ ' + (e.url.slice(0,30)) : ''}</span>
+        <span class="badge ${e.status < 300 ? 'badge-success' : 'badge-warning'}">${e.status}</span>
+      </div>`).join('');
+    container.innerHTML = `<div>${rows}</div>`;
+  }).catch(err => {
+    container.innerHTML = `<div class="text-secondary">Error: ${err}</div>`;
+  });
+}
+</script>
+{% endblock %}

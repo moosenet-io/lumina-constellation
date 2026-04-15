@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Spectra — Browser Agent{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Spectra</h1>
+  <p class="page-subtitle">Browser automation agent — Live View, sessions, usage</p>
+</div>
+
+<!-- Status bar -->
+<div id="spectra-status" class="card" style="margin-bottom:1rem;"
+     hx-get="/api/spectra/status" hx-trigger="load, every 10s" hx-swap="innerHTML">
+  <div class="card-body"><span class="text-secondary">Loading Spectra status...</span></div>
+</div>
+
+<script>
+document.body.addEventListener('htmx:afterSwap', function(e) {
+  if (e.detail.target.id === 'spectra-status') {
+    try {
+      const d = JSON.parse(e.detail.xhr.response);
+      const h = d.health || {};
+      const sessions = d.sessions || [];
+      const ok = d.ok;
+      const chromiumOk = h.chromium === true;
+      e.detail.target.innerHTML = `
+        <div class="card-body">
+          <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center">
+            <span class="badge ${ok ? 'badge-success' : 'badge-error'}">
+              ${ok ? '● Online' : '● Offline'}
+            </span>
+            <span class="badge ${chromiumOk ? 'badge-success' : 'badge-warning'}">
+              Chromium: ${chromiumOk ? 'Ready' : 'Not Ready'}
+            </span>
+            <span class="text-secondary">${sessions.length} active session${sessions.length !== 1 ? 's' : ''}</span>
+            <span class="text-secondary">Uptime: ${h.uptime_s ? Math.floor(h.uptime_s/60) + 'm' : '?'}</span>
+          </div>
+        </div>`;
+    } catch(err) {
+      e.detail.target.innerHTML = '<div class="card-body text-secondary">Status unavailable</div>';
+    }
+  }
+});
+</script>
+
+<div class="grid-2" style="gap:1.5rem">
+
+  <!-- Live View (BA.8) -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Live View</h3>
+      <small class="text-secondary">Browser stream (requires active headed session)</small>
+    </div>
+    <div class="card-body" style="padding:0;background:#000;border-radius:0 0 8px 8px;">
+      {% if spectra_url %}
+      <iframe
+        id="spectra-livview"
+        src="about:blank"
+        style="width:100%;height:400px;border:none;background:#111;"
+        allowfullscreen>
+      </iframe>
+      <div style="padding:0.75rem;display:flex;gap:0.75rem;align-items:center">
+        <button class="btn btn-primary btn-sm" onclick="startLiveView()">Start Live View</button>
+        <button class="btn btn-secondary btn-sm" onclick="stopLiveView()">Stop</button>
+        <span id="live-status" class="text-secondary text-sm">Click to start</span>
+      </div>
+      {% else %}
+      <div style="height:200px;display:flex;align-items:center;justify-content:center;color:var(--text-secondary)">
+        SPECTRA_URL not configured
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Active Sessions -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Active Sessions</h3>
+      <button class="btn btn-secondary btn-sm"
+              hx-get="/api/spectra/status" hx-target="#sessions-list" hx-swap="innerHTML">
+        Refresh
+      </button>
+    </div>
+    <div class="card-body" id="sessions-list">
+      <div class="text-secondary text-sm">Loading...</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Usage chart placeholder -->
+<div class="card" style="margin-top:1.5rem">
+  <div class="card-header"><h3>Daily Usage</h3></div>
+  <div class="card-body" id="spectra-usage">
+    <div hx-get="/api/spectra/audit" hx-trigger="load" hx-swap="innerHTML">
+      <span class="text-secondary">Loading audit data...</span>
+    </div>
+  </div>
+</div>
+
+<script>
+function startLiveView() {
+  const iframe = document.getElementById('spectra-livview');
+  const status = document.getElementById('live-status');
+  // Note: Direct noVNC access goes through Soma WebSocket proxy (BA.8)
+  iframe.src = '/ws/spectra/novnc';
+  status.textContent = 'Connecting...';
+}
+function stopLiveView() {
+  document.getElementById('spectra-livview').src = 'about:blank';
+  document.getElementById('live-status').textContent = 'Stopped';
+}
+
+// Render sessions list when status loads
+document.body.addEventListener('htmx:afterSwap', function(e) {
+  if (e.detail.target.id === 'sessions-list') {
+    try {
+      const d = JSON.parse(e.detail.xhr.response);
+      const sessions = (d.sessions || []).filter(s => s.state === 'active');
+      if (sessions.length === 0) {
+        e.detail.target.innerHTML = '<div class="text-secondary text-sm">No active sessions</div>';
+        return;
+      }
+      const rows = sessions.map(s => `
+        <div class="table-row">
+          <span class="font-mono text-sm">${s.id}</span>
+          <span class="text-secondary text-sm">${s.consumer}</span>
+          <span class="text-secondary text-sm">${s.url ? s.url.slice(0,40) : '—'}</span>
+          <span class="badge badge-success">${s.state}</span>
+        </div>`).join('');
+      e.detail.target.innerHTML = `<div class="table">${rows}</div>`;
+    } catch(err) {}
+  }
+});
+</script>
+{% endblock %}

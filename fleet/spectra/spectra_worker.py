@@ -16,6 +16,14 @@ from typing import Optional
 
 DATA_DIR = Path(os.environ.get("SPECTRA_DATA", "/data/spectra"))
 DISPLAY = os.environ.get("DISPLAY", ":99")
+STATIC_DIR = Path("/app/static")
+
+# Read rrweb.min.js once at startup for injection
+_RRWEB_JS = ""
+try:
+    _RRWEB_JS = (STATIC_DIR / "rrweb.min.js").read_text()
+except Exception:
+    pass  # rrweb not available; recording disabled
 
 
 class SpectraWorker:
@@ -73,13 +81,20 @@ class SpectraWorker:
             self._pages[session_id] = page
             self._recordings[session_id] = []
 
-            # Inject rrweb for recording
-            await page.add_init_script("""
-                if (typeof window.__rrweb_recording === 'undefined') {
-                    window.__rrweb_recording = [];
-                    window.__rrweb_flush = function() { return window.__rrweb_recording; };
-                }
-            """)
+            # Inject rrweb for recording (vendored, no CDN)
+            if _RRWEB_JS:
+                await page.add_init_script(script=_RRWEB_JS)
+                await page.add_init_script("""
+                    if (typeof window.__rrweb_recording === 'undefined') {
+                        window.__rrweb_recording = [];
+                        if (typeof rrweb !== 'undefined') {
+                            rrweb.record({
+                                emit(event) { window.__rrweb_recording.push(event); }
+                            });
+                        }
+                        window.__rrweb_flush = function() { return window.__rrweb_recording; };
+                    }
+                """)
         return self._contexts[session_id]
 
     async def navigate(self, session_id: str, url: str, headed: bool = False) -> dict:
@@ -88,6 +103,28 @@ class SpectraWorker:
         response = await page.goto(url, wait_until="networkidle", timeout=30000)
         title = await page.title()
         status = response.status if response else 0
+
+        # Inject rrweb and start recording AFTER page load (more reliable than init_script)
+        if _RRWEB_JS and session_id in self._recordings:
+            try:
+                await page.evaluate(_RRWEB_JS)
+                await page.evaluate("""
+                    () => {
+                        if (window.__rrweb_recording === undefined) {
+                            window.__rrweb_recording = [];
+                        }
+                        if (typeof window.rrweb !== 'undefined' && !window.__rrweb_started) {
+                            window.__rrweb_started = true;
+                            window.rrweb.record({
+                                emit(event) { window.__rrweb_recording.push(event); }
+                            });
+                        }
+                        window.__rrweb_flush = function() { return window.__rrweb_recording; };
+                    }
+                """)
+            except Exception:
+                pass
+
         return {"title": title, "status": status, "url": url}
 
     async def screenshot(self, session_id: str) -> str:
@@ -145,14 +182,28 @@ class SpectraWorker:
         return base64.b64encode(buf).decode()
 
     async def save_recording(self, session_id: str) -> Path:
-        """Save rrweb recording to disk."""
+        """Save rrweb recording to disk. Flushes events from page JS."""
         rec_dir = DATA_DIR / "recordings"
         rec_dir.mkdir(parents=True, exist_ok=True)
+
+        # Try to flush events from rrweb in page
         events = self._recordings.get(session_id, [])
+        if session_id in self._pages:
+            try:
+                page_events = await self._pages[session_id].evaluate(
+                    "window.__rrweb_flush ? window.__rrweb_flush() : []"
+                )
+                if isinstance(page_events, list) and page_events:
+                    events = page_events
+                    self._recordings[session_id] = events
+            except Exception:
+                pass
+
         path = rec_dir / f"{session_id}.json"
         path.write_text(json.dumps({
             "session_id": session_id,
             "recorded_at": datetime.now(timezone.utc).isoformat(),
+            "event_count": len(events),
             "events": events,
         }))
         return path
@@ -160,7 +211,7 @@ class SpectraWorker:
     async def close_session(self, session_id: str):
         if session_id in self._pages:
             try:
-                await save_recording(session_id)
+                await self.save_recording(session_id)
             except Exception:
                 pass
             try:
