@@ -15,7 +15,7 @@ system_prompt: |
 routes:
   - type: ollama
     model: deepseek-coder:6.7b
-    endpoint: http://192.168.0.102:11434
+    endpoint: http://YOUR_OLLAMA_HOST:11434
     enabled: true
   - type: litellm
     model: Lumina Fast

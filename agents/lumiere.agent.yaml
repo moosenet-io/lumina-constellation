@@ -21,7 +21,7 @@ routes:
     enabled: true
   - type: ollama
     model: qwen2.5:7b
-    endpoint: http://192.168.0.102:11434
+    endpoint: http://YOUR_OLLAMA_HOST:11434
     enabled: true
 
 tools:
