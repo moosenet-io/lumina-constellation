@@ -271,7 +271,10 @@ class PlaneClient:
         return [i for i in results if i.get("state_detail", {}).get("group") == state]
 
     def get_states(self, project_id: str) -> list:
-        return self.get(f"/workspaces/{WORKSPACE}/projects/{project_id}/states/")
+        data = self.get(f"/workspaces/{WORKSPACE}/projects/{project_id}/states/")
+        if isinstance(data, dict):
+            return data.get("results", list(data.values())[0] if data else [])
+        return data if isinstance(data, list) else []
 
     def get_state_id(self, project_id: str, name: str = "Backlog") -> Optional[str]:
         states = self.get_states(project_id)
