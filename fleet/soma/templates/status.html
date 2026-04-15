@@ -36,4 +36,49 @@
     }
   });
 </script>
+
+<!-- Cortex Code Quality Widget (CTX-P5-3) -->
+<div id="cortex-widget" style="margin-top:1.5rem;">
+  <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
+    <span style="font-size:1rem;font-weight:700;">&#x1F9EC; Code Quality</span>
+    <span style="font-size:0.75rem;color:var(--text-tertiary);">Cortex</span>
+  </div>
+  <div id="cortex-widget-content"
+       hx-get="/api/cortex/summary"
+       hx-trigger="load, every 300s"
+       hx-swap="innerHTML">
+    <div class="card" style="padding:0.75rem;color:var(--text-tertiary);font-size:0.85rem;">Loading Cortex data...</div>
+  </div>
+</div>
+
+<script>
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+  if (evt.detail.target.id !== 'cortex-widget-content') return;
+  try {
+    var data = JSON.parse(evt.detail.target.innerText);
+    if (!data.ok) {
+      evt.detail.target.innerHTML = '<div class="card" style="padding:0.75rem;color:var(--text-tertiary);font-size:0.85rem;">Cortex not available</div>';
+      return;
+    }
+    var statusColor = data.status === 'ok' ? '#3fb950' : data.status === 'warn' ? '#d29922' : '#f85149';
+    var statusLabel = data.status === 'ok' ? 'Clean' : data.status === 'warn' ? 'Issues' : 'Critical';
+    var repoHtml = Object.entries(data.repos || {}).map(function(kv) {
+      var name = kv[0], r = kv[1];
+      var dot = r.issues > 0 ? '&#x1F534;' : '&#x1F7E2;';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.3rem 0;font-size:0.8rem;border-bottom:1px solid var(--bg-tertiary);">' +
+        '<span>' + dot + ' ' + name + '</span>' +
+        '<span style="color:var(--text-secondary);">' + r.files + ' files' + (r.issues ? ' · <span style=\\"color:#f85149;\\">' + r.issues + ' issues</span>' : '') + '</span>' +
+        '</div>';
+    }).join('');
+    evt.detail.target.innerHTML =
+      '<div class="card" style="padding:0.75rem;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">' +
+          '<span style="font-size:0.85rem;color:var(--text-secondary);">' + data.repo_count + ' repos · ' + data.total_files + ' files</span>' +
+          '<span style="font-size:0.8rem;font-weight:700;color:' + statusColor + ';">' + statusLabel + (data.total_issues ? ' (' + data.total_issues + ')' : '') + '</span>' +
+        '</div>' +
+        (repoHtml || '<div style="color:var(--text-tertiary);font-size:0.8rem;">No repos indexed yet</div>') +
+      '</div>';
+  } catch(e) { /* keep loading state if JSON fails */ }
+});
+</script>
 {% endblock %}

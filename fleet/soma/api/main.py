@@ -2561,6 +2561,58 @@ async def spectra_novnc_proxy(websocket):
         await websocket.close()
 
 
+@app.get("/api/cortex/summary")
+def cortex_summary():
+    """Code quality summary from Cortex graph DBs for the dashboard widget."""
+    import sqlite3 as _sqlite3
+
+    CORTEX_GRAPHS_DIR = FLEET_DIR / "cortex" / "graphs"
+    repos = {}
+    total_files = 0
+    total_issues = 0
+
+    try:
+        dbs = list(CORTEX_GRAPHS_DIR.glob("*.db")) if CORTEX_GRAPHS_DIR.exists() else []
+        for db_file in dbs[:5]:  # cap at 5 repos
+            repo_name = db_file.stem
+            try:
+                conn = _sqlite3.connect(str(db_file))
+                cur = conn.cursor()
+                # Try to get file count and issue count from standard crg schema
+                try:
+                    cur.execute("SELECT COUNT(*) FROM files")
+                    file_count = cur.fetchone()[0]
+                except Exception:
+                    file_count = 0
+                try:
+                    cur.execute("SELECT COUNT(*) FROM issues WHERE severity IN ('error','warning')")
+                    issue_count = cur.fetchone()[0]
+                except Exception:
+                    try:
+                        cur.execute("SELECT COUNT(*) FROM issues")
+                        issue_count = cur.fetchone()[0]
+                    except Exception:
+                        issue_count = 0
+                conn.close()
+                repos[repo_name] = {'files': file_count, 'issues': issue_count}
+                total_files += file_count
+                total_issues += issue_count
+            except Exception as e:
+                repos[repo_name] = {'files': 0, 'issues': 0, 'error': str(e)}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "repos": {}}
+
+    status = 'ok' if total_issues == 0 else ('warn' if total_issues < 10 else 'critical')
+    return {
+        "ok": True,
+        "repos": repos,
+        "total_files": total_files,
+        "total_issues": total_issues,
+        "status": status,
+        "repo_count": len(repos),
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     # Load env
