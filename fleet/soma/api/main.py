@@ -582,13 +582,11 @@ jinja2_templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 @app.get("/setup")
-@app.get("/wizard")  # kept for backward compat, redirects to /setup
-def wizard_page():
-    """Setup wizard — 10-step onboarding and configuration flow."""
-    wizard_file = TEMPLATES_DIR / "wizard.html"
-    if wizard_file.exists():
-        return FileResponse(str(wizard_file), media_type="text/html")
-    return HTMLResponse("<h1>Setup not found</h1>", status_code=404)
+@app.get("/wizard")
+def wizard_redirect():
+    """Redirect /wizard → /setup (backward compat)."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/setup", status_code=301)
 
 
 @app.post("/api/setup/accept-disclaimer")
@@ -1266,19 +1264,25 @@ def list_timers(x_soma_key: str = Header(default="")):
         timers = []
         if r.returncode == 0 and r.stdout.strip().startswith("["):
             raw = json.loads(r.stdout)
+            import time as _time
+            now_us = int(_time.time() * 1_000_000)
             for t in raw:
                 name = t.get("unit", "")
                 if not name.endswith(".timer"):
                     continue
+                next_us = t.get("next", 0)
+                last_us = t.get("last", 0)
+                # Timer is active if it has a scheduled future fire time
+                active = bool(next_us and next_us > now_us)
                 timers.append({
                     "name": name,
                     "description": t.get("description", ""),
-                    "active": t.get("active", "") == "active",
-                    "enabled": t.get("enabled", "") in ("enabled", "static"),
-                    "next": _fmt_timer_ts(t.get("next", 0)),
-                    "last": _fmt_timer_ts(t.get("last", 0)),
+                    "active": active,
+                    "enabled": active,  # scheduled = effectively enabled
+                    "next": _fmt_timer_ts(next_us),
+                    "last": _fmt_timer_ts(last_us),
                     "passed": _fmt_timer_ts(t.get("passed", 0)),
-                    "unit": name.replace(".timer", ".service"),
+                    "unit": t.get("activates", name.replace(".timer", ".service")),
                 })
         else:
             # Fallback: parse text output

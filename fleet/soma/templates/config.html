@@ -5,40 +5,114 @@
   <h1 style="font-size:1.5rem;font-weight:700;">⚙️ Configuration</h1>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
-  <div class="card">
-    <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Constellation Config</h2>
-    <div id="constellation-config"
-      hx-get="/api/constellation"
-      hx-trigger="load"
-      hx-swap="innerHTML">
-      <div style="color:var(--text-secondary);">Loading...</div>
+<!-- Tab navigation -->
+<div style="display:flex;gap:0.25rem;margin-bottom:1.5rem;border-bottom:1px solid var(--border-color);">
+  {% for tab in [("general","General"),("modules","Modules"),("inference","Inference"),("channels","Channels"),("secrets","Secrets"),("synapse","Synapse"),("security","Security")] %}
+  <button onclick="switchTab('{{ tab[0] }}')" id="tab-btn-{{ tab[0] }}"
+    style="padding:0.5rem 1rem;border:none;background:none;cursor:pointer;
+           border-bottom:2px solid {% if loop.first %}var(--accent){% else %}transparent{% endif %};
+           color:{% if loop.first %}var(--accent){% else %}var(--text-secondary){% endif %};
+           font-weight:{% if loop.first %}600{% else %}400{% endif %};">
+    {{ tab[1] }}
+  </button>
+  {% endfor %}
+</div>
+
+<div id="tab-general">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+    <div class="card">
+      <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Constellation Config</h2>
+      <div id="constellation-config" hx-get="/api/constellation" hx-trigger="load" hx-swap="innerHTML">
+        <div style="color:var(--text-secondary);">Loading...</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Rename Assistant</h2>
+      <div style="display:flex;gap:0.75rem;">
+        <input type="text" id="agent-name" placeholder="New assistant name..."
+          style="flex:1;padding:0.5rem 0.75rem;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);color:var(--text-primary);">
+        <button hx-put="/api/constellation/agent/lumina/display_name"
+          hx-include="#agent-name" hx-vals='js:{"name":document.getElementById("agent-name").value}'
+          hx-target="#rename-result" class="btn-primary">Rename</button>
+      </div>
+      <div id="rename-result" style="margin-top:0.75rem;"></div>
     </div>
   </div>
-  
+</div>
+
+<div id="tab-modules" style="display:none;">
   <div class="card">
     <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Active Modules</h2>
-    <div id="modules-list"
-      hx-get="/api/modules"
-      hx-trigger="load"
-      hx-swap="innerHTML">
+    <div hx-get="/api/modules" hx-trigger="intersect once" hx-swap="innerHTML">
+      <div style="color:var(--text-secondary);">Click Modules tab to load...</div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-inference" style="display:none;">
+  <div class="card">
+    <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">LiteLLM + Myelin Virtual Keys</h2>
+    <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:1rem;">
+      Consumer budgets and rate limits are configured via Myelin (MY.1–MY.9).
+      Spend tracking via LiteLLM <code>/spend/logs</code>.
+    </p>
+    <div hx-get="/api/config/inference" hx-trigger="intersect once" hx-swap="innerHTML">
+      <div style="color:var(--text-secondary);">Loading inference config...</div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-channels" style="display:none;">
+  <div class="card">
+    <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Channels &amp; Integrations</h2>
+    <div hx-get="/api/config/channels" hx-trigger="intersect once" hx-swap="innerHTML">
+      <div style="color:var(--text-secondary);">Loading channel config...</div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-secrets" style="display:none;">
+  <div class="card">
+    <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Secret Registry</h2>
+    <p style="color:var(--text-secondary);font-size:0.875rem;">Full rotation dashboard: <a href="/security" style="color:var(--accent);">/security</a></p>
+    <div hx-get="/api/security/secrets" hx-trigger="intersect once" hx-swap="innerHTML">
+      <div style="color:var(--text-secondary);">Loading secrets...</div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-synapse" style="display:none;">
+  <div class="card">
+    <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Synapse Toggle</h2>
+    <div hx-get="/api/config/synapse" hx-trigger="intersect once" hx-swap="innerHTML">
+      <div style="color:var(--text-secondary);">Loading Synapse config...</div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-security" style="display:none;">
+  <div class="card">
+    <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Security</h2>
+    <p style="color:var(--text-secondary);">Full security panel at <a href="/security" style="color:var(--accent);">/security</a></p>
+    <div hx-get="/api/security/secrets" hx-trigger="intersect once" hx-swap="innerHTML">
       <div style="color:var(--text-secondary);">Loading...</div>
     </div>
   </div>
 </div>
 
-<div class="card" style="margin-top:1.5rem;">
-  <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Rename Assistant</h2>
-  <div style="display:flex;gap:0.75rem;max-width:480px;">
-    <input type="text" id="agent-name" placeholder="New assistant name..."
-      style="flex:1;padding:0.5rem 0.75rem;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);color:var(--text-primary);">
-    <button
-      hx-put="/api/constellation/agent/lumina/display_name"
-      hx-include="#agent-name"
-      hx-vals='js:{"name": document.getElementById("agent-name").value}'
-      hx-target="#rename-result"
-      class="btn-primary">Rename</button>
-  </div>
-  <div id="rename-result" style="margin-top:0.75rem;"></div>
-</div>
+<script>
+function switchTab(tab) {
+  ['general','modules','inference','channels','secrets','synapse','security'].forEach(t => {
+    const panel = document.getElementById('tab-' + t);
+    const btn = document.getElementById('tab-btn-' + t);
+    if (panel) panel.style.display = (t === tab) ? 'block' : 'none';
+    if (btn) {
+      btn.style.borderBottom = t === tab ? '2px solid var(--accent)' : '2px solid transparent';
+      btn.style.color = t === tab ? 'var(--accent)' : 'var(--text-secondary)';
+      btn.style.fontWeight = t === tab ? '600' : '400';
+    }
+    if (t === tab && panel) htmx.process(panel);
+  });
+}
+</script>
 {% endblock %}
