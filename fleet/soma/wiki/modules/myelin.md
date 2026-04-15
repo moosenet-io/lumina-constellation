@@ -2,7 +2,7 @@
 
 Myelin tracks inference cost across all Lumina agents. It monitors token usage, detects cost runaway, and reports daily summaries. It observes and advises — it never silently blocks inference.
 
-**Deploys to:** CT310 at `/opt/lumina-fleet/myelin/`
+**Deploys to:** <fleet-host> at `/opt/lumina-fleet/myelin/`
 **Trigger:** Passive (hooks into LiteLLM usage logs) + daily report cron
 **Inference cost:** $0 (pure Python — all cost tracking is math)
 

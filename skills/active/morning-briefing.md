@@ -5,7 +5,7 @@ version: 1.0
 author: Peter Boose
 license: MIT
 agent: vigil
-container: CT310
+container: <fleet-host>
 schedule: "06:30 weekdays"
 tags: [briefing, daily, news, calendar, weather]
 ---

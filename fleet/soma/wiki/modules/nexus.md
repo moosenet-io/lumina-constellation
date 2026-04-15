@@ -2,9 +2,9 @@
 
 Nexus is the inter-agent inbox for Lumina Constellation. All communication between Lumina and sub-agents routes through Nexus — no direct peer-to-peer messaging between agents.
 
-**Deploys to:** CT300 (Postgres) + CT214 (MCP tools)
+**Deploys to:** <postgres-host> (Postgres) + <terminus-host> (MCP tools)
 **Inference cost:** $0 — pure Python and SQL
-**Backend:** PostgreSQL on CT300
+**Backend:** PostgreSQL on <postgres-host>
 
 ## What Nexus Does
 
@@ -76,13 +76,13 @@ INBOX_DB_PASS=<from-infisical>
 INBOX_DB_NAME=lumina_nexus
 ```
 
-These are fetched from Infisical (CT221) by `fetch-mcp-secrets.sh` on CT214 before Terminus starts.
+These are fetched from Infisical (<infisical-host>) by `fetch-mcp-secrets.sh` on <terminus-host> before Terminus starts.
 
 ## Architecture Rationale
 
 **No peer-to-peer.** If Vigil wants to notify Sentinel about something, it sends to Lumina via Nexus, and Lumina decides what to do with it. This means any agent can be replaced, restarted, or debugged without breaking the rest of the system.
 
-**Postgres over SQLite.** The inbox needs to be accessible from multiple containers (CT305 reads, CT310 writes). SQLite is single-process only.
+**Postgres over SQLite.** The inbox needs to be accessible from multiple containers (<ironclaw-host> reads, <fleet-host> writes). SQLite is single-process only.
 
 **Priority flags over complex routing.** The inbox is simple by design. Routing logic lives in Axon, not the queue.
 

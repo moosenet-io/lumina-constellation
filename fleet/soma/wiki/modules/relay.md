@@ -8,7 +8,7 @@ Relay connects to LubeLogger to track vehicle service history, fuel logs, and ma
 
 ## Deploys to
 
-CT310 (YOUR_FLEET_SERVER_IP) at `/opt/lumina-fleet/relay/`
+<fleet-host> (YOUR_FLEET_SERVER_IP) at `/opt/lumina-fleet/relay/`
 
 ## MCP Tools
 
@@ -16,4 +16,4 @@ See `terminus/relay_tools.py` for available tools.
 
 ## Status
 
-✅ Backend deployed (LubeLogger/Grocy running on CT310). Data entry needed — see Plane backlog.
+✅ Backend deployed (LubeLogger/Grocy running on <fleet-host>). Data entry needed — see Plane backlog.

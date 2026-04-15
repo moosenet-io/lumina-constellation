@@ -2,7 +2,7 @@
 
 The fleet directory contains all Lumina Constellation sub-agent processes. These are the workers Lumina delegates to — each agent is purpose-built for a specific domain.
 
-**Deploys to:** CT310 (<fleet-server-ip>) at `/opt/lumina-fleet/`
+**Deploys to:** <fleet-host> (<fleet-server-ip>) at `/opt/lumina-fleet/`
 **Managed by:** systemd services per agent
 **Communication:** Agents receive work via Nexus inbox. Results route back through Lumina.
 
@@ -54,7 +54,7 @@ name: vigil
 display_name: "Vigil"
 role: "Morning and evening briefings"
 model: "local/qwen"
-container: CT310
+container: <fleet-host>
 tools: [google, commute, news]
 engram.namespace: agents/vigil
 ```
@@ -89,7 +89,7 @@ This architecture means any agent can be replaced, restarted, or debugged withou
 3. Create a systemd service: `fleet/{name}/{name}.service`
 4. Create the agent definition: `agents/{name}.agent.yaml`
 5. Verify discovery: `python3 /opt/lumina-fleet/shared/agent_loader.py`
-6. Deploy to CT310 and enable the service.
+6. Deploy to <fleet-host> and enable the service.
 
 ---
 

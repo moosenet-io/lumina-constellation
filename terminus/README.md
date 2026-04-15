@@ -2,9 +2,9 @@
 
 Terminus is the MCP (Model Context Protocol) tool hub for Lumina Constellation. It exposes all system capabilities as callable tools that Lumina and other agents use during their reasoning turns.
 
-**Deploys to:** CT214 (<terminus-ip>) at `/opt/ai-mcp/`
+**Deploys to:** <terminus-host> (<terminus-ip>) at `/opt/ai-mcp/`
 **Transport:** FastMCP via stdio
-**Tool count:** 20 modules, 200+ individual tools
+**Tool count:** 20+ modules, 272+ individual tools
 
 For the agents that call these tools, see [fleet/](../fleet/README.md).
 
@@ -33,6 +33,7 @@ For the agents that call these tools, see [fleet/](../fleet/README.md).
 | `dura_tools.py` | Resilience | backup status, smoke test, log summary |
 | `soma_tools.py` | Admin | module status, user config, help lookup |
 | `wizard_tools.py` | Deep reasoning | council_convene, council_result |
+| `skills_tools.py` | Skills | skill_list, skill_get, skill_propose, skill_approve |
 | `server.py` | Server | FastMCP registration, tool discovery |
 
 ---
@@ -42,7 +43,7 @@ For the agents that call these tools, see [fleet/](../fleet/README.md).
 | File | Purpose |
 |------|---------|
 | `server.py` | FastMCP server entry point. Imports and registers all tool modules. |
-| `fetch-mcp-secrets.sh` | Pulls secrets from Infisical (CT221) into `.env` before server start. |
+| `fetch-mcp-secrets.sh` | Pulls secrets from Infisical (<infisical-host>) into `.env` before server start. |
 | `stdio.sh` | Wrapper: sources `.env` with `set -a`, then launches `server.py --stdio`. |
 | `.env` | Runtime secrets (never committed — fetched from Infisical). |
 
@@ -84,24 +85,24 @@ register_sentinel_tools(mcp)
 1. Create `yourmodule_tools.py` in this directory.
 2. Define a `register_yourmodule_tools(mcp)` function containing `@mcp.tool()` decorated functions.
 3. Add the import and registration call to `server.py`.
-4. If new secrets are needed, add stub lines to `.env` and add them to Infisical (CT221, workspace: moosenet-services, env: prod).
-5. Restart the `ai-mcp` systemd service on CT214.
+4. If new secrets are needed, add stub lines to `.env` and add them to Infisical (<infisical-host>, workspace: moosenet-services, env: prod).
+5. Restart the `ai-mcp` systemd service on <terminus-host>.
 
 ---
 
 ## How IronClaw Discovers Tools
 
-IronClaw (the agent runtime on CT305) connects to Terminus via stdio transport using `stdio.sh` as the command. The MCP protocol auto-discovers all registered tools at connection time. Refractor (Smart Proxy) then filters the 200+ tool list down to 17–28 per turn based on keyword categories, keeping each LLM context window lean.
+IronClaw (the agent runtime on <ironclaw-host>) connects to Terminus via stdio transport using `stdio.sh` as the command. The MCP protocol auto-discovers all registered tools at connection time. Refractor (Smart Proxy) then filters the 200+ tool list down to 17–28 per turn based on keyword categories, keeping each LLM context window lean.
 
 ---
 
 ## Configuration
 
-Terminus reads secrets from `.env` via `fetch-mcp-secrets.sh` (pulls from Infisical at CT221):
+Terminus reads secrets from `.env` via `fetch-mcp-secrets.sh` (pulls from Infisical at <infisical-host>):
 
 | Variable | Purpose |
 |----------|---------|
-| `INBOX_DB_HOST` | Nexus Postgres host (CT300) |
+| `INBOX_DB_HOST` | Nexus Postgres host (<postgres-host>) |
 | `INBOX_DB_USER` | Nexus database user |
 | `INBOX_DB_PASS` | Nexus database password |
 | `PLANE_API_TOKEN` | Plane CE API token |
@@ -111,11 +112,11 @@ Terminus reads secrets from `.env` via `fetch-mcp-secrets.sh` (pulls from Infisi
 | `GROCY_API_KEY` | Grocy server API key |
 | `TOMTOM_API_KEY` | TomTom routing API key |
 
-New secrets: add stub line to `.env`, then add to Infisical (CT221, workspace: moosenet-services, env: prod).
+New secrets: add stub line to `.env`, then add to Infisical (<infisical-host>, workspace: moosenet-services, env: prod).
 
 ## History / Lineage
 
-Terminus was originally named "ai-mcp" (the container CT214 still carries that name). The rename to Terminus was adopted in session 11 as part of the Lumina naming consolidation — "Terminus" evokes the hub at the end of all lines, where tools are reached. The tool count has grown from 9 modules (session 1) to 20+ modules and 200+ tools. The plugin loader (`plugin_loader.py`) was added in session 10 to allow drop-in tool extensions without modifying `server.py`.
+Terminus was originally named "ai-mcp" (the container <terminus-host> still carries that name). The rename to Terminus was adopted in session 11 as part of the Lumina naming consolidation — "Terminus" evokes the hub at the end of all lines, where tools are reached. The tool count has grown from 9 modules (session 1) to 20+ modules and 200+ tools. The plugin loader (`plugin_loader.py`) was added in session 10 to allow drop-in tool extensions without modifying `server.py`.
 
 ## Open Source Dependencies
 

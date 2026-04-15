@@ -8,7 +8,7 @@ Hearth connects to Grocy to manage pantry inventory, shopping lists, and meal pl
 
 ## Deploys to
 
-CT310 (YOUR_FLEET_SERVER_IP) at `/opt/lumina-fleet/hearth/`
+<fleet-host> (YOUR_FLEET_SERVER_IP) at `/opt/lumina-fleet/hearth/`
 
 ## MCP Tools
 
@@ -16,4 +16,4 @@ See `terminus/hearth_tools.py` for available tools.
 
 ## Status
 
-✅ Backend deployed (LubeLogger/Grocy running on CT310). Data entry needed — see Plane backlog.
+✅ Backend deployed (LubeLogger/Grocy running on <fleet-host>). Data entry needed — see Plane backlog.

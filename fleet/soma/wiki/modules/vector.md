@@ -1,8 +1,8 @@
 # Vector — Autonomous Dev Agent
 
-Vector runs autonomous development loops on CT310. It receives a spec or task via Nexus, writes code, runs tests, iterates based on feedback, and commits when tests pass.
+Vector runs autonomous development loops on <fleet-host>. It receives a spec or task via Nexus, writes code, runs tests, iterates based on feedback, and commits when tests pass.
 
-**Deploys to:** CT310 at `/opt/lumina-fleet/vector/`
+**Deploys to:** <fleet-host> at `/opt/lumina-fleet/vector/`
 **Trigger:** Nexus work order from Lumina or Axon
 **Inference cost:** Cloud (Claude Code / Sonnet) — Vector tasks are genuine reasoning work
 
@@ -61,4 +61,4 @@ Vector uses Claude Code (itself) as its inference engine. It calls Terminus tool
 
 - [Nexus](nexus.md) — how Vector receives work
 - [Axon](axon.md) — work queue manager that dispatches to Vector
-- ARCADE source: `~/arcade/` on CT212 (legacy, being consolidated)
+- ARCADE source: `~/arcade/` on <dev-host> (legacy, being consolidated)

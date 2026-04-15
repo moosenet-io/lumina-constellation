@@ -8,7 +8,7 @@ This guide covers migrating from the legacy ARCADE dev loop to Vector (the Lumin
 |-|--------|--------|
 | Name | ARCADE | Vector |
 | Identity | `_dn("arcade")` / constellation | `_dn("vector")` / constellation |
-| Deployment | CT310 `/opt/lumina-fleet/vector/` | Same path (in-place) |
+| Deployment | <fleet-host> `/opt/lumina-fleet/vector/` | Same path (in-place) |
 | Modes | Single (standalone) | Standalone + Integrated |
 | Task state | SQLite | SQLite (standalone) or Plane PX (integrated) |
 | Messaging | Stdout / Matrix | Stdout (standalone) or Nexus (integrated) |
@@ -20,7 +20,7 @@ This guide covers migrating from the legacy ARCADE dev loop to Vector (the Lumin
 
 The constellation identity system handles display names automatically. No hardcoded changes needed in calling code — use `_dn("vector")` in Vector's own code.
 
-## Tool Name Changes (CT214)
+## Tool Name Changes (<terminus-host>)
 
 | Old MCP Tool | New MCP Tool |
 |-------------|-------------|
@@ -28,7 +28,7 @@ The constellation identity system handles display names automatically. No hardco
 | `arcade_status` | `vector_status` |
 | `arcade_cost` | `vector_cost` |
 
-The underlying implementation in `vector_tools.py` on CT214 is already updated.
+The underlying implementation in `vector_tools.py` on <terminus-host> is already updated.
 
 ## Reflexa Hook Migration
 
@@ -66,11 +66,11 @@ Axon automatically handles both formats via the action-merge fix.
 ## Verifying Migration
 
 ```bash
-# On CT310 — test Vector CLI
+# On <fleet-host> — test Vector CLI
 cd /opt/lumina-fleet/vector
 python3 vector.py status
 
-# On CT214 — test MCP tool
+# On <terminus-host> — test MCP tool
 python3 -c "
 import sys; sys.path.insert(0, '/opt/ai-mcp')
 from vector_tools import register_vector_tools

@@ -1,8 +1,8 @@
 # Soma — Web Admin Panel
 
-Soma is the web admin panel for Lumina Constellation. It provides module configuration, status monitoring, conversation review, session management, and this wiki. It runs as a FastAPI service on CT310.
+Soma is the web admin panel for Lumina Constellation. It provides module configuration, status monitoring, conversation review, session management, and this wiki. It runs as a FastAPI service on <fleet-host>.
 
-**Deploys to:** CT310 at `/opt/lumina-fleet/soma/`
+**Deploys to:** <fleet-host> at `/opt/lumina-fleet/soma/`
 **Port:** 8082
 **Auth:** X-Soma-Key header (set via `SOMA_SECRET_KEY` env var)
 
@@ -39,7 +39,7 @@ Soma is the web admin panel for Lumina Constellation. It provides module configu
 - Manual trigger
 
 ### Plugins (`/plugins`)
-- Browse MCP tool modules on CT214
+- Browse MCP tool modules on <terminus-host>
 - View tool counts per module
 - Enable/disable status
 
@@ -67,7 +67,7 @@ All API endpoints require `X-Soma-Key` header.
 ## Running Soma
 
 ```bash
-# On CT310
+# On <fleet-host>
 systemctl status soma
 systemctl restart soma
 journalctl -u soma -f

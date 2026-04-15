@@ -2,7 +2,7 @@
 
 Axon is the work queue manager for Lumina Constellation. It monitors the Nexus inbox for incoming work orders, dispatches them to the appropriate agents or tools, and reports results back to Lumina.
 
-**Deploys to:** CT310 at `/opt/lumina-fleet/axon/`
+**Deploys to:** <fleet-host> at `/opt/lumina-fleet/axon/`
 **Trigger:** systemd timer — polls every 60 seconds
 **Inference cost:** $0 (pure Python decision logic)
 
@@ -21,7 +21,7 @@ Axon never makes LLM calls. Routing decisions use keyword lookup tables and task
 | File | Purpose |
 |------|---------|
 | `axon.py` | Main agent script. Inbox polling loop, task router, handler dispatch. |
-| `axon.service` | systemd service unit. Managed by CT310. |
+| `axon.service` | systemd service unit. Managed by <fleet-host>. |
 
 ## systemd Service
 
@@ -41,7 +41,7 @@ RestartSec=30
 WantedBy=multi-user.target
 ```
 
-Manage with standard systemd commands on CT310:
+Manage with standard systemd commands on <fleet-host>:
 
 ```bash
 systemctl status axon

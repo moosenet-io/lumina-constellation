@@ -16,7 +16,7 @@ The `plugins/` directory contains Python tool extensions that are auto-discovere
 
 ## How to add a plugin
 
-1. Create a `.py` file in `/opt/ai-mcp/plugins/` on CT214 (<terminus-ip>)
+1. Create a `.py` file in `/opt/ai-mcp/plugins/` on <terminus-host> (<terminus-ip>)
 2. Export `register_plugin(mcp)` function **or** a `TOOLS` list of tool functions
 3. Restart the MCP server: `systemctl restart mcp-server`
 4. Verify: `constellation_version` or your new tool appears in IronClaw
@@ -43,17 +43,17 @@ TOOLS = [my_tool]
 
 ## Adding Refractor keywords
 
-To make your tool discoverable by the keyword router (Refractor on CT305), add keywords to `/usr/local/bin/llm-proxy.py` on CT305 in the KEYWORD_CATEGORIES dict.
+To make your tool discoverable by the keyword router (Refractor on <ironclaw-host>), add keywords to `/usr/local/bin/llm-proxy.py` on <ironclaw-host> in the KEYWORD_CATEGORIES dict.
 
 ## How it's deployed
 
-Plugins directory: `/opt/ai-mcp/plugins/` on CT214 (<terminus-ip>)
+Plugins directory: `/opt/ai-mcp/plugins/` on <terminus-host> (<terminus-ip>)
 Loaded by: `plugin_loader.py` → called from `server.py` at startup
-MCP server: `systemctl status mcp-server` on CT214
+MCP server: `systemctl status mcp-server` on <terminus-host>
 
 ## Configuration
 
-No dedicated config file. Plugins inherit the Terminus `.env` secrets (injected at server start via `stdio.sh`). If a plugin needs a new secret, add it to `.env` and Infisical (CT221, workspace: moosenet-services, env: prod).
+No dedicated config file. Plugins inherit the Terminus `.env` secrets (injected at server start via `stdio.sh`). If a plugin needs a new secret, add it to `.env` and Infisical (<infisical-host>, workspace: moosenet-services, env: prod).
 
 ## History / Lineage
 

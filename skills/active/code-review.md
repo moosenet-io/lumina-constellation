@@ -5,7 +5,7 @@ version: 1.0
 author: Peter Boose
 license: MIT
 agent: cortex
-container: CT310
+container: <fleet-host>
 tags: [code, review, ast, cortex, quality]
 ---
 

@@ -20,7 +20,7 @@ routes:
     enabled: true
 engram:
   namespace: agents/myagent
-container: CT310
+container: <fleet-host>
 runtime: subprocess
 ```
 

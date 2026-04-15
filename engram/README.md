@@ -2,7 +2,7 @@
 
 Engram is the persistent memory layer for Lumina Constellation. It stores knowledge, observations, and behavioral patterns as vector embeddings, enabling semantic search across everything the system has learned about you.
 
-**Deploys to:** CT310 (<fleet-server-ip>) at `/opt/lumina-fleet/engram/`
+**Deploys to:** <fleet-host> (<fleet-server-ip>) at `/opt/lumina-fleet/engram/`
 **Storage:** SQLite + sqlite-vec (1536-dimensional embeddings)
 **Cost:** $0 — local vector search, no cloud calls for retrieval
 
@@ -84,7 +84,7 @@ household/          # Shared household context
 
 ## Data in This Repo
 
-The `engram/` directory in this repo contains the **human-readable reference layer** — documents that Lumina reads directly via LUMINA.md and IDENTITY.md. The vector database (SQLite) lives on CT310 and is not committed to git.
+The `engram/` directory in this repo contains the **human-readable reference layer** — documents that Lumina reads directly via LUMINA.md and IDENTITY.md. The vector database (SQLite) lives on <fleet-host> and is not committed to git.
 
 Documents here are maintained by hand and during build sessions. They inform Lumina's personality and behavioral defaults before she has built up runtime memory.
 

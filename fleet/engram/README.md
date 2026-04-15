@@ -5,13 +5,13 @@ Engram is the persistent memory and knowledge layer for the Lumina agent constel
 ## Architecture
 
 ```
-CT310 /opt/lumina-fleet/engram/
+<fleet-host> /opt/lumina-fleet/engram/
 ├── engram.py       # Core memory engine (sqlite-vec, 1536-dim embeddings)
 ├── reflexa.py      # Write queue hooks — T1/T2/T3 triggers for Vector/ARCADE
 └── engram.db       # Runtime database (not committed to Gitea)
 ```
 
-CT214 exposes 5 MCP tools via `engram_tools.py`:
+<terminus-host> exposes 5 MCP tools via `engram_tools.py`:
 - `engram_query(query, layer, top_k)` — semantic search
 - `engram_store(content, layer, key, agent_id)` — store a memory
 - `engram_journal(event, agent_id, metadata)` — append to activity journal
@@ -31,7 +31,7 @@ Personal layers (health, learning, trading, work, commute) are namespaced per ag
 ## Embedding Configuration
 
 - **Backend**: sqlite-vec (local, no external service)
-- **Model**: `text-embedding` via LiteLLM proxy (CT215) — 1536 dimensions
+- **Model**: `text-embedding` via LiteLLM proxy (<litellm-host>) — 1536 dimensions
 - **Similarity**: Cosine similarity, top-K retrieval
 - **Model override**: `REFLEXA_EMBED_MODEL`, `REFLEXA_EMBED_DIM` env vars
 
@@ -50,7 +50,7 @@ Hooks run via `reflexa_hooks.sh` in Vector's working directory.
 ## Quick Start
 
 ```bash
-# On CT310
+# On <fleet-host>
 cd /opt/lumina-fleet/engram
 
 # Store a memory

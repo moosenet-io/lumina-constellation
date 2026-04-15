@@ -5,7 +5,7 @@ version: 1.0
 author: Peter Boose
 license: MIT
 agent: sentinel
-container: CT310
+container: <fleet-host>
 schedule: "*/5 * * * *"
 tags: [monitoring, health, infrastructure, alerts]
 ---
@@ -16,8 +16,8 @@ Check the health of all MooseNet containers and services. Alert only on failure 
 
 ## Procedure
 
-1. Check CT services: IronClaw (CT305), Terminus MCP (CT214), Matrix bridge (CT306), Postgres (CT300)
-2. Check Docker services on CT310: Caddy, Actual Budget, Grocy, LubeLogger
+1. Check CT services: IronClaw (<ironclaw-host>), Terminus MCP (<terminus-host>), Matrix bridge (<matrix-host>), Postgres (<postgres-host>)
+2. Check Docker services on <fleet-host>: Caddy, Actual Budget, Grocy, LubeLogger
 3. Check Prometheus targets (up metric) via prometheus_query
 4. Compute health score: (healthy/total) × 100
 5. If any service down: send alert to Nexus (priority: urgent) and Matrix

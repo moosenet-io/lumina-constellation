@@ -2,7 +2,7 @@
 
 Shared runtime utilities, design system, template engine, and agent loader used by every module in the Lumina fleet. Nothing in `shared/` makes inference calls — it is pure Python infrastructure.
 
-**Deploys to:** CT310 (`<fleet-server-ip>`) at `/opt/lumina-fleet/shared/`
+**Deploys to:** <fleet-host> (`<fleet-server-ip>`) at `/opt/lumina-fleet/shared/`
 **Inference cost:** $0 (no LLM calls)
 
 ---
@@ -22,7 +22,7 @@ The shared library provides the cross-cutting concerns that every fleet module n
 
 ## Architecture
 
-- **Runs on:** CT310, imported by every fleet module as `from shared.X import Y`
+- **Runs on:** <fleet-host>, imported by every fleet module as `from shared.X import Y`
 - **Dependencies:** Python 3.11+ standard library only (no external packages)
 - **Connections:** Reads `agents/` directory for `.agent.yaml` definitions; reads `skills/` for SKILL.md files; writes `docs/index.md` (docs_generator only)
 
@@ -44,7 +44,7 @@ No external configuration file. Behavior is controlled by the calling module:
 
 ## MCP Tools
 
-Shared itself has no MCP tools. The modules it supports are exposed via Terminus tool files. Skills are accessible via `skills_tools.py` on CT214.
+Shared itself has no MCP tools. The modules it supports are exposed via Terminus tool files. Skills are accessible via `skills_tools.py` on <terminus-host>.
 
 ---
 
@@ -59,7 +59,7 @@ Shared itself has no MCP tools. The modules it supports are exposed via Terminus
 | `skills_loader.py` | Discover and parse SKILL.md files from `skills/active/`. Used at agent startup. |
 | `skill_tracker.py` | Record skill execution outcomes for the evolution pipeline. |
 | `docs_generator.py` | Auto-generate `docs/index.md` from agent definitions and module docstrings. |
-| `LUMIERE.md` | Runtime context document for Lumière (partner agent). Sourced by CT316 IronClaw at startup. |
+| `LUMIERE.md` | Runtime context document for Lumière (partner agent). Sourced by <partner-host> IronClaw at startup. |
 | `templates/` | YAML template libraries for each module (briefings, alerts, coaching, reminders). |
 
 ### Templates directory

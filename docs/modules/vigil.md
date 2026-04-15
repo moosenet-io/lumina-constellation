@@ -1,6 +1,6 @@
 # Vigil — Morning & Evening Briefings
 
-Vigil runs on CT310 as a Python systemd timer. Every morning at a configured time, it gathers data from 12+ sources and synthesizes a personalized briefing.
+Vigil runs on <fleet-host> as a Python systemd timer. Every morning at a configured time, it gathers data from 12+ sources and synthesizes a personalized briefing.
 
 ## What it collects
 
@@ -25,7 +25,7 @@ Vigil runs on CT310 as a Python systemd timer. Every morning at a configured tim
 
 Vigil reads Google credentials from Infisical via axon/.env.
 Calendar ID: set `GOOGLE_LUMINA_CALENDAR_ID` in axon/.env.
-Briefing time: edit the commute-morning.timer on CT310.
+Briefing time: edit the commute-morning.timer on <fleet-host>.
 
 ## Inference cost
 

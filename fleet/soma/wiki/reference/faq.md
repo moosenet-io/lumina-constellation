@@ -79,7 +79,7 @@ For a Docker deployment without Infisical, use Docker secrets or a `.env` file t
 
 ### Where is constellation.yaml?
 
-`/opt/lumina-fleet/constellation.yaml` on CT310 (or the fleet container in Docker). It stores agent display names and module configuration. Never edit it directly — use Soma's Config tab or `naming_ceremony.py`.
+`/opt/lumina-fleet/constellation.yaml` on <fleet-host> (or the fleet container in Docker). It stores agent display names and module configuration. Never edit it directly — use Soma's Config tab or `naming_ceremony.py`.
 
 ---
 
@@ -115,7 +115,7 @@ Because Lumina's sub-agents (Vigil, Sentinel, Axon) are Python processes, not Ir
 ### Soma shows a module as red (down)
 
 1. Check the Logs tab in Soma for that module's systemd output
-2. SSH to CT310 and run: `systemctl status {module}` and `journalctl -u {module} -n 50`
+2. SSH to <fleet-host> and run: `systemctl status {module}` and `journalctl -u {module} -n 50`
 3. Check that the module's required env vars are set in `.env`
 
 ### Briefings stopped working
@@ -127,15 +127,15 @@ Because Lumina's sub-agents (Vigil, Sentinel, Axon) are Python processes, not Ir
 
 ### Nexus messages aren't being delivered
 
-1. Check Postgres is running on CT300: `ssh root@YOUR_PVS_HOST_IP "pct exec 300 -- systemctl status postgresql"`
+1. Check Postgres is running on <postgres-host>: `ssh root@YOUR_PVS_HOST_IP "pct exec 300 -- systemctl status postgresql"`
 2. Check Nexus env vars: `INBOX_DB_HOST`, `INBOX_DB_USER`, `INBOX_DB_PASS`
-3. Test with a direct psql query on CT300
+3. Test with a direct psql query on <postgres-host>
 
 ### IronClaw can't find Terminus tools
 
-1. Check Terminus is running on CT214: `ssh root@YOUR_TERMINUS_IP "systemctl status ai-mcp"`
+1. Check Terminus is running on <terminus-host>: `ssh root@YOUR_TERMINUS_IP "systemctl status ai-mcp"`
 2. Check stdio.sh is executable: `ls -la /opt/ai-mcp/stdio.sh`
-3. Run `ironclaw mcp test moosenet` from CT305 and check the output
+3. Run `ironclaw mcp test moosenet` from <ironclaw-host> and check the output
 
 ---
 
@@ -151,4 +151,4 @@ Browse the [specs/](https://github.com/moosenet-io/lumina-constellation/tree/mai
 
 ### What's the IronClaw version?
 
-v0.24.0 on CT305. IronClaw is a Rust-based, security-first agent runtime from [NEAR AI](https://github.com/nearai/ironclaw).
+v0.24.0 on <ironclaw-host>. IronClaw is a Rust-based, security-first agent runtime from [NEAR AI](https://github.com/nearai/ironclaw).

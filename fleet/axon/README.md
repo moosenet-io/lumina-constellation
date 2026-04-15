@@ -2,7 +2,7 @@
 
 Axon is the work queue manager for Lumina Constellation. It monitors the Nexus inbox for incoming work orders, dispatches them to the appropriate agents or tools, and reports results back to Lumina.
 
-**Deploys to:** CT310 (<fleet-server-ip>) at `/opt/lumina-fleet/axon/`
+**Deploys to:** <fleet-host> (<fleet-server-ip>) at `/opt/lumina-fleet/axon/`
 **Trigger:** systemd timer — polls every 60 seconds
 **Inference cost:** $0 (pure Python decision logic)
 
@@ -25,7 +25,7 @@ Axon never makes LLM calls. Routing decisions use keyword lookup tables and task
 | File | Purpose |
 |------|---------|
 | `axon.py` | Main agent script. Inbox polling loop, task router, handler dispatch. |
-| `axon.service` | systemd service unit. Managed by CT310. |
+| `axon.service` | systemd service unit. Managed by <fleet-host>. |
 
 ---
 
@@ -47,7 +47,7 @@ RestartSec=30
 WantedBy=multi-user.target
 ```
 
-Manage with standard systemd commands on CT310:
+Manage with standard systemd commands on <fleet-host>:
 
 ```bash
 systemctl status axon
@@ -81,17 +81,17 @@ Supported task types are defined in `axon.py`. Unknown task types are escalated 
 
 ## Architecture
 
-- **Runs on:** CT310 (`<fleet-server-ip>`) at `/opt/lumina-fleet/axon/`
+- **Runs on:** <fleet-host> (`<fleet-server-ip>`) at `/opt/lumina-fleet/axon/`
 - **Dependencies:** Python 3.11+, `psycopg2` (Nexus inbox), `requests` (Plane API)
-- **Connections:** Reads from Nexus inbox (CT300 Postgres); dispatches via Plane API (CT315) and Nexus `nexus_send()`; no direct peer agent connections
+- **Connections:** Reads from Nexus inbox (<postgres-host> Postgres); dispatches via Plane API (<plane-host>) and Nexus `nexus_send()`; no direct peer agent connections
 
 ## Configuration
 
-Axon reads configuration from environment variables set by the CT310 systemd unit:
+Axon reads configuration from environment variables set by the <fleet-host> systemd unit:
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `INBOX_DB_HOST` | Postgres host for Nexus | CT300 IP |
+| `INBOX_DB_HOST` | Postgres host for Nexus | <postgres-host> IP |
 | `INBOX_DB_USER` | Nexus database user | — |
 | `INBOX_DB_PASS` | Nexus database password | — |
 | `PLANE_API_URL` | Plane CE base URL | `http://<plane-ip>:8000` |
@@ -115,4 +115,4 @@ Previously known as "Agent Tasker" in early architecture docs.
 
 - [fleet/README.md](../README.md) — Fleet overview and agent list
 - [terminus/axon_tools.py](../../terminus/axon_tools.py) — MCP tools Lumina uses to dispatch work to Axon
-- Nexus inbox — Postgres-backed priority queue on CT300
+- Nexus inbox — Postgres-backed priority queue on <postgres-host>

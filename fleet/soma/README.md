@@ -2,7 +2,7 @@
 
 > Web-based administration interface and first-run onboarding wizard for Lumina Constellation.
 
-**Deploys to:** CT310 (`YOUR_FLEET_SERVER_IP`) at `/opt/lumina-fleet/soma/`  
+**Deploys to:** <fleet-host> (`YOUR_FLEET_SERVER_IP`) at `/opt/lumina-fleet/soma/`  
 **Service:** `soma.service` (systemd)  
 **Port:** 8082 (HTTP direct) or via Caddy reverse proxy
 
@@ -29,16 +29,18 @@ Default admin token: `soma-dev-key` (change via `SOMA_SECRET_KEY` env var)
 |-----|-------------|
 | `/` | Dashboard → status |
 | `/status` | System health dashboard — agents, services, inference cost |
-| `/wizard` | Onboarding wizard — 8-step first-run setup |
+| `/setup` | Onboarding wizard — 8-step first-run setup |
 | `/config` | Configuration editor — YAML config, Refractor keywords |
 | `/skills` | Skills management — active, proposed, disabled |
-| `/plugins` | Plugin management — CT214 MCP plugins |
+| `/plugins` | Plugin management — MCP plugins |
 | `/sessions` | Conversation history viewer |
 | `/cron` | Systemd timer management |
 | `/logs` | Real-time log viewer |
 | `/wiki` | Built-in documentation wiki |
 | `/vector` | Vector autonomous dev loop management |
 | `/reports` | HTML report viewer for all modules |
+| `/council` | Obsidian Circle deliberation interface |
+| `/synapse` | Synapse outreach history and config |
 
 ---
 
@@ -71,7 +73,7 @@ GET  /api/config/{module}            — Read module config
 GET    /api/skills              — List all skills
 POST   /api/skills/{name}/approve  — Approve a proposed skill
 DELETE /api/skills/{name}          — Delete a skill
-GET    /api/plugins             — List CT214 plugins
+GET    /api/plugins             — List <terminus-host> plugins
 ```
 
 ### Logs & Sessions
@@ -107,6 +109,10 @@ GET /api/wiki/{path}       — Render a wiki page as HTML
 GET /api/reports           — List HTML reports by module
 ```
 
+### Caching
+
+All API endpoints serve from a 10s–60s TTL in-memory cache (see `cache.py`). Use `POST /api/cache/clear` to force refresh.
+
 ---
 
 ## Authentication
@@ -127,7 +133,7 @@ The default token `soma-dev-key` is for development only. Change before producti
 
 ## How it deploys
 
-Soma is a FastAPI application running as a systemd service on CT310.
+Soma is a FastAPI application running as a systemd service on <fleet-host>.
 
 ```
 /opt/lumina-fleet/soma/

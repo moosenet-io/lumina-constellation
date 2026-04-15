@@ -60,8 +60,8 @@ Vector polls Nexus for pending work orders, claims them, executes the loop, and 
 
 **Prerequisites for integrated mode:**
 
-- Postgres `lumina_inbox` schema applied on CT300
-- `INBOX_DB_HOST`, `INBOX_DB_USER`, `INBOX_DB_PASS` set in CT214 `.env` and CT310 environment
+- Postgres `lumina_inbox` schema applied on <postgres-host>
+- `INBOX_DB_HOST`, `INBOX_DB_USER`, `INBOX_DB_PASS` set in <terminus-host> `.env` and <fleet-host> environment
 - `vector.yaml` `mode: integrated` with nexus, plane, and engram sections filled in
 
 ---

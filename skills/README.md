@@ -52,7 +52,7 @@ skills/
 | `author` | Yes | Skill author handle |
 | `license` | No | License (default: MIT) |
 | `agent` | Yes | Owning agent (vigil, sentinel, cortex, lumina, etc.) |
-| `container` | Yes | Target container (CT310, etc.) |
+| `container` | Yes | Target container (<fleet-host>, etc.) |
 | `schedule` | No | Cron expression or human schedule if timer-triggered |
 | `tags` | Yes | List of tags for discovery and search |
 | `compatible_agents` | No | Which agent runtimes can execute this skill |
@@ -67,7 +67,7 @@ version: 1.2.0
 author: moosenet-io
 license: MIT
 agent: vigil
-container: CT310
+container: <fleet-host>
 schedule: "0 7 * * *"
 tags: [briefing, daily, weather, calendar, news]
 compatible_agents: [lumina, claude-code, hermes]
@@ -108,7 +108,7 @@ skills = load_skills()          # Scans skills/active/, parses frontmatter
 skill = skills['morning-briefing']
 ```
 
-Terminus exposes skills via MCP tools (`skills_tools.py` on CT214):
+Terminus exposes skills via MCP tools (`skills_tools.py` on <terminus-host>):
 
 | Tool | Description |
 |------|-------------|

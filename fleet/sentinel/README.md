@@ -2,7 +2,7 @@
 
 Sentinel monitors the MooseNet Proxmox cluster and all running services. It runs on a 5-minute timer and sends alerts only when something is wrong — no LLM cost for healthy checks.
 
-**Deploys to:** CT310 (<fleet-server-ip>) at `/opt/lumina-fleet/sentinel/`
+**Deploys to:** <fleet-host> (<fleet-server-ip>) at `/opt/lumina-fleet/sentinel/`
 **Trigger:** systemd timer — every 5 minutes
 **Inference cost:** $0 (pure Python — no LLM calls)
 
@@ -34,18 +34,35 @@ The design principle: **silent when healthy, loud when broken**. Sentinel should
 
 | Check | What it monitors | Alert threshold |
 |-------|-----------------|-----------------|
-| Disk usage | CT212, CT214, CT305, CT310, CT315 | >85% |
+| Disk usage | <dev-host>, <terminus-host>, <ironclaw-host>, <fleet-host>, <plane-host> | >85% |
 | Memory | Per-container memory usage | >90% |
 | Service ping | Key services: Matrix, Gitea, Plane, LiteLLM | HTTP 200 within 5s |
 | Container status | All Proxmox containers via Prometheus | Running state |
 | Prometheus | Prometheus scrape freshness | Last scrape >10 min |
-| IronClaw | API health endpoint on CT305 | HTTP 200 |
+| IronClaw | API health endpoint on <ironclaw-host> | HTTP 200 |
 
 ---
 
 ## Alert Delivery
 
 Alerts are sent as Matrix messages via Lumina (through Nexus inbox with `priority: critical`). The HTML status page is written regardless of health state — it powers the dashboard's health grid.
+
+---
+
+## Prometheus Metrics
+
+Sentinel exports metrics to Prometheus via `prometheus_exporter.py`:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `lumina_service_up` | Gauge | 1 if service is healthy, 0 if down. Labels: `service` |
+| `lumina_disk_usage_percent` | Gauge | Disk usage %. Labels: `host` |
+| `lumina_memory_usage_percent` | Gauge | Memory usage %. Labels: `host` |
+| `lumina_alert_total` | Counter | Alerts fired. Labels: `check`, `severity` |
+| `lumina_check_duration_seconds` | Histogram | Time per health check. Labels: `check` |
+| `lumina_last_check_timestamp` | Gauge | Unix timestamp of most recent check run |
+
+Prometheus scrapes Sentinel's exporter on port 9091 (configurable via `SENTINEL_METRICS_PORT`).
 
 ---
 
@@ -65,9 +82,9 @@ Then register it in `ops.py`'s check list. No LLM changes needed.
 
 ## Architecture
 
-- **Runs on:** CT310 (`<fleet-server-ip>`) at `/opt/lumina-fleet/sentinel/`
+- **Runs on:** <fleet-host> (`<fleet-server-ip>`) at `/opt/lumina-fleet/sentinel/`
 - **Dependencies:** Python 3.11+, `requests`, `psutil`; Prometheus scrape endpoint for container metrics
-- **Connections:** HTTP checks against CT212, CT214, CT223, CT305, CT310, CT315; Prometheus (CT222); alert delivery via Nexus inbox to Lumina
+- **Connections:** HTTP checks against <dev-host>, <terminus-host>, <gitea-host>, <ironclaw-host>, <fleet-host>, <plane-host>; Prometheus (<prometheus-host>); alert delivery via Nexus inbox to Lumina
 
 ## Configuration
 
@@ -79,7 +96,7 @@ Then register it in `ops.py`'s check list. No LLM changes needed.
 | `SENTINEL_MEM_THRESHOLD` | Memory alert threshold (%) | `90` |
 | `SENTINEL_HTTP_TIMEOUT` | HTTP check timeout (seconds) | `5` |
 | `SENTINEL_HTML_PATH` | Where to write the status page HTML | `/var/www/html/status.html` |
-| `INBOX_DB_HOST` | Nexus Postgres host (for alert delivery) | CT300 IP |
+| `INBOX_DB_HOST` | Nexus Postgres host (for alert delivery) | <postgres-host> IP |
 | `INBOX_DB_USER` | Nexus database user | — |
 | `INBOX_DB_PASS` | Nexus database password | — |
 

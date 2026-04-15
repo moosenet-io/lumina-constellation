@@ -2,7 +2,7 @@
 
 Dura handles backup, smoke testing, log aggregation, secret rotation, and data export for Lumina Constellation. It runs on a schedule and is the last line of defense against data loss or configuration drift.
 
-**Deploys to:** CT310 at `/opt/lumina-fleet/dura/`
+**Deploys to:** <fleet-host> at `/opt/lumina-fleet/dura/`
 **Trigger:** systemd timer — daily backup, weekly smoke test, hourly log aggregation
 **Inference cost:** $0 (pure Python — all operations are deterministic)
 
@@ -31,7 +31,7 @@ Pulls the last 1000 lines of each agent's systemd journal and writes to:
 Useful for debugging. Logs are rotated weekly.
 
 ### Secret Rotation
-Triggers `fetch-mcp-secrets.sh` on CT214 to refresh Infisical secrets without restarting the MCP server. Runs weekly at 03:00.
+Triggers `fetch-mcp-secrets.sh` on <terminus-host> to refresh Infisical secrets without restarting the MCP server. Runs weekly at 03:00.
 
 ## Files
 

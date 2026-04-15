@@ -8,7 +8,7 @@ Meridian runs a paper trading sandbox with real market data. No real money invol
 
 ## Deploys to
 
-CT310 (YOUR_FLEET_SERVER_IP) at `/opt/lumina-fleet/meridian/`
+<fleet-host> (YOUR_FLEET_SERVER_IP) at `/opt/lumina-fleet/meridian/`
 
 ## MCP Tools
 

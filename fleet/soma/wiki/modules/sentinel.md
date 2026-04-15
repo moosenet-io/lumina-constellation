@@ -2,7 +2,7 @@
 
 Sentinel monitors the MooseNet Proxmox cluster and all running services. It runs on a 5-minute timer and sends alerts only when something is wrong — no LLM cost for healthy checks.
 
-**Deploys to:** CT310 at `/opt/lumina-fleet/sentinel/`
+**Deploys to:** <fleet-host> at `/opt/lumina-fleet/sentinel/`
 **Trigger:** systemd timer — every 5 minutes
 **Inference cost:** $0 (pure Python — no LLM calls)
 
@@ -28,12 +28,12 @@ Sentinel monitors the MooseNet Proxmox cluster and all running services. It runs
 
 | Check | What it monitors | Alert threshold |
 |-------|-----------------|-----------------|
-| Disk usage | CT212, CT214, CT305, CT310, CT315 | >85% |
+| Disk usage | <dev-host>, <terminus-host>, <ironclaw-host>, <fleet-host>, <plane-host> | >85% |
 | Memory | Per-container memory usage | >90% |
 | Service ping | Matrix, Gitea, Plane, LiteLLM | HTTP 200 within 5s |
 | Container status | All Proxmox containers via Prometheus | Running state |
 | Prometheus | Scrape freshness | Last scrape >10 min |
-| IronClaw | API health endpoint on CT305 | HTTP 200 |
+| IronClaw | API health endpoint on <ironclaw-host> | HTTP 200 |
 
 ## Alert Delivery
 

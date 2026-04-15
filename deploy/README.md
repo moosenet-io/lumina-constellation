@@ -77,7 +77,7 @@ Key variables:
 - **Caddy** handles TLS termination automatically (Let's Encrypt or self-signed).
 - **Postgres** backs the Nexus inbox. Data persists in a named Docker volume.
 - **Ollama** runs as a separate container. GPU profile passes through the NVIDIA device.
-- Agents on CT310 connect to Terminus (CT214) via MCP stdio — not needed in the Docker deployment, which bundles both.
+- Agents on <fleet-host> connect to Terminus (<terminus-host>) via MCP stdio — not needed in the Docker deployment, which bundles both.
 
 ---
 

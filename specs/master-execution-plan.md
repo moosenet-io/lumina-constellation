@@ -1,10 +1,10 @@
 # Master Execution Plan — Full Sprint
 
-SCP all files to CT212, then paste this single command block into Claude Code.
+SCP all files to <dev-host>, then paste this single command block into Claude Code.
 
 ---
 
-## Document Inventory (SCP all to /home/coder/ on CT212)
+## Document Inventory (SCP all to /home/coder/ on <dev-host>)
 
 ### Specs to execute (in priority order):
 
@@ -60,7 +60,7 @@ SCP all files to CT212, then paste this single command block into Claude Code.
 From your local machine (or wherever the files are):
 
 ```bash
-# SCP all specs to CT212
+# SCP all specs to <dev-host>
 scp -P 2222 \
   security-full-sprint.md \
   security-rotation-spec.md \
@@ -73,7 +73,7 @@ scp -P 2222 \
   lumina-activity-log-apr5-14.docx \
   moosenet@git.moosenet.online:/tmp/
 
-# Then from PVM, push into CT212
+# Then from PVM, push into <dev-host>
 ssh pvm "for f in /tmp/security-full-sprint.md /tmp/security-rotation-spec.md /tmp/security-repo-recreate-pii-gate.md /tmp/spec-addenda-late-session.md /tmp/lumina-soma-prd.docx /tmp/lumina-vector-pulse-spec.docx /tmp/lumina-obsidian-circle-v3.docx /tmp/lumina-synapse-spec.docx /tmp/lumina-activity-log-apr5-14.docx; do pct push 212 \$f /home/coder/\$(basename \$f); done"
 ```
 
@@ -81,7 +81,7 @@ ssh pvm "for f in /tmp/security-full-sprint.md /tmp/security-rotation-spec.md /t
 
 ## Master Claude Code Prompt
 
-Paste this into Claude Code on CT212 when rate limit lifts:
+Paste this into Claude Code on <dev-host> when rate limit lifts:
 
 ```
 Read the CLAUDE.md. This is a major sprint with 7 spec documents. Execute in the order below. Use the throttled Plane helper for ALL Plane API calls. Push to Gitea only (not GitHub — we have a new dev/prod workflow).
@@ -90,7 +90,7 @@ PHASE 1 — SECURITY (do first, blocks everything else):
 Read /home/coder/security-full-sprint.md. Execute all 5 tasks:
 1. Recreate GitHub repo from clean squash (repo is already deleted — just create fresh)
 2. Audit and enhance ALL sub-READMEs (15 directories)
-3. Build PII gate on 3 layers (CT214 MCP, CT212 Claude Code pre-push, operator config)
+3. Build PII gate on 3 layers (<terminus-host> MCP, <dev-host> Claude Code pre-push, operator config)
 4. Set up Gitea as source of truth, GitHub as prod mirror, publish script
 5. Rotate all keys via Ansible playbook
 

@@ -8,7 +8,7 @@ Crucible tracks learning goals, reading queues, and skill streaks. Lumina report
 
 ## Deploys to
 
-CT310 (YOUR_FLEET_SERVER_IP) at `/opt/lumina-fleet/crucible/`
+<fleet-host> (YOUR_FLEET_SERVER_IP) at `/opt/lumina-fleet/crucible/`
 
 ## MCP Tools
 

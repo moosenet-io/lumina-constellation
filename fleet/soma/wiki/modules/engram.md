@@ -2,7 +2,7 @@
 
 Engram is Lumina's persistent memory system. It stores and retrieves information across sessions using vector embeddings, allowing Lumina to remember preferences, patterns, and history — and get better the longer it knows you.
 
-**Deploys to:** CT310 at `/opt/lumina-fleet/engram/`
+**Deploys to:** <fleet-host> at `/opt/lumina-fleet/engram/`
 **Inference cost:** $0 — local sqlite-vec embeddings, no cloud calls
 **Storage:** SQLite with sqlite-vec extension for vector search
 

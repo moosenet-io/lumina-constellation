@@ -8,7 +8,7 @@ Vitals tracks health metrics and wellness data. Lumina can report weekly health 
 
 ## Deploys to
 
-CT310 (YOUR_FLEET_SERVER_IP) at `/opt/lumina-fleet/vitals/`
+<fleet-host> (YOUR_FLEET_SERVER_IP) at `/opt/lumina-fleet/vitals/`
 
 ## MCP Tools
 

@@ -2,7 +2,7 @@
 
 Terminus is the MCP tool hub. Adding a new tool module follows a consistent pattern across all 20 existing modules.
 
-**Where tools live:** CT214 at `/opt/ai-mcp/`
+**Where tools live:** <terminus-host> at `/opt/ai-mcp/`
 **Monorepo location:** `terminus/`
 **Framework:** FastMCP (jlowin/fastmcp)
 
@@ -12,8 +12,8 @@ Terminus is the MCP tool hub. Adding a new tool module follows a consistent patt
 2. Register in `server.py`
 3. Add secrets to Infisical (if needed)
 4. Add a Refractor keyword category (if needed)
-5. Restart the MCP server on CT214
-6. Test from CT305
+5. Restart the MCP server on <terminus-host>
+6. Test from <ironclaw-host>
 
 ## Step 1: Write the Tool Module
 
@@ -83,7 +83,7 @@ register_yourmodule_tools(mcp)
 
 If your tool needs API keys or credentials:
 
-**Add a stub to `.env` on CT214:**
+**Add a stub to `.env` on <terminus-host>:**
 ```bash
 # /opt/ai-mcp/.env
 YOUR_API_KEY=
@@ -97,15 +97,15 @@ YOUR_API_KEY=
 
 **Add to `fetch-mcp-secrets.sh`:**
 ```bash
-# CT214: /opt/ai-mcp/fetch-mcp-secrets.sh
+# <terminus-host>: /opt/ai-mcp/fetch-mcp-secrets.sh
 infisical run --env=prod -- env | grep YOUR_API_KEY >> /opt/ai-mcp/.env
 ```
 
 ## Step 4: Add a Refractor Category (if needed)
 
-Refractor (the Smart Proxy on CT305) filters the 200+ tools to 17–28 per turn. If your tools should be available in specific contexts, add a keyword category to the Refractor config.
+Refractor (the Smart Proxy on <ironclaw-host>) filters the 200+ tools to 17–28 per turn. If your tools should be available in specific contexts, add a keyword category to the Refractor config.
 
-Edit `/usr/local/bin/llm-proxy.py` on CT305:
+Edit `/usr/local/bin/llm-proxy.py` on <ironclaw-host>:
 
 ```python
 CATEGORIES = {
@@ -123,24 +123,24 @@ TOOL_CATEGORIES = {
 ## Step 5: Deploy and Restart
 
 ```bash
-# Copy the new tool file to CT214
+# Copy the new tool file to <terminus-host>
 scp terminus/yourmodule_tools.py root@YOUR_TERMINUS_IP:/opt/ai-mcp/yourmodule_tools.py
 
-# Update server.py on CT214
+# Update server.py on <terminus-host>
 scp terminus/server.py root@YOUR_TERMINUS_IP:/opt/ai-mcp/server.py
 
 # Restart MCP server
 ssh root@YOUR_TERMINUS_IP "systemctl restart ai-mcp"
 ```
 
-Or from CT212 via PVM:
+Or from <dev-host> via PVM:
 ```bash
 ssh root@YOUR_PVM_HOST_IP "pct exec 214 -- systemctl restart ai-mcp"
 ```
 
 ## Step 6: Test
 
-From CT305, test the new tools are discoverable:
+From <ironclaw-host>, test the new tools are discoverable:
 
 ```bash
 ssh root@YOUR_IRONCLAW_IP "ironclaw mcp test moosenet 2>&1 | grep yourmodule"
@@ -155,7 +155,7 @@ Or trigger a tool call via Lumina in Matrix.
 | Tool not returning string | Always `return json.dumps(result)` |
 | Secret not in .env | Add stub line to .env before running fetch-secrets |
 | Tools not appearing | Check server.py has both import and register call |
-| 500 error on call | Check CT214 logs: `journalctl -u ai-mcp -n 50` |
+| 500 error on call | Check <terminus-host> logs: `journalctl -u ai-mcp -n 50` |
 | Refractor hiding tools | Add keywords to the appropriate category |
 
 ## Existing Tool Modules

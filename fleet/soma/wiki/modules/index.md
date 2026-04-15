@@ -56,12 +56,12 @@ All 25 Lumina Constellation modules. Each module has a dedicated wiki page linke
 
 | Container | Hosts |
 |-----------|-------|
-| CT305 (Lumina) | Lumina orchestrator, Refractor proxy |
-| CT214 (Terminus) | All MCP tools |
-| CT310 (Fleet) | Vigil, Sentinel, Axon, Vector, Cortex, Myelin, Dura, Soma, Dashboard |
-| CT300 (Postgres) | Nexus inbox, Engram vector store |
-| CT315 (Plane) | The Plexus work queue |
-| CT306 (Messaging) | Matrix server (Tuwunel) |
+| <ironclaw-host> (Lumina) | Lumina orchestrator, Refractor proxy |
+| <terminus-host> (Terminus) | All MCP tools |
+| <fleet-host> (Fleet) | Vigil, Sentinel, Axon, Vector, Cortex, Myelin, Dura, Soma, Dashboard |
+| <postgres-host> (Postgres) | Nexus inbox, Engram vector store |
+| <plane-host> (Plane) | The Plexus work queue |
+| <matrix-host> (Messaging) | Matrix server (Tuwunel) |
 
 ## Adding a New Module
 
@@ -70,5 +70,5 @@ All 25 Lumina Constellation modules. Each module has a dedicated wiki page linke
 3. Add MCP tools in `terminus/{name}_tools.py`
 4. Register in `terminus/server.py`
 5. Add a Refractor keyword category
-6. Update `LUMINA.md` on CT305 with delegation instructions
+6. Update `LUMINA.md` on <ironclaw-host> with delegation instructions
 7. Add a wiki page here

@@ -8,7 +8,7 @@ Odyssey tracks travel destinations, credit card rewards, and loyalty programs. L
 
 ## Deploys to
 
-CT310 (YOUR_FLEET_SERVER_IP) at `/opt/lumina-fleet/odyssey/`
+<fleet-host> (YOUR_FLEET_SERVER_IP) at `/opt/lumina-fleet/odyssey/`
 
 ## MCP Tools
 

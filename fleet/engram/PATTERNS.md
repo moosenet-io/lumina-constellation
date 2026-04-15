@@ -6,7 +6,7 @@ This document describes the three-tier write pattern used by Reflexa hooks in th
 
 ## Overview
 
-Reflexa is the write layer of Engram (the Lumina memory system). When agents complete meaningful work, they call Reflexa hooks to persist structured memories into the SQLite-vec store on CT310. Not every event is worth storing — the tier system controls what gets written, at what cost, and how long it is retained.
+Reflexa is the write layer of Engram (the Lumina memory system). When agents complete meaningful work, they call Reflexa hooks to persist structured memories into the SQLite-vec store on <fleet-host>. Not every event is worth storing — the tier system controls what gets written, at what cost, and how long it is retained.
 
 ---
 
@@ -89,13 +89,13 @@ Reflexa is the write layer of Engram (the Lumina memory system). When agents com
    write_context(agent="vigil", key="briefing_sent_today", value="true", ttl_hours=24)
 
    # T2 — episodic event
-   write_memory(agent="sentinel", text="Disk usage on CT310 hit 91%. Escalated via Nexus.", tags=["ops", "disk", "ct310"])
+   write_memory(agent="sentinel", text="Disk usage on <fleet-host> hit 91%. Escalated via Nexus.", tags=["ops", "disk", "ct310"])
 
    # T3 — durable fact (use sparingly)
    write_knowledge(fact="the operator prefers briefings before 08:30 local time.", source="operator-feedback", tier=3)
    ```
 
-4. **Test the write** by running your agent module directly on CT310 and verifying the entry appears:
+4. **Test the write** by running your agent module directly on <fleet-host> and verifying the entry appears:
    ```bash
    python3 /opt/lumina-fleet/engram/engram.py query "your search term"
    ```
@@ -106,7 +106,7 @@ Reflexa is the write layer of Engram (the Lumina memory system). When agents com
 
 ## Retention and Cleanup
 
-Engram runs a cleanup job (engram-cleanup.timer, CT310 systemd) nightly at 02:00. It:
+Engram runs a cleanup job (engram-cleanup.timer, <fleet-host> systemd) nightly at 02:00. It:
 - Purges T1 records past their TTL
 - Summarizes T2 records older than 30 days into weekly rollups (new T2 with `rollup: true`)
 - Never touches T3

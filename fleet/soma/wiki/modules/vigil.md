@@ -2,7 +2,7 @@
 
 Vigil produces morning and evening briefings for Lumina Constellation users. It aggregates data from multiple sources, formats a summary, and delivers it via Matrix or HTML dashboard — without making unnecessary LLM calls.
 
-**Deploys to:** CT310 at `/opt/lumina-fleet/vigil/`
+**Deploys to:** <fleet-host> at `/opt/lumina-fleet/vigil/`
 **Trigger:** IronClaw routine (default 07:00 and 17:00)
 **Inference cost:** Low — data assembly is Python; narrative synthesis uses local Qwen only when needed.
 
@@ -39,7 +39,7 @@ Vigil produces morning and evening briefings for Lumina Constellation users. It 
 Vigil is triggered by an IronClaw routine configured in LUMINA.md. It can also be triggered on-demand:
 
 ```bash
-# From CT310
+# From <fleet-host>
 python3 /opt/lumina-fleet/vigil/briefing.py --test
 ```
 

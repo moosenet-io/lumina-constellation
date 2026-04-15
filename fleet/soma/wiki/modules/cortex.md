@@ -2,7 +2,7 @@
 
 Cortex provides code intelligence for Lumina Constellation. It performs AST analysis, blast radius detection, code review with certificates, and audit reports. Optionally routes to the Obsidian Circle council for multi-model review.
 
-**Deploys to:** CT310 at `/opt/lumina-fleet/cortex/`
+**Deploys to:** <fleet-host> at `/opt/lumina-fleet/cortex/`
 **Inference cost:** Cloud Sonnet (~$0.01–0.05 per review)
 **Key dependency:** [code-review-graph](https://github.com/tirth8205/code-review-graph) v2.2.2
 

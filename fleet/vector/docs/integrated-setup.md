@@ -1,21 +1,21 @@
 # Vector — Integrated Mode Setup
 
-Vector's **integrated mode** connects to the full Lumina stack: Plane CE for task state, Nexus inbox for messaging, and Engram for semantic memory. This is the production deployment on CT310.
+Vector's **integrated mode** connects to the full Lumina stack: Plane CE for task state, Nexus inbox for messaging, and Engram for semantic memory. This is the production deployment on <fleet-host>.
 
 ## Prerequisites
 
-- CT310 running with Axon and Nexus inbox operational
-- PostgreSQL (CT300) reachable at `$INBOX_DB_HOST`
-- Plane CE (CT315) reachable at `http://<plane-ip>`
+- <fleet-host> running with Axon and Nexus inbox operational
+- PostgreSQL (<postgres-host>) reachable at `$INBOX_DB_HOST`
+- Plane CE (<plane-host>) reachable at `http://<plane-ip>`
 - The Plexus (PX) project created in Plane
-- LiteLLM proxy (CT215) running
+- LiteLLM proxy (<litellm-host>) running
 
 ## Environment Variables
 
 Set in `/opt/lumina-fleet/axon/.env` (shared with Axon):
 
 ```bash
-INBOX_DB_HOST=192.168.0.x   # CT300 Postgres
+INBOX_DB_HOST=192.168.0.x   # <postgres-host> Postgres
 INBOX_DB_USER=lumina_inbox
 INBOX_DB_PASS=...
 PLANE_TOKEN_LUMINA=plane_api_...
@@ -51,7 +51,7 @@ integrated:
 ## Deployment
 
 ```bash
-# On CT310
+# On <fleet-host>
 cp /opt/lumina-fleet/vector/config/vector.yaml.example /opt/lumina-fleet/vector/vector.yaml
 # Edit vector.yaml — set mode: integrated
 
@@ -98,7 +98,7 @@ the operator → Lumina → axon_submit_work → Nexus → Axon → vector.py ru
 
 ## Troubleshooting
 
-- **Nexus connection fails**: Check `INBOX_DB_HOST` env var and CT300 UFW rules
+- **Nexus connection fails**: Check `INBOX_DB_HOST` env var and <postgres-host> UFW rules
 - **Plane 401**: Regenerate `PLANE_TOKEN_LUMINA` in Infisical
-- **Model errors**: LiteLLM proxy at CT215 must be running; check `LITELLM_MASTER_KEY`
+- **Model errors**: LiteLLM proxy at <litellm-host> must be running; check `LITELLM_MASTER_KEY`
 - **Vector not picking up tasks**: Verify Axon is running (`systemctl status axon`) and polling Nexus

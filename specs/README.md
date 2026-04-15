@@ -62,7 +62,7 @@ Session 12 completed the full migration: all 32 historical spec documents (sessi
 ## Credits
 
 - Specification format — internal Lumina PRD template (operator-authored, session 8+)
-- Plane integration — Plane CE at CT315; workspace moosenet; project identifiers LM (Lumina) and PX (The Plexus)
+- Plane integration — Plane CE at <plane-host>; workspace moosenet; project identifiers LM (Lumina) and PX (The Plexus)
 
 ## Related
 

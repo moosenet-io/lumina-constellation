@@ -8,28 +8,28 @@ The system runs across three Proxmox nodes with dedicated containers:
 
 | Container | Role | Key Services |
 |-----------|------|-------------|
-| **CT212** (ai-dev-control) | Dev workspace | Claude Code, code-server |
-| **CT214** (Terminus) | MCP tool hub | FastMCP server, 200+ tools |
-| **CT300** (Postgres) | Database | Nexus inbox backend |
-| **CT305** (Lumina) | Lead orchestrator | IronClaw v0.24.0, Refractor proxy |
-| **CT306** (messaging) | Matrix server | Tuwunel + bridge bot |
-| **CT310** (Fleet) | Agent processes | Vigil, Sentinel, Axon, Vector, Soma |
-| **CT315** (Plane) | Work management | Plane CE (The Plexus) |
+| **<dev-host>** (ai-dev-control) | Dev workspace | Claude Code, code-server |
+| **<terminus-host>** (Terminus) | MCP tool hub | FastMCP server, 200+ tools |
+| **<postgres-host>** (Postgres) | Database | Nexus inbox backend |
+| **<ironclaw-host>** (Lumina) | Lead orchestrator | IronClaw v0.24.0, Refractor proxy |
+| **<matrix-host>** (messaging) | Matrix server | Tuwunel + bridge bot |
+| **<fleet-host>** (Fleet) | Agent processes | Vigil, Sentinel, Axon, Vector, Soma |
+| **<plane-host>** (Plane) | Work management | Plane CE (The Plexus) |
 
 ## How a Request Flows
 
-1. **the operator → Matrix** — Message arrives at CT306 (Tuwunel Matrix server)
-2. **Matrix → IronClaw** — The bot bridge delivers the message to Lumina's IronClaw session on CT305
-3. **Lumina reasons** — IronClaw invokes a reasoning turn using Refractor (Smart Proxy) on CT305:4000
+1. **the operator → Matrix** — Message arrives at <matrix-host> (Tuwunel Matrix server)
+2. **Matrix → IronClaw** — The bot bridge delivers the message to Lumina's IronClaw session on <ironclaw-host>
+3. **Lumina reasons** — IronClaw invokes a reasoning turn using Refractor (Smart Proxy) on <ironclaw-host>:4000
 4. **Refractor filters tools** — The 200+ Terminus tools are filtered to 17–28 relevant tools based on keyword categories
-5. **Tool calls → Terminus** — IronClaw connects to Terminus (CT214) via stdio transport (FastMCP)
+5. **Tool calls → Terminus** — IronClaw connects to Terminus (<terminus-host>) via stdio transport (FastMCP)
 6. **Results → Nexus** — If delegation is needed, Lumina calls `nexus_send()` to post a work order
-7. **Agent picks up** — Axon (on CT310) polls Nexus, reads the work order, executes it
+7. **Agent picks up** — Axon (on <fleet-host>) polls Nexus, reads the work order, executes it
 8. **Result routes back** — Agent calls `nexus_send()` back to Lumina, Lumina delivers to the operator via Matrix
 
 ## Component Detail
 
-### IronClaw (CT305)
+### IronClaw (<ironclaw-host>)
 
 The agent runtime. IronClaw is a security-first Rust implementation with:
 - **WASM sandboxing** — every tool runs in its own WebAssembly container
@@ -38,7 +38,7 @@ The agent runtime. IronClaw is a security-first Rust implementation with:
 
 IronClaw connects to Terminus via `stdio.sh`, which sources `.env` then launches `server.py --stdio`.
 
-### Terminus / FastMCP (CT214)
+### Terminus / FastMCP (<terminus-host>)
 
 All system capabilities exposed as MCP tools. 20 tool modules, 200+ individual tools. Modules include:
 
@@ -50,23 +50,23 @@ All system capabilities exposed as MCP tools. 20 tool modules, 200+ individual t
 
 See [Adding Tools](../guides/adding-tools.md) for how to extend Terminus.
 
-### Refractor (CT305:4000)
+### Refractor (<ironclaw-host>:4000)
 
 The Smart Proxy filters Terminus's 200+ tools down to 17–28 per reasoning turn using keyword categories. This keeps each LLM context window lean and reduces per-turn cost.
 
 Categories include: `nexus`, `axon`, `vigil`, `sentinel`, `plane`, `google`, `engram`, and 12+ more.
 
-### Nexus (Postgres on CT300)
+### Nexus (Postgres on <postgres-host>)
 
 The inter-agent inbox. All agent-to-agent communication routes through Nexus — no direct peer-to-peer messaging. Priority flags: `critical`, `urgent`, `normal`, `low`.
 
 Lumina orchestrates, never executes bulk work. Max ~5 tool calls per user request.
 
-### Engram (CT310)
+### Engram (<fleet-host>)
 
 Semantic memory system using sqlite-vec for local vector embeddings. Namespaced per agent so each agent has private memory. Household-level shared memory available via the `shared` namespace.
 
-### Soma (CT310:8082)
+### Soma (<fleet-host>:8082)
 
 FastAPI web admin panel. Provides:
 - Module status dashboard

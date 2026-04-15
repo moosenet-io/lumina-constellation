@@ -45,7 +45,7 @@ version: 1.0.0
 author: moosenet-io
 license: MIT
 agent: sentinel
-container: CT310
+container: <fleet-host>
 schedule: "*/5 * * * *"
 tags: [health, infrastructure, monitoring, sentinel]
 compatible_agents: [lumina, claude-code, hermes]
@@ -79,7 +79,7 @@ If `sentinel_health()` tool call fails (Terminus unreachable), send a critical a
 | `version` | Semantic version (e.g., `1.0.0`). |
 | `author` | Your handle or org name. |
 | `agent` | Owning agent (vigil, sentinel, cortex, lumina, etc.). |
-| `container` | Target container (CT310, CT305, etc.). |
+| `container` | Target container (<fleet-host>, <ironclaw-host>, etc.). |
 | `tags` | List of tags for discovery and search. |
 
 ## Optional Frontmatter Fields

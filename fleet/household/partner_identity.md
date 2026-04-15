@@ -80,4 +80,4 @@ Send household message from partner to lumina, event_type: calendar_event, paylo
 
 ---
 
-Deployed: CT316 (PVS, <partner-agent-ip>). Agent ID: lumiere. Named Lumiere by default, rename during naming ceremony.
+Deployed: <partner-host> (PVS, <partner-agent-ip>). Agent ID: lumiere. Named Lumiere by default, rename during naming ceremony.

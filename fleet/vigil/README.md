@@ -2,7 +2,7 @@
 
 Vigil produces morning and evening briefings for Lumina Constellation users. It aggregates data from multiple sources, formats a summary, and delivers it via Matrix or HTML dashboard — without making unnecessary LLM calls.
 
-**Deploys to:** CT310 (<fleet-server-ip>) at `/opt/lumina-fleet/vigil/`
+**Deploys to:** <fleet-host> (<fleet-server-ip>) at `/opt/lumina-fleet/vigil/`
 **Trigger:** IronClaw routine (configurable schedule — default 07:00 and 17:00)
 **Inference cost:** Low. Data assembly is Python; narrative synthesis uses a local model only when needed.
 
@@ -42,6 +42,18 @@ Vigil produces morning and evening briefings for Lumina Constellation users. It 
 
 ---
 
+## MCP Tools (via Terminus)
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `vigil_run` | Trigger a briefing immediately | `schedule: morning\|evening` |
+| `vigil_dashboard` | Return URL of the latest briefing HTML | — |
+| `vigil_status` | Return last briefing timestamp and status | — |
+
+These are defined in `terminus/vigil_tools.py`.
+
+---
+
 ## Design Constraints
 
 - All data aggregation is Python — no LLM calls for fetching or formatting.
@@ -53,7 +65,7 @@ Vigil produces morning and evening briefings for Lumina Constellation users. It 
 
 ## Architecture
 
-- **Runs on:** CT310 (`<fleet-server-ip>`) at `/opt/lumina-fleet/vigil/`
+- **Runs on:** <fleet-host> (`<fleet-server-ip>`) at `/opt/lumina-fleet/vigil/`
 - **Dependencies:** Python 3.11+, `requests`, `caldav`, `imaplib` (stdlib), `jinja2`
 - **Connections:** NewsAPI, GNews, TomTom, Google CalDAV, Google IMAP, weather API, Grocy (CT self-hosted), Actual Budget (CT self-hosted); output via Nexus → Lumina → Matrix
 

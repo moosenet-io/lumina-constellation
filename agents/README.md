@@ -6,11 +6,15 @@ This directory contains `.agent.yaml` definition files for every agent in Lumina
 
 ## Current Agents
 
-| File | Agent | Role | Container |
-|------|-------|------|-----------|
-| `lumina.agent.yaml` | **Lumina** | Primary orchestrator. Personality-first personal assistant. | CT305 |
-
-Additional agents are defined in `/opt/lumina-fleet/agents/` on CT310 and will be added here as the monorepo consolidation progresses.
+| File | Agent | Role | Host |
+|------|-------|------|------|
+| `lumina.agent.yaml` | **Lumina** | Primary orchestrator. Routes all requests. | `<ironclaw-host>` |
+| `fleet/agents/lumina.agent.yaml` | **Lumina** (fleet copy) | Same agent, fleet config | `<ironclaw-host>` |
+| `fleet/agents/architect-arcane.agent.yaml` | Architect Arcane | Obsidian Circle — systems architecture persona | Council |
+| `fleet/agents/skeptic-seer.agent.yaml` | Skeptic Seer | Obsidian Circle — critical review persona | Council |
+| `fleet/agents/keeper-of-operations.agent.yaml` | Keeper of Operations | Obsidian Circle — ops perspective | Council |
+| `fleet/agents/wandering-fool.agent.yaml` | Wandering Fool | Obsidian Circle — creative/lateral thinking | Council |
+| `fleet/agents/lumiere.agent.yaml` | Lumière | Partner agent — household member AI companion | `<partner-host>` |
 
 ---
 
@@ -27,7 +31,7 @@ description: |
 model: "local/qwen"                  # Preferred inference route
 model_fallback: "openrouter/haiku"   # Fallback if local unavailable
 
-container: CT310                     # Where this agent runs
+container: <fleet-host>                     # Where this agent runs
 deploy_path: /opt/lumina-fleet/vigil/
 service: vigil.service               # systemd service name
 

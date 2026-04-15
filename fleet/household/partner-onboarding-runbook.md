@@ -15,7 +15,7 @@ Step-by-step guide for deploying a second IronClaw instance on MooseNet as a hou
 
 ```bash
 # On PVS host (<pvs-host-ip>)
-# Allocate new CT (e.g. CT316)
+# Allocate new CT (e.g. <partner-host>)
 pct create 316 /var/lib/vz/template/cache/debian-12-standard.tar.zst \
   --hostname partner-agent \
   --cores 2 --memory 2048 \
@@ -28,18 +28,18 @@ pct start 316
 ### 1.2 Install IronClaw
 
 ```bash
-# Inside CT316
+# Inside <partner-host>
 wget -O /usr/local/bin/ironclaw \
   https://github.com/nearai/ironclaw/releases/download/ironclaw-v0.24.0/ironclaw-x86_64-unknown-linux-gnu.tar.gz
 # Extract and install (see CLAUDE.md for exact process)
 chmod +x /usr/local/bin/ironclaw
 ```
 
-### 1.3 Connect to Terminus (CT214)
+### 1.3 Connect to Terminus (<terminus-host>)
 
 ```bash
-# CT214 must allow SSH from CT316's IP
-# In CT216's stdio.sh:
+# <terminus-host> must allow SSH from <partner-host>'s IP
+# In <partner-terminus-host>'s stdio.sh:
 export LUMINA_AGENT_ID=partner    # or chosen name
 export NEARAI_AUTH_URL=http://127.0.0.1
 export NEARAI_BASE_URL=http://127.0.0.1
@@ -88,19 +88,19 @@ HOUSEHOLD_AGENTS = ['lumina', 'partner']  # add chosen agent_id
 ### 3.2 Test household messaging
 
 ```bash
-# On CT310
+# On <fleet-host>
 python3 /opt/lumina-fleet/nexus/household_routing.py
 # Should send test household message and receive it as lumina
 ```
 
 ### 3.3 Verify Nexus access
 
-Partner agent needs read/write to inbox_messages table in CT300 Postgres.
+Partner agent needs read/write to inbox_messages table in <postgres-host> Postgres.
 Add credentials to partner CT's environment (use Infisical).
 
 ## Phase 4: Terminus Tool Scoping
 
-Partner agent uses the same Terminus (CT214) as Lumina, with per-agent scoping:
+Partner agent uses the same Terminus (<terminus-host>) as Lumina, with per-agent scoping:
 - `LUMINA_AGENT_ID=partner` in stdio.sh → Terminus returns `partner` from `get_agent_context()`
 - Engram queries automatically scoped to `agents/partner/` namespace
 - Personal tools (health, learning, finance) scoped to partner's namespace
@@ -109,7 +109,7 @@ No changes to server.py needed — LUMINA_AGENT_ID handles this automatically.
 
 ## Phase 5: Verification Checklist
 
-- [ ] CT316 running, IronClaw 0.24.0 installed
+- [ ] <partner-host> running, IronClaw 0.24.0 installed
 - [ ] Terminus connected (`tools:249` in startup log)
 - [ ] Household messages routing correctly between Lumina and Partner
 - [ ] Engram writes scoped to `agents/partner/` namespace
@@ -119,8 +119,8 @@ No changes to server.py needed — LUMINA_AGENT_ID handles this automatically.
 ## Rollback
 
 To remove the partner agent:
-1. Stop IronClaw service on CT316
-2. Remove CT316 from Proxmox
+1. Stop IronClaw service on <partner-host>
+2. Remove <partner-host> from Proxmox
 3. Update `HOUSEHOLD_AGENTS` in household_config.py
 4. Archive any partner Engram data
 
