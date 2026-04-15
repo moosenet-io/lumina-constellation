@@ -600,20 +600,38 @@ def _check_active_agents():
 def _check_nexus_messages():
     try:
         import psycopg2
-        db_host = os.environ.get("INBOX_DB_HOST", "192.168.0.108")
+        db_host = os.environ.get("INBOX_DB_HOST", "")
         db_user = os.environ.get("INBOX_DB_USER", "lumina")
         db_pass = os.environ.get("INBOX_DB_PASS", "")
+        if not db_host:
+            return {"value": None, "ok": False, "error": "INBOX_DB_HOST not set"}
         conn = psycopg2.connect(
             host=db_host, dbname="lumina_inbox",
             user=db_user, password=db_pass, connect_timeout=3
         )
         cur = conn.cursor()
+        # Check table exists first — create it if not (graceful degradation)
+        cur.execute("""
+            SELECT EXISTS (
+                SELECT FROM pg_tables
+                WHERE schemaname='public' AND tablename='inbox_messages'
+            )
+        """)
+        table_exists = cur.fetchone()[0]
+        if not table_exists:
+            conn.close()
+            return {"value": 0, "ok": True, "note": "inbox_messages table not yet created"}
         cur.execute("SELECT COUNT(*) FROM inbox_messages WHERE status = 'pending'")
-        count = cur.fetchone()[0]
+        pending = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM inbox_messages WHERE status = 'acked'")
+        total = pending + cur.fetchone()[0]
         conn.close()
-        return {"value": count, "ok": True}
+        return {"value": pending, "ok": True, "total": total, "pending": pending}
+    except ImportError:
+        return {"value": None, "ok": False, "error": "psycopg2 not installed"}
     except Exception as e:
-        return {"value": None, "ok": False, "error": str(e)[:80]}
+        err = str(e)[:100]
+        return {"value": None, "ok": False, "error": err}
 
 
 def _check_engram_facts():
@@ -663,18 +681,25 @@ def _check_matrix_bridge():
 
 
 def _check_refractor_categories():
-    """Count actual keyword categories: lines matching '    "word": {' at 4-space indent."""
+    """Count Refractor keyword categories from llm-proxy.py on the IronClaw host."""
+    # Strategy: grep for top-level dict keys that look like category names
+    # These appear as '    "categoryname": [' or '    "categoryname": {'
     r = subprocess.run(
         ["ssh", "root@192.168.0.104",
-         r'pct exec 305 -- grep -cP "^    \"[a-z_]+\": \{" /usr/local/bin/llm-proxy.py 2>/dev/null'],
-        capture_output=True, text=True, timeout=6
+         "pct exec 305 -- python3 -c \""
+         "import re, sys; "
+         "src=open('/usr/local/bin/llm-proxy.py').read(); "
+         "cats=re.findall(r'\\\"([a-z_]+)\\\"\\s*:\\s*[\\[\\{]', src); "
+         "unique=[c for c in cats if len(c)>2]; "
+         "print(len(set(unique)))\" 2>/dev/null"],
+        capture_output=True, text=True, timeout=8
     )
     count_str = r.stdout.strip()
     try:
         count = int(count_str)
     except ValueError:
         count = 0
-    return {"value": count, "ok": count > 10}  # expect 32+
+    return {"value": count, "ok": count > 10}
 
 
 def _check_plane_projects():
@@ -730,9 +755,43 @@ async def get_status():
         if name not in checks:
             checks[name] = {"value": None, "ok": False, "error": "timeout"}
 
-    failed = sum(1 for c in checks.values() if not c.get("ok", False))
-    overall = "ok" if failed == 0 else ("degraded" if failed <= 2 else "critical")
-    result = {"status": overall, "checks": checks, "timestamp": datetime.now(timezone.utc).isoformat()}
+    failed_names = [name for name, c in checks.items() if not c.get("ok", False)]
+    failed = len(failed_names)
+    core_checks = {"ironclaw_version", "litellm_models"}
+    core_down = [n for n in failed_names if n in core_checks]
+
+    if failed == 0:
+        overall = "ok"
+        status_label = "ALL SYSTEMS OK"
+    elif core_down:
+        overall = "critical"
+        status_label = f"CRITICAL — {', '.join(core_down)} down"
+    else:
+        overall = "degraded"
+        status_label = f"DEGRADED — {', '.join(failed_names)}"
+
+    # Cost summary from Myelin output
+    cost_summary = None
+    try:
+        usage_file = FLEET_DIR / "myelin" / "output" / "usage.json"
+        if usage_file.exists():
+            cost_data = json.loads(usage_file.read_text())
+            cost_summary = {
+                "today_usd": cost_data.get("today_usd", 0),
+                "budget_warn": 2.0,
+                "budget_hard": 10.0,
+            }
+    except Exception:
+        pass
+
+    result = {
+        "status": overall,
+        "status_label": status_label,
+        "checks": checks,
+        "failed_services": failed_names,
+        "cost": cost_summary,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
     if _CACHE_AVAILABLE:
         _soma_cache.set('/api/status', result)

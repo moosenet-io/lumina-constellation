@@ -145,10 +145,31 @@ def refresh_status() -> dict:
         status_label = 'CRITICAL — core services down'
         status_level = 'critical'
 
+    # Cost summary (from Myelin output file)
+    cost = None
+    try:
+        usage_file = '/opt/lumina-fleet/myelin/output/usage.json'
+        import json as _json
+        with open(usage_file) as f:
+            usage = _json.load(f)
+        cost = {
+            'today_usd': round(usage.get('today_usd', 0), 4),
+            'python_usd': round(usage.get('python_usd', 0), 4),
+            'local_usd': round(usage.get('local_usd', 0), 4),
+            'cloud_usd': round(usage.get('cloud_usd', 0), 4),
+            'budget_warn': 2.0,
+            'budget_hard': 10.0,
+            'status': 'ok' if usage.get('today_usd', 0) < 2.0 else
+                      ('warn' if usage.get('today_usd', 0) < 10.0 else 'critical'),
+        }
+    except Exception:
+        pass
+
     return {
         'ok': True,
         'status': status_label,
         'status_level': status_level,
         'services': services,
+        'cost': cost,
         'checked_at': datetime.now(timezone.utc).isoformat(),
     }
