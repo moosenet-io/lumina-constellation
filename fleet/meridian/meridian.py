@@ -97,6 +97,7 @@ def generate_weekly_report(portfolio_id='default'):
     html = f'''<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Meridian — SIMULATED Trading</title>
+<link rel="stylesheet" href="/shared/constellation.css">
 <style>
 body{{font-family:system-ui,sans-serif;background:#0f0f0f;color:#e5e5e5;padding:20px;max-width:800px;margin:0 auto}}
 .disclaimer{{background:#1a0a0a;border:1px solid #EF4444;border-radius:8px;padding:12px;margin-bottom:20px;color:#EF4444;font-size:.85em;text-align:center;font-weight:600}}

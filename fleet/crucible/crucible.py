@@ -218,6 +218,7 @@ def generate_dashboard() -> str:
     html = f'''<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Crucible — Learning</title>
+<link rel="stylesheet" href="/shared/constellation.css">
 <style>
 body{{font-family:system-ui,sans-serif;background:#111;color:#e5e5e5;padding:16px;max-width:640px;margin:0 auto}}
 h1{{font-size:1.4em;margin-bottom:4px}}.subtitle{{color:#888;font-size:.85em;margin-bottom:20px}}

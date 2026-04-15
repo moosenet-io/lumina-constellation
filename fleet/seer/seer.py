@@ -178,24 +178,41 @@ def research(query, effort='standard', focus='overview', max_sources=None, repor
     os.makedirs(os.path.dirname(html_path), exist_ok=True)
     html_content = f'''<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"><title>{html.escape(query)}</title>
-<style>body{{font-family:system-ui,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.6;color:#1a1a1a}}
-h1{{font-size:1.5em;border-bottom:2px solid #333;padding-bottom:8px}}
-.meta{{color:#666;font-size:.9em;margin-bottom:20px}}
-.sources{{background:#f5f5f5;padding:15px;border-radius:4px;margin-top:20px}}
-.warn{{color:#b45309;font-size:.8em}}
-.excluded{{color:#dc2626;font-size:.8em}}
-@media(prefers-color-scheme:dark){{body{{background:#1a1a1a;color:#e5e5e5}}.sources{{background:#2a2a2a}}}}
-</style></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>{html.escape(query)}</title>
+<link rel="stylesheet" href="/shared/constellation.css">
+<style>
+  body {{ padding: 2rem; }}
+  .report-body {{ line-height: 1.7; white-space: pre-wrap; word-break: break-word; }}
+  .sources-list {{ list-style: none; padding: 0; margin: 0; }}
+  .sources-list li {{ padding: 0.35rem 0; border-bottom: 1px solid var(--bg-tertiary); font-size: 0.875rem; }}
+  .sources-list li:last-child {{ border-bottom: none; }}
+</style>
+</head>
 <body>
-<h1>{html.escape(query)}</h1>
-<div class="meta">{date_str} &bull; effort: {effort} &bull; {len(summaries)} sources used &bull; {len(excluded)} excluded</div>
-<div class="report">{report_body.replace(chr(10), "<br>")}</div>
-<div class="sources"><h3>Sources</h3><ul>
-{"".join(f'<li><a href="{html.escape(s["url"])}">{html.escape(s["title"] or s["url"])}</a>{" <span class=warn>(unverified)</span>" if s["warning"] else ""}</li>' for s in summaries)}
-</ul>
-{"<h4>Excluded</h4><ul>" + "".join(f'<li class=excluded>{html.escape(e["url"])}: {html.escape(str(e["reason"])[:60])}</li>' for e in excluded) + "</ul>" if excluded else ""}
-</div></body></html>'''
+<div style="max-width:860px;margin:0 auto;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+    <h1 style="font-size:1.5rem;font-weight:700;margin:0;">&#x1F50D; {html.escape(query)}</h1>
+    <div style="font-size:0.75rem;color:var(--text-tertiary);">{date_str}</div>
+  </div>
+  <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:1.5rem;">
+    Effort: {effort} &bull; {len(summaries)} sources &bull; {len(excluded)} excluded
+  </div>
+  <div class="card" style="padding:1.5rem;margin-bottom:1.5rem;">
+    <div class="report-body">{report_body.replace(chr(10), "<br>")}</div>
+  </div>
+  <div class="card" style="padding:1rem;">
+    <h2 style="font-size:1rem;font-weight:700;margin:0 0 0.75rem 0;">Sources</h2>
+    <ul class="sources-list">
+{"".join(f'<li><a href="{html.escape(s["url"])}" style="color:var(--accent);">{html.escape(s["title"] or s["url"])}</a>{" <span style=\\"color:var(--color-warning);font-size:0.75rem;\\">(unverified)</span>" if s["warning"] else ""}</li>' for s in summaries)}
+    </ul>
+{"<h3 style=\\"font-size:0.875rem;margin:1rem 0 0.5rem 0;\\">Excluded</h3><ul class=\\"sources-list\\">" + "".join(f'<li style=\\"color:var(--color-error);font-size:0.75rem;\\">{html.escape(e["url"])}: {html.escape(str(e["reason"])[:60])}</li>' for e in excluded) + "</ul>" if excluded else ""}
+  </div>
+  <div style="margin-top:1.5rem;text-align:center;font-size:0.75rem;color:var(--text-tertiary);">
+    Lumina Constellation &middot; Seer Research &middot; <a href="/status" style="color:var(--accent);">Dashboard</a>
+  </div>
+</div>
+</body></html>'''
     
     with open(html_path, 'w') as f:
         f.write(html_content)
