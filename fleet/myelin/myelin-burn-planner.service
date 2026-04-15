@@ -1,0 +1,11 @@
+[Unit]
+Description=Myelin Burn Planner — daily budget pacing at 18:00
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/lumina-fleet/myelin/myelin_burn_planner.py
+EnvironmentFile=-/opt/lumina-fleet/axon/.env
+WorkingDirectory=/opt/lumina-fleet/myelin
+StandardOutput=journal
+StandardError=journal

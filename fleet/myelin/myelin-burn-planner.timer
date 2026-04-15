@@ -1,0 +1,11 @@
+[Unit]
+Description=Myelin Burn Planner — every day at 18:00
+Requires=myelin-burn-planner.service
+
+[Timer]
+OnCalendar=*-*-* 18:00:00
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target
