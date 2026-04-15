@@ -1,0 +1,12 @@
+[Unit]
+Description=Synapse scan timer — every 30 minutes
+Requires=synapse.service
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+Persistent=true
+Unit=synapse.service
+
+[Install]
+WantedBy=timers.target

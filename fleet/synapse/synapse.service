@@ -1,0 +1,16 @@
+[Unit]
+Description=Synapse spontaneous conversation scan
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/lumina-fleet/synapse
+ExecStart=/usr/bin/python3 /opt/lumina-fleet/synapse/synapse_scan.py
+EnvironmentFile=-/opt/lumina-fleet/.env
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=synapse
+
+[Install]
+WantedBy=multi-user.target
