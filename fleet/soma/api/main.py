@@ -33,10 +33,11 @@ except ImportError:
         def register(self, *a, **kw): pass
         def start_background_refresh(self, app): pass
 
-from fastapi import FastAPI, HTTPException, Header, Body, Request
-from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
+from fastapi import FastAPI, HTTPException, Header, Body, Request, Depends, Form
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
@@ -47,6 +48,21 @@ SOMA_KEY = os.environ.get("SOMA_SECRET_KEY", "soma-dev-key")
 FLEET_DIR = Path("/opt/lumina-fleet")
 CONSTELLATION_YAML = FLEET_DIR / "constellation.yaml"
 
+# ── Auth module (SP.2) ────────────────────────────────────────────────────────
+try:
+    _sys.path.insert(0, str(Path("/opt/lumina-fleet/soma")))
+    from auth import SomaAuth, add_auth_routes, require_auth, optional_auth, _soma_auth as _auth_module
+    _AUTH_AVAILABLE = True
+except ImportError:
+    _AUTH_AVAILABLE = False
+    _auth_module = None
+    def require_auth(x_soma_key: str = Header(default="")):
+        if SOMA_KEY and x_soma_key != SOMA_KEY:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        return {"username": "admin", "role": "admin", "auth_method": "header"}
+    def optional_auth(x_soma_key: str = Header(default="")):
+        return {"username": "admin", "role": "admin"} if (not SOMA_KEY or x_soma_key == SOMA_KEY) else None
+
 # Initialize cache with admin token for HMAC integrity
 _soma_cache = SomaCache(admin_token=SOMA_KEY)
 if _CACHE_AVAILABLE:
@@ -54,8 +70,41 @@ if _CACHE_AVAILABLE:
     _soma_cache.start_background_refresh(app)
 
 def _auth(x_soma_key: str = ""):
+    """Legacy auth check for existing endpoints. New endpoints use require_auth Depends."""
     if SOMA_KEY and x_soma_key != SOMA_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+# ── Auth redirect middleware (SP.2) ──────────────────────────────────────────
+_PUBLIC_PATHS = {"/login", "/health", "/shared", "/static", "/setup", "/wizard", "/api/auth/setup"}
+
+class AuthRedirectMiddleware(BaseHTTPMiddleware):
+    """Redirect unauthenticated browser requests to /login."""
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        # Skip: public paths, API endpoints (they return 401 not redirect), assets
+        if any(path.startswith(p) for p in _PUBLIC_PATHS) or path.startswith("/api/"):
+            return await call_next(request)
+        # Check cookie or header
+        token = request.cookies.get("soma_session", "")
+        key   = request.headers.get("x-soma-key", "")
+        if token or key == SOMA_KEY:
+            return await call_next(request)
+        # No auth — redirect to login for browser requests
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept:
+            return RedirectResponse(f"/login", status_code=302)
+        return await call_next(request)
+
+app.add_middleware(AuthRedirectMiddleware)
+
+# Register auth routes (login page, logout, /api/auth/*)
+if _AUTH_AVAILABLE:
+    _jinja_templates_for_auth = None  # set after jinja2_templates is created below
+    @app.on_event("startup")
+    async def _register_auth_routes():
+        # Templates initialised later in file; re-read here
+        _t = Jinja2Templates(directory="/opt/lumina-fleet/soma/templates")
+        add_auth_routes(app, _t)
 
 # ── Health ────────────────────────────────────────────────────────────────────
 @app.get("/health")
@@ -366,13 +415,14 @@ TEMPLATES_DIR = Path("/opt/lumina-fleet/soma/templates")
 jinja2_templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
-@app.get("/wizard")
+@app.get("/setup")
+@app.get("/wizard")  # kept for backward compat, redirects to /setup
 def wizard_page():
-    """Onboarding wizard — self-contained 8-step HTML wizard."""
+    """Setup wizard — 9-step onboarding and configuration flow."""
     wizard_file = TEMPLATES_DIR / "wizard.html"
     if wizard_file.exists():
         return FileResponse(str(wizard_file), media_type="text/html")
-    return HTMLResponse("<h1>Wizard not found</h1>", status_code=404)
+    return HTMLResponse("<h1>Setup not found</h1>", status_code=404)
 
 
 @app.post("/api/wizard/apply")
