@@ -1,0 +1,94 @@
+# Spectra configuration — hot-reloaded by watchdog (no restart needed)
+# Edit in Soma /spectra/config or directly here
+
+service:
+  port: 8084
+  max_concurrent_sessions: 5
+  max_session_minutes: 15
+  max_pages_per_session: 20
+  max_redirects: 5
+  max_page_load_seconds: 30
+  max_download_mb: 10
+
+# Consumer keys (MY.1-MY.9 from Myelin virtual keys)
+consumers:
+  MY.1:
+    name: Peter (operator)
+    enabled: true
+    daily_budget: -1         # -1 = unlimited
+    rate_limit_per_sec: 50
+  MY.2:
+    name: Lumina
+    enabled: true
+    daily_budget: 200
+    rate_limit_per_sec: 5
+  MY.3:
+    name: IronClaw agent
+    enabled: false
+    daily_budget: 0
+    rate_limit_per_sec: 0
+  MY.4:
+    name: Vigil
+    enabled: true
+    daily_budget: 20
+    rate_limit_per_sec: 2
+  MY.5:
+    name: Sentinel
+    enabled: true
+    daily_budget: 10
+    rate_limit_per_sec: 2
+  MY.6:
+    name: Seer
+    enabled: true
+    daily_budget: 50
+    rate_limit_per_sec: 5
+  MY.7:
+    name: Vector
+    enabled: true
+    daily_budget: 30
+    rate_limit_per_sec: 5
+  MY.8:
+    name: Guest
+    enabled: false
+    daily_budget: 0
+    rate_limit_per_sec: 0
+  MY.9:
+    name: Shared
+    enabled: false
+    daily_budget: 0
+    rate_limit_per_sec: 0
+
+# Internal screenshot allowlist (spectra-internal container only)
+internal_allowlist:
+  - "http://localhost:8082"          # Soma
+  - "http://localhost:9090"          # Prometheus
+  - "http://localhost:9100"          # Node exporter
+
+# URL blocklist (regex patterns)
+url_blocklist:
+  - "^javascript:"
+  - "^data:"
+  - "^file:"
+  - "^vbscript:"
+
+# Content sanitization
+sanitization:
+  max_output_tokens: 2000
+  double_extraction_consumers: ["MY.4", "MY.6"]  # Vigil, Seer
+
+# Retention (days)
+retention:
+  recordings_days: 7
+  screenshots_days: 7
+  text_days: 90
+  audit_days: 30
+
+# Chromium flags
+chromium:
+  args:
+    - "--disable-extensions"
+    - "--disable-sync"
+    - "--disable-background-networking"
+    - "--disable-component-update"
+    - "--disable-features=DnsOverHttps"
+    - "--no-first-run"

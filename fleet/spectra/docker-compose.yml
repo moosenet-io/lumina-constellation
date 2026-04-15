@@ -1,0 +1,146 @@
+version: "3.9"
+
+services:
+  spectra:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spectra
+    restart: unless-stopped
+
+    # ── Security hardening (BA.1) ─────────────────────────────────────────────
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined    # Chromium requires this; custom seccomp profile in roadmap
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_ADMIN             # Required for Chromium sandbox (renderer process)
+      - NET_ADMIN             # Required for iptables in entrypoint
+      - NET_RAW               # Required for iptables
+      - CHOWN                 # Required to set file ownership in volume mounts
+      - DAC_OVERRIDE          # Required to write to volume dirs
+      - SETUID                # Required for gosu user switch
+      - SETGID                # Required for gosu user switch
+    read_only: true
+
+    # ── Resource limits ───────────────────────────────────────────────────────
+    mem_limit: 2g
+    cpus: 2.0
+    pids_limit: 200
+
+    # ── Tmpfs (writable, in-memory) ───────────────────────────────────────────
+    tmpfs:
+      - /tmp:size=1g,mode=1777
+      - /dev/shm:size=512m
+
+    # ── Volumes ───────────────────────────────────────────────────────────────
+    volumes:
+      - spectra_data:/data/spectra
+      - spectra_certs:/certs
+      - ./spectra_config.yaml:/app/spectra_config.yaml:ro  # hot-reload watches this
+      - ./spectra_service.py:/app/spectra_service.py:ro    # mount for no-rebuild deploys
+      - ./spectra_worker.py:/app/spectra_worker.py:ro
+      - ./spectra_sanitizer.py:/app/spectra_sanitizer.py:ro
+
+    # ── Network ───────────────────────────────────────────────────────────────
+    networks:
+      - spectra-net
+    ports:
+      - "8084:8084"
+
+    # ── Environment ───────────────────────────────────────────────────────────
+    environment:
+      - DISPLAY=:99
+      - SPECTRA_DATA=/data/spectra
+      - SPECTRA_CONFIG=/app/spectra_config.yaml
+      - SPECTRA_OPERATOR_KEY=${SPECTRA_OPERATOR_KEY:-spectra-operator-dev}
+
+    # ── Healthcheck ───────────────────────────────────────────────────────────
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 45s
+      retries: 3
+
+  # ── noVNC for Live View (BA.8) — Docker-internal only, TLS ─────────────────
+  spectra-novnc:
+    image: theasp/novnc:latest
+    container_name: spectra-novnc
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      - DISPLAY_WIDTH=1280
+      - DISPLAY_HEIGHT=800
+      - RUN_XTERM=no
+      - VNC_SERVER=spectra:5900
+    volumes:
+      - spectra_certs:/certs:ro
+    networks:
+      - spectra-net
+    # NOT exposed on host — only via Soma WebSocket proxy
+    expose:
+      - "8080"
+    depends_on:
+      - spectra
+
+  # ── Internal screenshotter — LAN only, no internet (BA.13) ─────────────────
+  spectra-internal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spectra-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+      - NET_RAW
+    read_only: true
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 100
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+      - /dev/shm:size=256m
+    volumes:
+      - spectra_data:/data/spectra
+      - spectra_certs:/certs
+      - ./spectra_config.yaml:/app/spectra_config.yaml:ro
+    networks:
+      - spectra-internal-net  # LAN only, no internet routing
+    ports:
+      - "127.0.0.1:8085:8084"   # localhost only
+    environment:
+      - DISPLAY=:99
+      - SPECTRA_DATA=/data/spectra
+      - SPECTRA_CONFIG=/app/spectra_config.yaml
+      - SPECTRA_INTERNAL_MODE=true
+      - SPECTRA_OPERATOR_KEY=${SPECTRA_OPERATOR_KEY:-spectra-operator-dev}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 45s
+      retries: 3
+
+networks:
+  spectra-net:
+    driver: bridge
+  spectra-internal-net:
+    driver: bridge
+    internal: true   # no external routing — LAN only via Docker bridge
+
+volumes:
+  spectra_data:
+    driver: local
+  spectra_certs:
+    driver: local
