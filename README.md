@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="docs/assets/moosenet-badge.png" alt="MooseNet" width="120"/>
-</p>
-
 <h1 align="center">✦ Lumina Constellation ✦</h1>
 
 <p align="center">
@@ -18,7 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="#what-your-morning-looks-like">Morning briefing</a> ·
+  <a href="#what-your-morning-looks-like-with-lumina">Morning briefing</a> ·
   <a href="#the-constellation">Modules</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#the-economics">Economics</a> ·
@@ -64,7 +60,7 @@ She's not a chatbot. She's an orchestrator — with opinions, memory, and a dail
 |-------|---------|-------------|
 | **Brain** | [Engram](engram/) · [Obsidian Circle](fleet/obsidian_circle/) · [Mr. Wizard](docs/modules.md#mr-wizard) · [Cortex](fleet/cortex/) | Memory, multi-model reasoning council, deep analysis, code intelligence |
 | **Nervous system** | [Axon](fleet/axon/) · [Myelin](fleet/myelin/) · [Synapse](fleet/synapse/) · [Refractor](terminus/) | Work execution, cost governance, notifications, smart routing |
-| **Senses** | [Spectra](spectra/) · [Seer](fleet/seer/) · [Vigil](fleet/vigil/) · [Sentinel](fleet/sentinel/) | Browser automation, web research, daily briefings, monitoring |
+| **Senses** | [Spectra](fleet/spectra/) · [Seer](fleet/seer/) · [Vigil](fleet/vigil/) · [Sentinel](fleet/sentinel/) | Browser automation, web research, daily briefings, monitoring |
 | **Body** | [Soma](fleet/soma/) · [Nexus](fleet/nexus/) · [Plexus](docs/modules.md#plexus) · [Terminus](terminus/) · [Dura](fleet/dura/) | Dashboard, inbox, project management, MCP hub, backup |
 | **Life** | [Vector](fleet/vector/) · [Meridian](fleet/meridian/) · [Odyssey](docs/modules.md#odyssey) · [Vitals](docs/modules.md#vitals) · [Hearth](docs/modules.md#hearth) · [Ledger](docs/modules.md#ledger) · [Relay](docs/modules.md#relay) | Dev loops, paper trading, travel, health, household, expenses, vehicle |
 | **Identity** | [Lumina](agents/) · [Lumière](agents/) | Orchestrator personality, partner agent |
@@ -80,7 +76,7 @@ curl -fsSL https://ollama.com/install.sh | sh
 # Clone and run
 git clone https://github.com/moosenet-io/lumina-constellation.git
 cd lumina-constellation
-./install.sh    # detects your hardware, recommends models, configures everything
+./install.sh
 docker compose up -d
 
 # Open the dashboard
@@ -113,15 +109,11 @@ lumina-constellation/
 ├── docs/            # Architecture guides, module docs, hardware guide
 ├── engram/          # Memory and knowledge store (sqlite-vec, Zettelkasten)
 ├── fleet/           # Agent fleet services (Axon, Vigil, Sentinel, Vector, Soma, ...)
-├── plugins/         # Plugin loader and community plugins
-├── skills/          # Agent skill definitions
-├── spectra/         # Browser automation (Playwright, noVNC, session recording)
-├── specs/           # 30 specification documents (the design bible)
 ├── terminus/        # MCP tool hub (38 modules, 272+ tools)
 └── tests/           # Integration and adversarial test suites
 ```
 
-Each subdirectory has its own README with module-specific docs. See the full [architecture guide](docs/architecture.md).
+Each subdirectory has its own README with module-specific docs.
 
 ---
 
@@ -140,13 +132,13 @@ Each subdirectory has its own README with module-specific docs. See the full [ar
   <a href="docs/modules.md">All modules</a> ·
   <a href="docs/hardware-guide.md">Hardware guide</a> ·
   <a href="docs/inference-debloating.md">Inference de-bloating</a> ·
-  <a href="CITATIONS.md">Citations & credits</a> ·
+  <a href="CITATIONS.md">Citations &amp; credits</a> ·
   <a href="LICENSE">MIT License</a>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"/>
   <img src="https://img.shields.io/badge/modules-25-7F77DD" alt="25 modules"/>
-  <img src="https://img.shields.io/badge/daily_cost-$0-378ADD" alt="$0/day"/>
-  <img src="https://img.shields.io/badge/built_by-MooseNet-1D9E75" alt="Built by MooseNet"/>
+  <img src="https://img.shields.io/badge/daily__cost-%240-378ADD" alt="$0/day"/>
+  <img src="docs/assets/moosenet-badge.svg" height="20" alt="Built by MooseNet"/>
 </p>
