@@ -218,11 +218,61 @@ def save_plan(db_path: str, spend: dict, pacing: dict, suggestions: list):
     conn.close()
 
 
+def send_to_nexus(suggestions: list[dict]):
+    """Send critical/warn throttle suggestions to Lumina via Nexus inbox (MYL P4-3)."""
+    alerts = [s for s in suggestions if s['level'] in ('critical', 'warn')]
+    if not alerts:
+        return
+
+    inbox_host = os.environ.get('INBOX_DB_HOST', '')
+    inbox_user = os.environ.get('INBOX_DB_USER', 'lumina_inbox_user')
+    inbox_pass = os.environ.get('INBOX_DB_PASS', '')
+
+    if not inbox_host:
+        # Fallback: write to alert log
+        log_path = Path(DB_PATH).parent / 'logs' / 'burn_alerts.log'
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(log_path, 'a') as f:
+            for s in alerts:
+                f.write(json.dumps({
+                    'ts': datetime.now(timezone.utc).isoformat(),
+                    'level': s['level'],
+                    'scope': s['scope'],
+                    'message': s['message'],
+                    'action': s['action'],
+                }) + '\n')
+        print(f"[myelin-burn-planner] {len(alerts)} alert(s) written to burn_alerts.log (Nexus not configured)")
+        return
+
+    try:
+        import psycopg2
+        conn = psycopg2.connect(host=inbox_host, dbname='lumina_inbox',
+                                user=inbox_user, password=inbox_pass, connect_timeout=5)
+        cur = conn.cursor()
+        payload = json.dumps({
+            'title': 'Myelin Burn Alert',
+            'body': '\n'.join(f"[{s['scope']}] {s['message']} → {s['action']}" for s in alerts),
+            'source': 'myelin-burn-planner',
+            'suggestions': alerts,
+        })
+        priority = 'urgent' if any(s['level'] == 'critical' for s in alerts) else 'normal'
+        cur.execute("""
+            INSERT INTO inbox_messages (from_agent, to_agent, message_type, payload, priority, status)
+            VALUES ('myelin', 'lumina', 'throttle_suggestion', %s, %s, 'pending')
+        """, (payload, priority))
+        conn.commit()
+        conn.close()
+        print(f"[myelin-burn-planner] {len(alerts)} throttle suggestion(s) sent to Lumina via Nexus ({priority})")
+    except Exception as e:
+        print(f"[myelin-burn-planner] Nexus send failed: {e}")
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description='Myelin burn planner — daily budget pacing')
     parser.add_argument('--json', action='store_true', help='Output JSON instead of text')
     parser.add_argument('--no-save', action='store_true', help='Skip writing to DB')
+    parser.add_argument('--no-notify', action='store_true', help='Skip Nexus notification')
     args = parser.parse_args()
 
     config = load_config()
@@ -233,6 +283,9 @@ def main():
     if not args.no_save:
         ensure_burn_plans_table(DB_PATH)
         save_plan(DB_PATH, spend, pacing, suggestions)
+
+    if not args.no_notify:
+        send_to_nexus(suggestions)
 
     if args.json:
         print(json.dumps({
