@@ -29,6 +29,14 @@ from datetime import datetime, timezone, timedelta
 import psycopg2
 import psycopg2.extras
 
+# plane-helper — rate-limited Plane CE client
+sys.path.insert(0, '/opt/plane-helper')
+try:
+    from plane_helper import PlaneClient as _PlaneClient
+    _PLANE_HELPER_OK = True
+except ImportError:
+    _PLANE_HELPER_OK = False
+
 # Engram integration — load memory module from same fleet dir
 sys.path.insert(0, '/opt/lumina-fleet/engram')
 try:
@@ -213,41 +221,35 @@ def nexus_send(msg_type: str, payload: dict, priority='normal', correlation_id='
         return {'error': str(e)}
 
 
-# ── Plane API ─────────────────────────────────────────────────────────────────
+# ── Plane API (via plane-helper) ──────────────────────────────────────────────
 
-def _plane(method, path, data=None):
-    url = f'{PLANE_BASE}{path}'
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(data).encode() if data else None,
-        headers={'X-API-Key': PLANE_TOKEN, 'Content-Type': 'application/json'},
-        method=method
-    )
-    with urllib.request.urlopen(req, timeout=15) as r:
-        return json.load(r)
+def _get_plane_client():
+    """Return a PlaneClient instance. Uses plane-helper if available, falls back to direct."""
+    if _PLANE_HELPER_OK:
+        return _PlaneClient()
+    raise RuntimeError("plane-helper not installed at /opt/plane-helper/plane_helper.py")
 
 
 def plane_get_states(project_id):
-    d = _plane('GET', f'/api/v1/workspaces/{PLANE_WS}/projects/{project_id}/states/')
-    return {s['name']: s['id'] for s in d.get('results', d if isinstance(d, list) else [])}
+    plane = _get_plane_client()
+    states = plane.get_states(project_id)
+    return {s['name']: s['id'] for s in states}
 
 
 def plane_create_issue(project_id, name, description='', state_id=None, priority='medium'):
-    data = {'name': name, 'description_html': f'<p>{description}</p>', 'priority': priority}
-    if state_id:
-        data['state'] = state_id
-    return _plane('POST', f'/api/v1/workspaces/{PLANE_WS}/projects/{project_id}/issues/', data)
+    plane = _get_plane_client()
+    return plane.create_issue(project_id, name, description, priority, state_id)
 
 
 def plane_update_issue(project_id, issue_id, **kwargs):
-    return _plane('PATCH',
-                  f'/api/v1/workspaces/{PLANE_WS}/projects/{project_id}/issues/{issue_id}/',
-                  kwargs)
+    plane = _get_plane_client()
+    return plane.update_issue(project_id, issue_id, **kwargs)
 
 
 def plane_create_label(project_id, name, color='#6366F1'):
-    return _plane('POST', f'/api/v1/workspaces/{PLANE_WS}/projects/{project_id}/labels/',
-                  {'name': name, 'color': color})
+    plane = _get_plane_client()
+    return plane.post(f'/workspaces/{PLANE_WS}/projects/{project_id}/labels/',
+                      {'name': name, 'color': color})
 
 
 # ── Gitea API ─────────────────────────────────────────────────────────────────

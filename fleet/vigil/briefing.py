@@ -13,6 +13,14 @@ import sys as _sys; _sys.path.insert(0, '/opt/lumina-fleet')
 try: from naming import display_name as _dn, constellation_name as _cn
 except: _dn = lambda x: x; _cn = lambda: 'Lumina'
 
+# plane-helper — rate-limited Plane CE client
+_sys.path.insert(0, '/opt/plane-helper')
+try:
+    from plane_helper import PlaneClient as _PlaneClient
+    _PLANE_HELPER_OK = True
+except ImportError:
+    _PLANE_HELPER_OK = False
+
 # Pulse — temporal context (SP.C4)
 _sys.path.insert(0, '/opt/lumina-fleet/shared')
 try:
@@ -509,19 +517,28 @@ def gather_myelin_cost():
 
 
 def gather_plane_tasks(plane_token):
-    """Fetch high-priority open tasks from the LM Plane project."""
+    """Fetch high-priority open tasks from the LM Plane project via plane-helper."""
     if not plane_token:
         return {"error": "No Plane token"}
-    url = (f"{PLANE_URL}/api/v1/workspaces/moosenet/projects/{PLANE_LM_PROJECT_ID}"
-           f"/issues/?per_page=50")
-    data = _http_get(url, headers={"X-API-Key": plane_token})
-    if "error" in data:
-        return data
-    results = data.get("results", [])
+    try:
+        if _PLANE_HELPER_OK:
+            plane = _PlaneClient()
+            results = plane.list_issues(PLANE_LM_PROJECT_ID, state="all")
+        else:
+            # Fallback: direct HTTP (deprecated — install plane-helper)
+            url = (f"{PLANE_URL}/api/v1/workspaces/moosenet/projects/{PLANE_LM_PROJECT_ID}"
+                   f"/issues/?per_page=50")
+            data = _http_get(url, headers={"X-API-Key": plane_token})
+            if "error" in data:
+                return data
+            results = data.get("results", [])
+    except Exception as e:
+        return {"error": str(e)[:120]}
+
     # Filter: In Progress or Todo, with urgent/high priority
     priority_map = {0: "none", 1: "urgent", 2: "high", 3: "medium", 4: "low"}
     wanted_priorities = {1, 2}  # urgent, high
-    # State names we want (In Progress or Todo)
+    # State names we want (In Progress or Todo) — filter client-side (CE state_group param broken)
     wanted_state_groups = {"unstarted", "started"}
     filtered = []
     for issue in results:

@@ -874,15 +874,13 @@ def _check_refractor_categories():
 
 
 def _check_plane_projects():
-    plane_url = os.environ.get("PLANE_URL", "http://192.168.0.232")
-    plane_token = os.environ.get("PLANE_API_TOKEN", "")
-    req = _urlreq_status.Request(
-        f"{plane_url}/api/v1/workspaces/moosenet/projects/",
-        headers={"X-API-Key": plane_token}
-    )
-    with _urlreq_status.urlopen(req, timeout=5) as r:
-        data = json.load(r)
-    count = data.get("count", len(data.get("results", []))) if isinstance(data, dict) else len(data)
+    import sys as _s
+    _s.path.insert(0, '/opt/plane-helper')
+    from plane_helper import PlaneClient
+    plane = PlaneClient()
+    data = plane.get('/workspaces/moosenet/projects/')
+    projects = data.get("results", data) if isinstance(data, dict) else data
+    count = len(projects)
     return {"value": count, "ok": count > 0}
 
 
@@ -1803,20 +1801,22 @@ def vector_oauth_refresh(provider: str, x_soma_key: str = Header(default="")):
             "note": "Open this URL to authenticate, then update the token in Infisical"}
 
 
+def _get_soma_plane():
+    """Return a PlaneClient instance from plane-helper (Soma read-only dashboard use)."""
+    import sys as _s
+    _s.path.insert(0, '/opt/plane-helper')
+    from plane_helper import PlaneClient
+    return PlaneClient()
+
+
 @app.get("/api/vector/plane")
 def vector_plane_summary(x_soma_key: str = Header(default="")):
-    """Cross-project Plane summary (cached via SomaCache)."""
-    plane_url = os.environ.get("PLANE_API_URL", "")
-    plane_token = os.environ.get("PLANE_API_TOKEN", "")
+    """Cross-project Plane summary via plane-helper."""
+    _auth(x_soma_key)
     try:
-        import urllib.request as _ur
-        req = _ur.Request(
-            f"{plane_url}/api/v1/workspaces/moosenet/projects/?per_page=50",
-            headers={"X-API-Key": plane_token} if plane_token else {}
-        )
-        with _ur.urlopen(req, timeout=8) as r:
-            data = json.loads(r.read())
-        projects = data.get("results", [])
+        plane = _get_soma_plane()
+        data = plane.get('/workspaces/moosenet/projects/')
+        projects = data.get("results", data) if isinstance(data, dict) else data
         return {
             "ok": True,
             "projects": [
@@ -1827,24 +1827,16 @@ def vector_plane_summary(x_soma_key: str = Header(default="")):
             "count": len(projects),
         }
     except Exception as e:
-        return {"ok": False, "projects": [], "count": 0,
-                "error": str(e)[:150]}
+        return {"ok": False, "projects": [], "count": 0, "error": str(e)[:150]}
 
 
 @app.get("/api/vector/plane/{project_id}")
 def vector_plane_project(project_id: str, x_soma_key: str = Header(default="")):
-    """Cached Plane project metrics for a specific project."""
-    plane_url = os.environ.get("PLANE_API_URL", "")
-    plane_token = os.environ.get("PLANE_API_TOKEN", "")
+    """Plane project metrics via plane-helper."""
+    _auth(x_soma_key)
     try:
-        import urllib.request as _ur
-        req = _ur.Request(
-            f"{plane_url}/api/v1/workspaces/moosenet/projects/{project_id}/work-items/?per_page=100",
-            headers={"X-API-Key": plane_token} if plane_token else {}
-        )
-        with _ur.urlopen(req, timeout=8) as r:
-            data = json.loads(r.read())
-        items = data.get("results", [])
+        plane = _get_soma_plane()
+        items = plane.list_issues(project_id, state="all")
         done = sum(1 for i in items if i.get("state_detail", {}).get("group") == "done")
         in_progress = sum(1 for i in items if i.get("state_detail", {}).get("group") == "started")
         backlog = len(items) - done - in_progress
@@ -2035,6 +2027,201 @@ def wiki_home_page(request: Request):
 @app.get("/wiki/{path:path}")
 def wiki_sub_page(request: Request, path: str):
     return jinja2_templates.TemplateResponse(request, "wiki.html", {"active_page": "wiki", "wiki_path": path})
+
+
+# ── Synapse config (SY.5) ─────────────────────────────────────────────────────
+
+SYNAPSE_DEFAULTS = {
+    "enabled": False,
+    "strength": "moderate",
+    "quiet_hours": {"start": "22:00", "end": "08:00"},
+    "max_messages_per_day": 3,
+    "topic_blocklist": [],
+    "topic_boosts": [],
+    "agent_toggles": {},
+}
+
+
+def _get_synapse_config() -> dict:
+    cfg = _load_constellation()
+    synapse = cfg.get("synapse", {})
+    merged = {**SYNAPSE_DEFAULTS, **synapse}
+    return merged
+
+
+def _set_synapse_config(data: dict):
+    cfg = _load_constellation()
+    cfg["synapse"] = data
+    _save_constellation(cfg)
+
+
+@app.get("/api/config/synapse")
+def get_synapse_config(x_soma_key: str = Header(default="")):
+    """Return current synapse section from constellation.yaml."""
+    _auth(x_soma_key)
+    return {"ok": True, "config": _get_synapse_config()}
+
+
+@app.put("/api/config/synapse")
+async def put_synapse_config(request: Request, x_soma_key: str = Header(default="")):
+    """Write synapse section to constellation.yaml (full replace)."""
+    _auth(x_soma_key)
+    data = await request.json()
+    # Validate strength
+    if "strength" in data and data["strength"] not in ("gentle", "moderate", "enthusiastic"):
+        raise HTTPException(400, "strength must be gentle, moderate, or enthusiastic")
+    # Validate max_messages_per_day
+    if "max_messages_per_day" in data:
+        data["max_messages_per_day"] = max(1, min(20, int(data["max_messages_per_day"])))
+    try:
+        _set_synapse_config(data)
+        return {"ok": True, "config": _get_synapse_config()}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+
+@app.get("/synapse")
+def synapse_page(request: Request):
+    """Synapse history + config page."""
+    return jinja2_templates.TemplateResponse(request, "synapse.html", {"active_page": "synapse"})
+
+
+# ── Synapse history (SY.6) ────────────────────────────────────────────────────
+
+SYNAPSE_LOG_PATH = Path(os.environ.get("SYNAPSE_LOG_PATH", "/opt/lumina-fleet/synapse/gate_log.json"))
+SYNAPSE_FEEDBACK_PATH = Path(os.environ.get("SYNAPSE_FEEDBACK_PATH", "/opt/lumina-fleet/synapse/feedback.json"))
+
+
+@app.get("/api/synapse/history")
+def synapse_history(
+    limit: int = 50,
+    trigger_type: str = "",
+    x_soma_key: str = Header(default=""),
+):
+    """Return sent Synapse messages from gate_log.json."""
+    _auth(x_soma_key)
+    try:
+        if not SYNAPSE_LOG_PATH.exists():
+            return {"ok": True, "count": 0, "entries": [], "note": "No history yet"}
+        log = json.loads(SYNAPSE_LOG_PATH.read_text())
+        # Optionally filter by trigger type
+        if trigger_type:
+            log = [e for e in log if e.get("type") == trigger_type]
+        # Newest first
+        log = list(reversed(log))[:min(limit, 200)]
+        # Attach feedback
+        feedback = {}
+        if SYNAPSE_FEEDBACK_PATH.exists():
+            feedback = json.loads(SYNAPSE_FEEDBACK_PATH.read_text())
+        for entry in log:
+            entry_id = str(entry.get("ts", ""))
+            entry["feedback"] = feedback.get(entry_id, None)
+        return {"ok": True, "count": len(log), "entries": log}
+    except Exception as e:
+        return {"ok": False, "count": 0, "entries": [], "error": str(e)[:200]}
+
+
+@app.post("/api/synapse/feedback")
+async def synapse_feedback(request: Request, x_soma_key: str = Header(default="")):
+    """Record thumbs-up/down feedback for a Synapse message. Triggers SY.7 adjustments."""
+    _auth(x_soma_key)
+    data = await request.json()
+    entry_ts = str(data.get("ts", ""))
+    vote = data.get("vote", "")  # "up" or "down"
+    if not entry_ts or vote not in ("up", "down"):
+        raise HTTPException(400, "ts and vote (up/down) required")
+
+    try:
+        feedback = {}
+        if SYNAPSE_FEEDBACK_PATH.exists():
+            feedback = json.loads(SYNAPSE_FEEDBACK_PATH.read_text())
+
+        feedback[entry_ts] = {
+            "vote": vote,
+            "ts": time.time(),
+            "trigger_type": data.get("trigger_type", ""),
+        }
+
+        # Keep last 1000 feedback entries
+        if len(feedback) > 1000:
+            oldest = sorted(feedback.keys())[:len(feedback) - 1000]
+            for k in oldest:
+                del feedback[k]
+
+        SYNAPSE_FEEDBACK_PATH.parent.mkdir(parents=True, exist_ok=True)
+        SYNAPSE_FEEDBACK_PATH.write_text(json.dumps(feedback, indent=2))
+
+        # SY.7: trigger feedback loop adjustments
+        _apply_synapse_feedback_loop(feedback)
+
+        return {"ok": True, "ts": entry_ts, "vote": vote}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+
+# ── Synapse feedback loop (SY.7) ──────────────────────────────────────────────
+
+def _apply_synapse_feedback_loop(feedback: dict):
+    """
+    Apply feedback loop rules to constellation.yaml synapse config:
+    - 5+ ignored (no vote, older than 24h) → reduce strength one level
+    - 3+ thumbs-down on same category → auto-block topic
+    - thumbs-up → boost topic +0.1 (stored as boost entry)
+    Called after every feedback write.
+    """
+    try:
+        cfg = _get_synapse_config()
+        now = time.time()
+        day = 86400
+
+        votes = list(feedback.values())
+        downvotes = [v for v in votes if v.get("vote") == "down"]
+        upvotes   = [v for v in votes if v.get("vote") == "up"]
+
+        # Count thumbs-down by trigger_type
+        type_downs: dict = {}
+        for v in downvotes:
+            t = v.get("trigger_type", "unknown")
+            type_downs[t] = type_downs.get(t, 0) + 1
+
+        blocklist = list(cfg.get("topic_blocklist", []))
+        boosts = list(cfg.get("topic_boosts", []))
+        changed = False
+
+        # Auto-block categories with 3+ downvotes
+        for ttype, count in type_downs.items():
+            if count >= 3 and ttype not in blocklist and ttype != "unknown":
+                blocklist.append(ttype)
+                changed = True
+
+        # Thumbs-up → add boost entry for trigger_type if not already present
+        for v in upvotes:
+            ttype = v.get("trigger_type", "")
+            if ttype and ttype not in boosts:
+                boosts.append(ttype)
+                changed = True
+
+        # Strength reduction: count entries with no vote (ignored) in last 24h
+        if SYNAPSE_LOG_PATH.exists():
+            try:
+                log = json.loads(SYNAPSE_LOG_PATH.read_text())
+                recent = [e for e in log if (now - e.get("ts", 0)) < day]
+                ignored = [e for e in recent if str(e.get("ts", "")) not in feedback]
+                strength_map = {"enthusiastic": "moderate", "moderate": "gentle", "gentle": "gentle"}
+                current_strength = cfg.get("strength", "moderate")
+                if len(ignored) >= 5 and current_strength != "gentle":
+                    cfg["strength"] = strength_map[current_strength]
+                    changed = True
+            except Exception:
+                pass
+
+        if changed:
+            cfg["topic_blocklist"] = blocklist
+            cfg["topic_boosts"] = boosts
+            _set_synapse_config(cfg)
+    except Exception:
+        pass  # Never fail due to feedback loop
+
 
 if __name__ == "__main__":
     import uvicorn

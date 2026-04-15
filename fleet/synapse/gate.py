@@ -123,8 +123,17 @@ class SynapseGate:
     def filter(self, candidates: list[dict]) -> list[dict]:
         """
         Apply all gate rules. Returns approved candidates.
-        Returns empty list if quiet hours or already at daily limit.
+        Returns empty list if quiet hours, muted, or already at daily limit.
         """
+        # Mute check — synapse_tools.synapse_mute() sets this marker
+        try:
+            markers = json.loads(PULSE_MARKERS.read_text()) if PULSE_MARKERS.exists() else {}
+            muted_until = markers.get("synapse_muted_until", 0)
+            if time.time() < muted_until:
+                return []
+        except Exception:
+            pass
+
         # Quiet hours — hard block
         if _is_quiet_hours(self.quiet_start, self.quiet_end):
             return []

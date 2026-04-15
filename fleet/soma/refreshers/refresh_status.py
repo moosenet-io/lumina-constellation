@@ -9,6 +9,7 @@ Called by the cache background task. Plain Python, no LLM.
 import json
 import os
 import subprocess
+import time
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone
@@ -113,20 +114,26 @@ def refresh_status() -> dict:
         'fact_count': None,  # Filled by engram refresher if available
     }
 
-    # Plane
-    plane_url = os.environ.get('PLANE_API_URL', 'http://192.168.0.232')
-    plane_token = os.environ.get('PLANE_API_TOKEN', '')
-    pl_ok, pl_data, pl_ms = _probe_http(
-        f'{plane_url}/api/v1/workspaces/moosenet/projects/',
-        timeout=8,
-        headers={'X-API-Key': plane_token} if plane_token else {}
-    )
-    project_count = pl_data.get('count', len(pl_data.get('results', []))) if pl_ok else 0
+    # Plane (via plane-helper — rate-limited, retrying)
+    import sys as _s
+    _s.path.insert(0, '/opt/plane-helper')
+    try:
+        from plane_helper import PlaneClient
+        _t0 = time.time()
+        plane = PlaneClient()
+        pl_data = plane.get('/workspaces/moosenet/projects/')
+        pl_ms = int((time.time() - _t0) * 1000)
+        projects = pl_data.get('results', pl_data) if isinstance(pl_data, dict) else pl_data
+        project_count = len(projects)
+        pl_ok = True
+        pl_err = None
+    except Exception as _pe:
+        pl_ok = False; pl_ms = 0; project_count = 0; pl_err = str(_pe)[:80]
     services['plane'] = {
         'name': 'Plane', 'ok': pl_ok,
         'latency_ms': pl_ms,
         'project_count': project_count,
-        'error': pl_data.get('error') if not pl_ok else None,
+        'error': pl_err,
     }
 
     # Overall status
