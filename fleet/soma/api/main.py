@@ -321,32 +321,115 @@ def validation_status(x_soma_key: str = Header(default="")):
             return {"error": str(e)}
     return {"note": "No smoke test run yet"}
 
-# ── Config read/write ─────────────────────────────────────────────────────────
-@app.get("/api/config/{module}")
-def get_module_config(module: str, x_soma_key: str = Header(default="")):
+# ── Config read/write (SP.8) ──────────────────────────────────────────────────
+
+def _load_constellation() -> dict:
+    """Load constellation.yaml, returning empty dict on failure."""
+    try:
+        import yaml
+        if CONSTELLATION_YAML.exists():
+            with open(CONSTELLATION_YAML) as f:
+                return yaml.safe_load(f) or {}
+    except Exception:
+        pass
+    return {}
+
+def _save_constellation(cfg: dict):
+    """Write constellation.yaml with backup."""
+    import yaml, shutil
+    backup = CONSTELLATION_YAML.with_suffix(".yaml.bak")
+    if CONSTELLATION_YAML.exists():
+        shutil.copy2(CONSTELLATION_YAML, backup)
+    with open(CONSTELLATION_YAML, "w") as f:
+        yaml.dump(cfg, f, default_flow_style=False, allow_unicode=True)
+
+def _redact(d: dict) -> dict:
+    """Recursively redact sensitive keys."""
+    _SENSITIVE = {"password", "token", "secret", "api_key", "app_password",
+                  "access_token", "client_secret", "private_key"}
+    if isinstance(d, dict):
+        return {k: "[REDACTED]" if k.lower() in _SENSITIVE else _redact(v) for k, v in d.items()}
+    if isinstance(d, list):
+        return [_redact(i) for i in d]
+    return d
+
+@app.get("/api/config")
+def get_full_config(x_soma_key: str = Header(default="")):
+    """Return full constellation.yaml (sensitive values redacted)."""
+    _auth(x_soma_key)
+    cfg = _load_constellation()
+    return {"ok": True, "config": _redact(cfg)}
+
+@app.get("/api/config/{section}")
+def get_config_section(section: str, x_soma_key: str = Header(default="")):
+    """Return one section of constellation.yaml.
+    Special sections: 'secrets' returns Infisical key names only."""
+    _auth(x_soma_key)
+    cfg = _load_constellation()
+    if section == "secrets":
+        # Return env var names configured (not values)
+        env_file = FLEET_DIR / ".env"
+        keys = []
+        if env_file.exists():
+            for line in env_file.read_text().splitlines():
+                if "=" in line and not line.startswith("#"):
+                    k = line.split("=")[0].strip()
+                    if k:
+                        keys.append(k)
+        return {"ok": True, "section": "secrets", "keys": keys}
+    if section == "modules":
+        return {"ok": True, "section": "modules",
+                "modules": cfg.get("modules", {}),
+                "count": len(cfg.get("modules", {}))}
+    data = cfg.get(section)
+    if data is None:
+        return {"ok": False, "error": f"Section '{section}' not found in constellation.yaml",
+                "cached_at": None, "stale": False}
+    return {"ok": True, "section": section, "data": _redact(data) if isinstance(data, dict) else data}
+
+@app.put("/api/config/{section}")
+async def update_config_section(
+    section: str,
+    request: Request,
+    x_soma_key: str = Header(default=""),
+):
+    """Update one section of constellation.yaml. Backs up before write."""
+    _auth(x_soma_key)
+    _READONLY_SECTIONS = {"secrets"}
+    if section in _READONLY_SECTIONS:
+        raise HTTPException(400, f"Section '{section}' is read-only via this API")
+    body = await request.json()
+    cfg = _load_constellation()
+    cfg[section] = body
+    try:
+        _save_constellation(cfg)
+        return {"ok": True, "section": section, "updated": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200], "cached_at": None, "stale": False}
+
+# Legacy single-module config (kept for backward compat)
+@app.get("/api/config/module/{module}")
+def get_module_config_legacy(module: str, x_soma_key: str = Header(default="")):
     _auth(x_soma_key)
     config_paths = {
         "myelin": FLEET_DIR / "myelin" / "myelin_config.yaml",
-        "constellation": CONSTELLATION_YAML,
-        "axon": FLEET_DIR / "axon" / ".env",  # Read-only, filtered
+        "axon": FLEET_DIR / "axon" / ".env",
     }
     path = config_paths.get(module)
     if not path or not path.exists():
-        return {"error": f"No config found for module: {module}"}
+        return {"ok": False, "error": f"No config found for module: {module}",
+                "cached_at": None, "stale": False}
     try:
         if path.suffix == ".yaml":
             import yaml
             with open(path) as f:
-                return yaml.safe_load(f) or {}
+                return {"ok": True, "data": _redact(yaml.safe_load(f) or {})}
         else:
-            # .env — return keys only, not values
-            keys = []
-            for line in path.read_text().splitlines():
-                if "=" in line and not line.startswith("#"):
-                    keys.append(line.split("=")[0].strip())
-            return {"module": module, "configured_keys": keys}
+            keys = [line.split("=")[0].strip() for line in path.read_text().splitlines()
+                    if "=" in line and not line.startswith("#")]
+            return {"ok": True, "module": module, "configured_keys": keys}
     except Exception as e:
-        return {"error": str(e)}
+        return {"ok": False, "error": str(e), "cached_at": None, "stale": False}
 
 # ── Documentation API ──────────────────────────────────────────────────────────
 import urllib.request as _urlreq
