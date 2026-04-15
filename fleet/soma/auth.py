@@ -269,7 +269,7 @@ def add_auth_routes(app, templates):
     async def login_page(request: Request, error: str = ""):
         if not _soma_auth.is_configured():
             return RedirectResponse("/setup", status_code=302)
-        return templates.TemplateResponse("login.html", {"request": request, "error": error})
+        return templates.TemplateResponse(request, "login.html", {"error": error})
 
     @app.post("/login")
     async def login_submit(
@@ -283,8 +283,8 @@ def add_auth_routes(app, templates):
 
         if _soma_auth.is_locked_out(username):
             return templates.TemplateResponse(
-                "login.html",
-                {"request": request, "error": f"Account locked. Try again in {LOCKOUT_TTL}s."},
+                request, "login.html",
+                {"error": f"Account locked. Try again in {LOCKOUT_TTL}s."},
                 status_code=429,
             )
 
@@ -292,8 +292,8 @@ def add_auth_routes(app, templates):
         if not user:
             _soma_auth.record_fail(username)
             return templates.TemplateResponse(
-                "login.html",
-                {"request": request, "error": "Invalid credentials"},
+                request, "login.html",
+                {"error": "Invalid credentials"},
                 status_code=401,
             )
 
