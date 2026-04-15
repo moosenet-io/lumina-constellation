@@ -417,6 +417,39 @@ def op_memory_curation(secrets):
 # Registry & Main
 # ============================================================
 
+def op_plane_gateway(secrets):
+    """Check Plane gateway metrics from plane-helper.log (PG.6)."""
+    now = datetime.now(PT)
+    try:
+        sys.path.insert(0, '/opt/lumina-fleet/sentinel')
+        from plane_metrics import parse_log, sentinel_health, write_prom_file
+        metrics = parse_log()
+        health = sentinel_health(metrics)
+        # Write Prometheus textfile for node_exporter
+        write_prom_file(metrics)
+        status = "healthy" if health["ok"] else "degraded"
+        report = (
+            f"# Plane Gateway — {now.strftime('%Y-%m-%d %H:%M PT')}\n\n"
+            f"**Status:** {status}\n\n"
+            f"| Metric | Value |\n|--------|-------|\n"
+            f"| Requests (24h) | {metrics['total']} |\n"
+            f"| Errors | {metrics['errors']} |\n"
+            f"| Avg wait | {metrics['wait_avg_ms']}ms |\n"
+            f"| Max wait | {metrics['wait_max_ms']}ms |\n"
+        )
+        if metrics.get("last_request_age_s") is not None:
+            age_h = metrics["last_request_age_s"] // 3600
+            age_m = (metrics["last_request_age_s"] % 3600) // 60
+            report += f"| Last request | {int(age_h)}h {int(age_m)}m ago |\n"
+        return {"status": status, "report": report, "raw": metrics}
+    except Exception as e:
+        return {
+            "status": "unknown",
+            "report": f"# Plane Gateway\n\nMetrics unavailable: {e}",
+            "raw": {"error": str(e)},
+        }
+
+
 OPS = {
     "plex-health": {"fn": op_plex_health, "category": "checks", "needs_llm": False},
     "self-health": {"fn": op_self_health, "category": "checks", "needs_llm": False},
@@ -424,6 +457,7 @@ OPS = {
     "gitea-health": {"fn": op_gitea_health, "category": "checks", "needs_llm": False},
     "system-snapshot": {"fn": op_system_snapshot, "category": "checks", "needs_llm": False},
     "commute-tracker": {"fn": op_commute_tracker, "category": "checks", "needs_llm": False},
+    "plane-gateway": {"fn": op_plane_gateway, "category": "checks", "needs_llm": False},
     "daily-log": {"fn": op_daily_log, "category": "logs", "needs_llm": True},
     "reflection": {"fn": op_reflection, "category": "logs", "needs_llm": True},
     "tool-usage-log": {"fn": op_tool_usage_log, "category": "logs", "needs_llm": False},

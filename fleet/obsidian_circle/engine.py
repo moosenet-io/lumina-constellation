@@ -14,6 +14,7 @@ Architecture:
   7. Return typed result + action guidance
 """
 
+import hashlib
 import json
 import os
 import re
@@ -21,6 +22,8 @@ import sys
 import time
 import urllib.request
 import urllib.error
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 sys.path.insert(0, os.path.join(os.environ.get('FLEET_DIR', '/opt/lumina-fleet'), 'fleet'))
@@ -277,6 +280,54 @@ Synthesize these into a final recommendation. Weight positions by confidence and
         return {'structured_output': None, 'synthesis': f'Synthesis failed: {e}', 'confidence': 0.0, 'error': str(e)}
 
 
+# ── Session checkpointing (OC.5) ─────────────────────────────────────────────
+
+_CHECKPOINT_DIR = Path(os.environ.get('FLEET_DIR', '/opt/lumina-fleet')) / 'engram' / 'council-sessions'
+_CHECKPOINT_TTL_HOURS = 24
+
+
+def _session_hash(question: str, circle: str) -> str:
+    """Stable 16-char ID for a (question, circle) pair — used for checkpoint files."""
+    return hashlib.sha256(f'{circle}:{question}'.encode()).hexdigest()[:16]
+
+
+def _load_checkpoint(session_id: str) -> Optional[dict]:
+    """Load a saved checkpoint. Returns None if missing or expired (>24h)."""
+    path = _CHECKPOINT_DIR / f'{session_id}.json'
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text())
+        saved_at_str = data.get('saved_at', '')
+        if saved_at_str:
+            saved_at = datetime.fromisoformat(saved_at_str)
+            age_hours = (datetime.now(timezone.utc) - saved_at).total_seconds() / 3600
+            if age_hours > _CHECKPOINT_TTL_HOURS:
+                path.unlink(missing_ok=True)
+                return None
+        return data
+    except Exception:
+        return None
+
+
+def _save_checkpoint(session_id: str, data: dict):
+    """Persist checkpoint after each member completes. Non-fatal on failure."""
+    try:
+        _CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+        data['saved_at'] = datetime.now(timezone.utc).isoformat()
+        (_CHECKPOINT_DIR / f'{session_id}.json').write_text(json.dumps(data, indent=2))
+    except Exception:
+        pass
+
+
+def _clear_checkpoint(session_id: str):
+    """Remove checkpoint once deliberation is complete."""
+    try:
+        (_CHECKPOINT_DIR / f'{session_id}.json').unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
 def convene(
     question: str,
     circle: str = 'quick',
@@ -285,6 +336,7 @@ def convene(
     budget: float = 0.10,
     mode: str = 'multi',
     tool_executor: Optional[Callable] = None,
+    resume: bool = True,
 ) -> dict:
     """
     Convene the Obsidian Circle for multi-model deliberation.
@@ -310,6 +362,7 @@ def convene(
         mode            Mode used
         member_count    Number of members who responded
         deliberation_log  Full deliberation for review/archiving
+        resumed         True if this session resumed from a checkpoint
     """
     t_start = time.time()
 
@@ -321,15 +374,29 @@ def convene(
     # Prism mode: force all members to same model, different personas
     if mode == 'prism':
         prism_model = preset.get('prism_model', 'Lumina')
-        for m in members:
-            m = dict(m)
-            m['model'] = prism_model
+        members = [dict(m, model=prism_model) for m in members]
 
-    tool_results: dict = {}
-    positions: list = []
-    total_cost = 0.0
+    # Checkpoint resume (OC.5)
+    session_id = _session_hash(question, circle)
+    checkpoint = _load_checkpoint(session_id) if resume else None
+    resumed = False
 
-    for member in members:
+    if checkpoint and checkpoint.get('circle') == circle:
+        positions = checkpoint.get('positions', [])
+        tool_results = checkpoint.get('tool_results', {})
+        start_index = len(positions)
+        if start_index > 0:
+            resumed = True
+    else:
+        positions = []
+        tool_results = {}
+        start_index = 0
+
+    total_cost = sum(p.get('cost', 0.0) for p in positions)
+
+    for i, member in enumerate(members):
+        if i < start_index:
+            continue  # Already completed in prior session
         # Hard budget gate
         if total_cost >= budget:
             positions.append({
@@ -357,6 +424,15 @@ def convene(
         positions.append(pos)
         total_cost += pos.get('cost', 0.0)
 
+        # Save checkpoint after each member (OC.5)
+        _save_checkpoint(session_id, {
+            'question': question,
+            'circle': circle,
+            'mode': mode,
+            'positions': positions,
+            'tool_results': tool_results,
+        })
+
         # Broadcast tool results (future: parse tool calls from reasoning)
         # For now: if tool_executor is provided, any member can add results to tool_results
         # via returned 'tool_calls' key (forward-compatible hook)
@@ -367,6 +443,9 @@ def convene(
                     tool_results[tool_call['name']] = str(tr)
                 except Exception:
                     pass
+
+    # Clear checkpoint — deliberation complete (OC.5)
+    _clear_checkpoint(session_id)
 
     # Synthesis
     synthesis = _synthesize(question, positions, schema, synthesis_model)
@@ -406,4 +485,6 @@ def convene(
             'synthesis_raw': synthesis,
             'schema': schema,
         },
+        'resumed': resumed,
+        'session_id': session_id,
     }

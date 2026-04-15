@@ -2223,6 +2223,131 @@ def _apply_synapse_feedback_loop(feedback: dict):
         pass  # Never fail due to feedback loop
 
 
+# ── Security (SEC.10) ─────────────────────────────────────────────────────────
+
+_SECURITY_DIR = FLEET_DIR / "security"
+
+
+def _load_security_data() -> dict:
+    """Load secrets registry + rotation state. Returns merged list."""
+    import yaml as _yaml
+    registry_path = _SECURITY_DIR / "secrets_registry.yaml"
+    state_path = _SECURITY_DIR / "rotation_state.json"
+
+    registry = []
+    if registry_path.exists():
+        try:
+            data = _yaml.safe_load(registry_path.read_text())
+            registry = data.get("secrets", [])
+        except Exception:
+            pass
+
+    state = {}
+    if state_path.exists():
+        try:
+            state = json.loads(state_path.read_text())
+        except Exception:
+            pass
+
+    now = datetime.now(timezone.utc)
+    WARN_THRESHOLD = 0.80
+    results = []
+    for secret in registry:
+        name = secret["name"]
+        max_age = secret.get("max_age_days", 365)
+        entry = state.get(name, {})
+        last_rotated_str = entry.get("last_rotated")
+
+        if not last_rotated_str:
+            results.append({
+                "name": name,
+                "description": secret.get("description", ""),
+                "method": secret.get("method", "manual"),
+                "max_age_days": max_age,
+                "age_days": None,
+                "days_remaining": None,
+                "last_rotated": None,
+                "status": "unknown",
+                "services": secret.get("services", []),
+                "auto_rotatable": secret.get("method") in ("random_hex_32", "gitea_api"),
+                "manual_instructions": secret.get("manual_instructions", ""),
+            })
+            continue
+
+        try:
+            last_rotated = datetime.fromisoformat(last_rotated_str)
+            age = now - last_rotated
+            age_days = age.days
+            days_remaining = max_age - age_days
+            if age_days >= max_age:
+                status = "expired"
+            elif age_days >= max_age * WARN_THRESHOLD:
+                status = "warn"
+            else:
+                status = "ok"
+        except Exception:
+            age_days = None
+            days_remaining = None
+            status = "unknown"
+            last_rotated_str = None
+
+        results.append({
+            "name": name,
+            "description": secret.get("description", ""),
+            "method": secret.get("method", "manual"),
+            "max_age_days": max_age,
+            "age_days": age_days,
+            "days_remaining": days_remaining,
+            "last_rotated": last_rotated_str,
+            "status": status,
+            "services": secret.get("services", []),
+            "auto_rotatable": secret.get("method") in ("random_hex_32", "gitea_api"),
+            "manual_instructions": secret.get("manual_instructions", ""),
+        })
+    return {"secrets": results}
+
+
+@app.get("/api/security/secrets")
+def security_secrets(x_soma_key: str = Header(default="")):
+    """Return all secrets with age, status, and rotation metadata."""
+    _auth(x_soma_key)
+    try:
+        return {"ok": True, **_load_security_data()}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200], "secrets": []}
+
+
+@app.post("/api/security/rotate/{secret_name}")
+async def security_rotate(secret_name: str, x_soma_key: str = Header(default="")):
+    """Trigger rotation for an auto-rotatable secret."""
+    _auth(x_soma_key)
+    try:
+        _sys.path.insert(0, str(_SECURITY_DIR))
+        import rotation as _rotation
+        import yaml as _yaml
+        registry_path = _SECURITY_DIR / "secrets_registry.yaml"
+        data = _yaml.safe_load(registry_path.read_text())
+        secret = next((s for s in data.get("secrets", []) if s["name"] == secret_name), None)
+        if not secret:
+            raise HTTPException(404, f"Secret {secret_name} not in registry")
+        if secret.get("method") not in ("random_hex_32", "gitea_api"):
+            raise HTTPException(400, f"{secret_name} requires manual rotation")
+        state = _rotation._load_state()
+        ok = _rotation.rotate_secret(secret, state, force=True)
+        _rotation._save_state(state)
+        return {"ok": ok, "name": secret_name}
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+
+@app.get("/security")
+def security_page(request: Request):
+    """Secret rotation status page."""
+    return jinja2_templates.TemplateResponse(request, "security.html", {"active_page": "security"})
+
+
 if __name__ == "__main__":
     import uvicorn
     # Load env

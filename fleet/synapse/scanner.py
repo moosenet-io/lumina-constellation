@@ -6,7 +6,7 @@ Pure Python, $0. Scans all trigger sources and returns candidate list.
 Each candidate: {"type": str, "score": float, "source": str, "data": dict}
 
 Sources:
-  - Engram: new facts, hub nodes, needs_review tags
+  - Engram: new facts, hub nodes, needs_review tags, session STM, 2-hop graph
   - Pulse: temporal patterns (time-since, time-of-day)
   - Sentinel: resolved health issues
   - Vigil: news items matching interests
@@ -98,6 +98,8 @@ class SynapseScanner:
         candidates.extend(self._scan_engram_new_facts())
         candidates.extend(self._scan_engram_hub_nodes())
         candidates.extend(self._scan_engram_needs_review())
+        candidates.extend(self._scan_engram_session_stm())
+        candidates.extend(self._scan_engram_2hop())
         candidates.extend(self._scan_pulse_temporal())
         candidates.extend(self._scan_sentinel())
         candidates.extend(self._scan_vigil())
@@ -117,31 +119,37 @@ class SynapseScanner:
             return None
 
     def _scan_engram_new_facts(self) -> list[dict]:
-        """Facts stored in the last N hours that match operator interests."""
+        """
+        Facts stored in knowledge_base in the last N hours that match
+        operator interests. Uses ISO8601 created_at column.
+        """
         conn = self._engram_connect()
         if not conn:
             return []
         candidates = []
         try:
-            cutoff = time.time() - self.lookback_hours * 3600
+            cutoff = datetime.utcnow() - timedelta(hours=self.lookback_hours)
+            cutoff_str = cutoff.strftime('%Y-%m-%dT%H:%M:%SZ')
             cur = conn.execute(
-                "SELECT key, content, namespace, tags FROM memories "
-                "WHERE created_at > ? ORDER BY created_at DESC LIMIT 20",
-                (cutoff,)
+                "SELECT id, key, content, tags, source_agent FROM knowledge_base "
+                "WHERE created_at > ? AND (discarded IS NULL OR discarded = 0) "
+                "ORDER BY created_at DESC LIMIT 20",
+                (cutoff_str,)
             )
             for row in cur.fetchall():
-                key, content, ns, tags = row
-                score = _matches_interests(content, self.interests)
+                kb_id, key, content, tags, source_agent = row
+                score = _matches_interests(content or '', self.interests)
                 if score >= 0.3:
                     candidates.append({
                         "type": "engram_new_fact",
                         "score": score,
                         "source": "Engram",
                         "data": {
+                            "id": kb_id,
                             "key": key,
-                            "content": content[:300],
-                            "namespace": ns,
+                            "content": (content or '')[:300],
                             "tags": tags,
+                            "source_agent": source_agent,
                         },
                     })
         except Exception:
@@ -151,24 +159,56 @@ class SynapseScanner:
         return candidates
 
     def _scan_engram_hub_nodes(self) -> list[dict]:
-        """Zettelkasten nodes with 3+ links the operator hasn't seen."""
+        """
+        Zettelkasten hub nodes: IDs with 3+ links in memory_links table.
+        Looks up content in knowledge_base by note_id field.
+        Only surfaces nodes the operator hasn't seen (no surfaced_at equivalent —
+        uses pulse marker engram_hub_surfaced_{note_id}).
+        """
         conn = self._engram_connect()
         if not conn:
             return []
         candidates = []
+        markers = _load_json(PULSE_MARKERS) or {}
         try:
+            # Count bidirectional links per note
             cur = conn.execute(
-                "SELECT key, content, link_count FROM memories "
-                "WHERE link_count >= 3 AND surfaced_at IS NULL "
-                "ORDER BY link_count DESC LIMIT 5"
+                """
+                SELECT note_id, COUNT(*) as link_count
+                FROM (
+                    SELECT note_id_1 AS note_id FROM memory_links
+                    UNION ALL
+                    SELECT note_id_2 AS note_id FROM memory_links
+                )
+                GROUP BY note_id
+                HAVING link_count >= 3
+                ORDER BY link_count DESC
+                LIMIT 10
+                """
             )
-            for row in cur.fetchall():
-                key, content, link_count = row
+            hub_rows = cur.fetchall()
+            for note_id, link_count in hub_rows:
+                # Skip if recently surfaced (within last 7 days)
+                marker_key = f"engram_hub_{note_id}"
+                last_surfaced = markers.get(marker_key)
+                if last_surfaced and (time.time() - last_surfaced) < 7 * 86400:
+                    continue
+
+                # Look up content in knowledge_base by note_id field
+                kb_cur = conn.execute(
+                    "SELECT key, content FROM knowledge_base WHERE note_id = ? LIMIT 1",
+                    (note_id,)
+                )
+                kb_row = kb_cur.fetchone()
+                key = kb_row[0] if kb_row else note_id
+                content = (kb_row[1] if kb_row else '') or ''
+
                 candidates.append({
                     "type": "engram_hub_node",
                     "score": min(1.0, 0.4 + link_count * 0.1),
                     "source": "Engram",
                     "data": {
+                        "note_id": note_id,
                         "key": key,
                         "content": content[:300],
                         "link_count": link_count,
@@ -181,29 +221,185 @@ class SynapseScanner:
         return candidates
 
     def _scan_engram_needs_review(self) -> list[dict]:
-        """Facts flagged as contradictions or needing operator review."""
+        """
+        Facts flagged with needs_review tag in knowledge_base.
+        Tags column is JSON array string like '["needs_review", "infrastructure"]'.
+        """
         conn = self._engram_connect()
         if not conn:
             return []
         candidates = []
         try:
             cur = conn.execute(
-                "SELECT key, content, namespace FROM memories "
+                "SELECT id, key, content, source_agent FROM knowledge_base "
                 "WHERE tags LIKE '%needs_review%' "
+                "AND (discarded IS NULL OR discarded = 0) "
                 "ORDER BY updated_at DESC LIMIT 5"
             )
             for row in cur.fetchall():
-                key, content, ns = row
+                kb_id, key, content, source_agent = row
                 candidates.append({
                     "type": "engram_needs_review",
                     "score": 0.7,
                     "source": "Engram",
                     "data": {
+                        "id": kb_id,
                         "key": key,
-                        "content": content[:300],
-                        "namespace": ns,
+                        "content": (content or '')[:300],
+                        "source_agent": source_agent,
                     },
                 })
+        except Exception:
+            pass
+        finally:
+            conn.close()
+        return candidates
+
+    def _scan_engram_session_stm(self) -> list[dict]:
+        """
+        Session short-term memory: check memory_entries for unresolved threads.
+        An entry is 'unresolved' if its session_id exists but no follow-up
+        memory_entry was written for that session in the last 48 hours.
+        """
+        conn = self._engram_connect()
+        if not conn:
+            return []
+        candidates = []
+        try:
+            cutoff = datetime.utcnow() - timedelta(hours=48)
+            cutoff_str = cutoff.strftime('%Y-%m-%dT%H:%M:%S')
+            # Find sessions with entries older than 48h that have a session_id
+            cur = conn.execute(
+                "SELECT session_id, trigger_type, project, content, created_at "
+                "FROM memory_entries "
+                "WHERE session_id IS NOT NULL AND session_id != '' "
+                "AND created_at < ? "
+                "ORDER BY created_at DESC LIMIT 10",
+                (cutoff_str,)
+            )
+            seen_sessions = set()
+            for row in cur.fetchall():
+                session_id, trigger_type, project, content, created_at = row
+                if session_id in seen_sessions:
+                    continue
+                seen_sessions.add(session_id)
+                # Check if there's a more recent entry for this session
+                recent_cur = conn.execute(
+                    "SELECT COUNT(*) FROM memory_entries "
+                    "WHERE session_id = ? AND created_at >= ?",
+                    (session_id, cutoff_str)
+                )
+                recent_count = recent_cur.fetchone()[0]
+                if recent_count == 0:
+                    # Session ended without follow-up — surface as unresolved thread
+                    score = _matches_interests(
+                        f"{trigger_type} {project} {content or ''}",
+                        self.interests
+                    )
+                    candidates.append({
+                        "type": "engram_session_stm",
+                        "score": max(0.4, score),
+                        "source": "Engram",
+                        "data": {
+                            "session_id": session_id,
+                            "trigger_type": trigger_type,
+                            "project": project,
+                            "content": (content or '')[:200],
+                            "created_at": created_at,
+                        },
+                    })
+                if len(candidates) >= 3:
+                    break
+        except Exception:
+            pass
+        finally:
+            conn.close()
+        return candidates
+
+    def _scan_engram_2hop(self) -> list[dict]:
+        """
+        2-hop serendipity: find pairs of knowledge_base facts that share a
+        common intermediate node in memory_links, where the two facts match
+        different interests — connecting seemingly unrelated topics.
+
+        A → B → C where A matches interest-set-1 and C matches interest-set-2.
+        Score based on combined interest overlap and link strength.
+        """
+        conn = self._engram_connect()
+        if not conn:
+            return []
+        candidates = []
+        try:
+            # Get all links (both directions)
+            cur = conn.execute(
+                "SELECT note_id_1, note_id_2, link_strength FROM memory_links"
+            )
+            links = cur.fetchall()
+
+            # Build adjacency: note_id → set of (neighbor, strength)
+            adjacency: dict[str, list[tuple[str, int]]] = {}
+            for n1, n2, strength in links:
+                adjacency.setdefault(n1, []).append((n2, strength))
+                adjacency.setdefault(n2, []).append((n1, strength))
+
+            # Build note content map from knowledge_base
+            kb_cur = conn.execute(
+                "SELECT note_id, key, content FROM knowledge_base "
+                "WHERE note_id IS NOT NULL"
+            )
+            note_content: dict[str, tuple[str, str]] = {}
+            for note_id, key, content in kb_cur.fetchall():
+                note_content[note_id] = (key or '', content or '')
+
+            # Find 2-hop connections: A → hub → C
+            seen_pairs: set[frozenset] = set()
+            for hub_id, hub_neighbors in adjacency.items():
+                if len(hub_neighbors) < 2:
+                    continue
+                # Try all pairs of hub's neighbors
+                for i, (node_a, str_a) in enumerate(hub_neighbors):
+                    for node_c, str_c in hub_neighbors[i + 1:]:
+                        if node_a == node_c:
+                            continue
+                        pair = frozenset([node_a, node_c])
+                        if pair in seen_pairs:
+                            continue
+                        seen_pairs.add(pair)
+
+                        key_a, content_a = note_content.get(node_a, ('', ''))
+                        key_c, content_c = note_content.get(node_c, ('', ''))
+
+                        if not content_a or not content_c:
+                            continue
+
+                        score_a = _matches_interests(content_a, self.interests)
+                        score_c = _matches_interests(content_c, self.interests)
+
+                        # Only surface if both endpoints have some interest match
+                        # and they're different enough (serendipity)
+                        if score_a >= 0.3 and score_c >= 0.3:
+                            combined_score = min(1.0, (score_a + score_c) / 2 + 0.1)
+                            candidates.append({
+                                "type": "engram_2hop",
+                                "score": combined_score,
+                                "source": "Engram",
+                                "data": {
+                                    "node_a": node_a,
+                                    "key_a": key_a,
+                                    "content_a": content_a[:150],
+                                    "hub": hub_id,
+                                    "node_c": node_c,
+                                    "key_c": key_c,
+                                    "content_c": content_c[:150],
+                                },
+                            })
+                            if len(candidates) >= 3:
+                                break
+                    if len(candidates) >= 3:
+                        break
+                if len(candidates) >= 3:
+                    break
+
         except Exception:
             pass
         finally:

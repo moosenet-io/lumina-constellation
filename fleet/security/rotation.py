@@ -49,6 +49,9 @@ MATRIX_NEXUS_DB_HOST = os.environ.get('INBOX_DB_HOST', '')
 MATRIX_NEXUS_DB_USER = os.environ.get('INBOX_DB_USER', 'lumina_inbox_user')
 MATRIX_NEXUS_DB_PASS = os.environ.get('INBOX_DB_PASS', '')
 
+# SEC.7: Direct Matrix webhook for alerts (fallback if Nexus unavailable)
+MATRIX_WEBHOOK_URL = os.environ.get('MATRIX_WEBHOOK_URL', '')
+
 # Warn at 80% of max_age
 WARN_THRESHOLD = 0.80
 
@@ -202,10 +205,40 @@ def _get_infisical_project_id(auth_data: dict, project_name: str) -> str:
     return auth_data.get(f'{project_name.upper()}_PROJECT_ID', auth_data.get('SERVICES_PROJECT_ID', ''))
 
 
+def _infisical_get_secret(url: str, token: str, project_id: str, key: str) -> str:
+    """Read current value of a secret from Infisical. (SEC.8 rollback support)"""
+    req = urllib.request.Request(
+        f'{url}/api/v3/secrets/raw/{key}?workspaceId={project_id}&environment=prod&secretPath=/',
+        headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            data = json.loads(r.read())
+            return data.get('secret', {}).get('secretValue', '')
+    except Exception:
+        return ''
+
+
+def _send_matrix_webhook(secret_name: str, message: str):
+    """Post alert directly to Matrix via webhook URL. (SEC.7)"""
+    if not MATRIX_WEBHOOK_URL:
+        return
+    try:
+        body = json.dumps({'text': f'[Secret Rotation Alert]\n{message}'}).encode()
+        req = urllib.request.Request(
+            MATRIX_WEBHOOK_URL, data=body,
+            headers={'Content-Type': 'application/json'}, method='POST'
+        )
+        urllib.request.urlopen(req, timeout=10)
+        print(f'[rotation] Matrix webhook alert sent for {secret_name}')
+    except Exception as e:
+        print(f'[rotation] Matrix webhook failed for {secret_name}: {e}')
+
+
 # ── Rotation methods ──────────────────────────────────────────────────────────
 
 def _rotate_random_hex_32(secret: dict, state: dict) -> bool:
-    """Generate new random hex secret and update Infisical."""
+    """Generate new random hex secret and update Infisical. (SEC.8: saves prev for rollback)"""
     name = secret['name']
     new_value = _secrets_module.token_hex(32)
 
@@ -219,6 +252,12 @@ def _rotate_random_hex_32(secret: dict, state: dict) -> bool:
                     auth[k.strip()] = v.strip()
 
         project_id = _get_infisical_project_id(auth, secret.get('infisical_project', 'services'))
+
+        # SEC.8: Read current value before overwriting (rollback point)
+        prev_value = _infisical_get_secret(url, token, project_id, name)
+        if prev_value:
+            state.setdefault(name, {})['prev_value'] = prev_value
+
         _infisical_update_secret(url, token, project_id, name, new_value)
         print(f'[rotation] {name}: rotated (random_hex_32) → Infisical updated')
 
@@ -332,35 +371,40 @@ def _send_manual_alert(secret: dict, reason: str = ''):
         f'Instructions:\n{instructions.strip()}'
     )
 
-    if not MATRIX_NEXUS_DB_HOST:
-        print(f'[rotation] Manual alert for {name} (Nexus not configured):\n{message}')
-        return
+    nexus_sent = False
+    if MATRIX_NEXUS_DB_HOST:
+        try:
+            import psycopg2
+            conn = psycopg2.connect(
+                host=MATRIX_NEXUS_DB_HOST,
+                dbname='lumina_inbox',
+                user=MATRIX_NEXUS_DB_USER,
+                password=MATRIX_NEXUS_DB_PASS,
+                connect_timeout=5,
+            )
+            payload = json.dumps({
+                'alert': message,
+                'source': 'rotation',
+                'secret_name': name,
+                'timestamp': datetime.now(timezone.utc).isoformat(),
+            })
+            conn.cursor().execute(
+                "INSERT INTO inbox_messages (from_agent,to_agent,message_type,priority,payload,status) "
+                "VALUES ('sentinel','lumina','secret_rotation','urgent',%s,'pending')",
+                (payload,)
+            )
+            conn.commit()
+            conn.close()
+            print(f'[rotation] Manual rotation alert sent to Nexus for {name}')
+            nexus_sent = True
+        except Exception as e:
+            print(f'[rotation] Nexus alert failed for {name}: {e}')
 
-    try:
-        import psycopg2
-        conn = psycopg2.connect(
-            host=MATRIX_NEXUS_DB_HOST,
-            dbname='lumina_inbox',
-            user=MATRIX_NEXUS_DB_USER,
-            password=MATRIX_NEXUS_DB_PASS,
-            connect_timeout=5,
-        )
-        payload = json.dumps({
-            'alert': message,
-            'source': 'rotation',
-            'secret_name': name,
-            'timestamp': datetime.now(timezone.utc).isoformat(),
-        })
-        conn.cursor().execute(
-            "INSERT INTO inbox_messages (from_agent,to_agent,message_type,priority,payload,status) "
-            "VALUES ('sentinel','lumina','secret_rotation','urgent',%s,'pending')",
-            (payload,)
-        )
-        conn.commit()
-        conn.close()
-        print(f'[rotation] Manual rotation alert sent to Nexus for {name}')
-    except Exception as e:
-        print(f'[rotation] Nexus alert failed for {name}: {e} — message:\n{message}')
+    # SEC.7: Fallback (or supplement) to direct Matrix webhook
+    if MATRIX_WEBHOOK_URL:
+        _send_matrix_webhook(name, message)
+    elif not nexus_sent:
+        print(f'[rotation] No delivery channel configured. Alert for {name}:\n{message}')
 
 
 def _run_restart(cmd: str, secret_name: str):
@@ -431,13 +475,34 @@ def rotate_secret(secret: dict, state: dict, force: bool = False) -> bool:
         return False
 
     if success:
-        # Health check post-rotation
+        # Health check post-rotation (SEC.8: attempt rollback on failure)
         if not _health_check_after_rotation(secret):
             print(f'[rotation] ROLLBACK: {name} health check failed after rotation')
-            # Note: actual rollback of Infisical secrets requires storing previous value
-            # This is a hook point for future full rollback implementation
-            _send_manual_alert(secret, reason='Health check failed after auto-rotation — manual review needed')
-            state[name]['status'] = 'health_check_failed'
+            prev_value = state.get(name, {}).get('prev_value', '')
+            rolled_back = False
+            if prev_value and method == 'random_hex_32':
+                try:
+                    url, token = _get_infisical_token()
+                    auth = {}
+                    if INFISICAL_AUTH_FILE.exists():
+                        for line in INFISICAL_AUTH_FILE.read_text().splitlines():
+                            if '=' in line and not line.startswith('#'):
+                                k, v = line.split('=', 1)
+                                auth[k.strip()] = v.strip()
+                    project_id = _get_infisical_project_id(auth, secret.get('infisical_project', 'services'))
+                    _infisical_update_secret(url, token, project_id, name, prev_value)
+                    # Re-run restart commands with old value in place
+                    for cmd in secret.get('restart_commands', []):
+                        _run_restart(cmd, name)
+                    print(f'[rotation] ROLLBACK: {name} restored previous value')
+                    rolled_back = True
+                except Exception as rb_err:
+                    print(f'[rotation] ROLLBACK FAILED for {name}: {rb_err}')
+
+            reason = 'Health check failed — rolled back to previous value' if rolled_back else \
+                     'Health check failed — rollback NOT possible, manual intervention required'
+            _send_manual_alert(secret, reason=reason)
+            state[name]['status'] = 'rolled_back' if rolled_back else 'health_check_failed'
             return False
 
     return success
@@ -550,6 +615,66 @@ def sentinel_check() -> dict:
     }
 
 
+# ── Prometheus export (SEC.9) ─────────────────────────────────────────────────
+
+def prometheus_export(output_file: str = '') -> str:
+    """
+    Export secret age metrics in Prometheus text format.
+
+    Metrics:
+      lumina_secret_age_days        — Current age of secret in days (-1 if unknown)
+      lumina_secret_max_age_days    — Rotation threshold for this secret in days
+      lumina_secret_days_remaining  — Days until rotation due (-1 if unknown)
+
+    For use with node_exporter textfile collector:
+      python3 rotation.py prometheus-export --output /var/lib/node_exporter/textfile/lumina_secrets.prom
+
+    Labels:
+      name    — Secret name (e.g. SOMA_JWT_SECRET)
+      method  — Rotation method (random_hex_32 / gitea_api / manual)
+      status  — ok / warn / expired / unknown
+    """
+    ages = check_secret_ages()
+    lines = [
+        '# HELP lumina_secret_age_days Age of managed secret in days since last rotation',
+        '# TYPE lumina_secret_age_days gauge',
+    ]
+    for s in ages:
+        labels = f'name="{s["name"]}",method="{s["method"]}",status="{s["status"]}"'
+        age = s['age_days'] if s['age_days'] is not None else -1
+        lines.append(f'lumina_secret_age_days{{{labels}}} {age}')
+
+    lines += [
+        '',
+        '# HELP lumina_secret_max_age_days Maximum allowed age before rotation in days',
+        '# TYPE lumina_secret_max_age_days gauge',
+    ]
+    for s in ages:
+        labels = f'name="{s["name"]}",method="{s["method"]}"'
+        lines.append(f'lumina_secret_max_age_days{{{labels}}} {s["max_age_days"]}')
+
+    lines += [
+        '',
+        '# HELP lumina_secret_days_remaining Days remaining until rotation required',
+        '# TYPE lumina_secret_days_remaining gauge',
+    ]
+    for s in ages:
+        labels = f'name="{s["name"]}",method="{s["method"]}",status="{s["status"]}"'
+        remaining = s['days_remaining'] if s['days_remaining'] is not None else -1
+        lines.append(f'lumina_secret_days_remaining{{{labels}}} {remaining}')
+
+    text = '\n'.join(lines) + '\n'
+
+    if output_file:
+        Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+        Path(output_file).write_text(text)
+        print(f'[rotation] Prometheus metrics written to {output_file}')
+    else:
+        print(text, end='')
+
+    return text
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def _print_status():
@@ -593,5 +718,13 @@ if __name__ == '__main__':
         result = sentinel_check()
         print(json.dumps(result, indent=2))
 
+    elif cmd == 'prometheus-export':
+        output = ''
+        if '--output' in sys.argv:
+            idx = sys.argv.index('--output')
+            if idx + 1 < len(sys.argv):
+                output = sys.argv[idx + 1]
+        prometheus_export(output_file=output)
+
     else:
-        print('Usage: rotation.py check | run [--dry-run] | rotate <SECRET_NAME> | sentinel')
+        print('Usage: rotation.py check | run [--dry-run] | rotate <SECRET_NAME> | sentinel | prometheus-export [--output FILE]')

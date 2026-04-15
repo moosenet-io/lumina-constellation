@@ -219,3 +219,30 @@
     {% endif %}
   </div>
 </div>
+
+{# Synapse #}
+{% set _sy = status.get('services', {}).get('synapse', {}) if 'services' in status else {} %}
+{% set sy_enabled = _sy.get('enabled', False) %}
+{% set sy_sent    = _sy.get('sent_today', 0) %}
+{% set sy_max     = _sy.get('max_per_day', 3) %}
+{% set sy_muted   = _sy.get('muted', False) %}
+{% set sy_strength = _sy.get('strength', '?') %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <h3 style="margin:0;">&#x1F9E0; Synapse</h3>
+    <span class="health-dot {% if sy_enabled and not sy_muted %}healthy{% elif sy_muted %}degraded{% else %}dead{% endif %}"></span>
+  </div>
+  <div style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
+    {% if sy_enabled %}
+      {% if sy_muted %}
+        <span style="color:var(--color-warning);">Muted</span>
+      {% else %}
+        Active &middot; {{ sy_strength }}
+      {% endif %}
+      <div style="margin-top:0.25rem;">{{ sy_sent }} / {{ sy_max }} messages today</div>
+    {% else %}
+      <span style="color:var(--text-tertiary);">Disabled</span>
+      <div style="margin-top:0.25rem;"><a href="/synapse" style="color:var(--accent);font-size:0.8rem;">Configure &#x2192;</a></div>
+    {% endif %}
+  </div>
+</div>

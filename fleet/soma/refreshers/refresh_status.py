@@ -13,6 +13,7 @@ import time
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone
+from pathlib import Path
 
 
 def _probe_http(url: str, timeout: int = 5, headers: dict = None) -> tuple:
@@ -135,6 +136,44 @@ def refresh_status() -> dict:
         'project_count': project_count,
         'error': pl_err,
     }
+
+    # Synapse (config + daily count from gate_log)
+    try:
+        import yaml as _yaml
+        _cy = _yaml.safe_load(Path('/opt/lumina-fleet/constellation.yaml').read_text()) if Path('/opt/lumina-fleet/constellation.yaml').exists() else {}
+        _sy_cfg = _cy.get('synapse', {})
+        _sy_enabled = _sy_cfg.get('enabled', False)
+        _sy_strength = _sy_cfg.get('strength', 'moderate')
+        _sy_max = _sy_cfg.get('max_messages_per_day', 3)
+        # Count today's sent messages from gate_log.json
+        _sy_sent = 0
+        _gate_log = Path('/opt/lumina-fleet/synapse/gate_log.json')
+        if _gate_log.exists():
+            import json as _j, datetime as _dt
+            _today = _dt.datetime.now(_dt.timezone.utc).date().isoformat()
+            _log = _j.loads(_gate_log.read_text())
+            _sy_sent = sum(
+                1 for e in _log
+                if e.get('sent', False) and str(e.get('ts', '')).startswith(_today[:10])
+                or (e.get('ts') and _dt.datetime.utcfromtimestamp(e['ts']).strftime('%Y-%m-%d') == _today)
+            )
+        # Check mute marker
+        _markers = {}
+        _pm = Path('/opt/lumina-fleet/pulse/markers.json')
+        if _pm.exists():
+            _markers = json.loads(_pm.read_text())
+        _sy_muted = time.time() < _markers.get('synapse_muted_until', 0)
+        services['synapse'] = {
+            'name': 'Synapse',
+            'ok': _sy_enabled,
+            'enabled': _sy_enabled,
+            'strength': _sy_strength,
+            'sent_today': _sy_sent,
+            'max_per_day': _sy_max,
+            'muted': _sy_muted,
+        }
+    except Exception:
+        services['synapse'] = {'name': 'Synapse', 'ok': False, 'enabled': False, 'sent_today': 0, 'max_per_day': 3, 'muted': False}
 
     # Overall status
     core_services = ['ironclaw']

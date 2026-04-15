@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Security{% endblock %}
+{% block content %}
+<h2>&#x1F512; Secret Rotation</h2>
+<p style="color:var(--text-secondary);margin-top:0">Tracks all managed secrets, their age, and rotation schedule.</p>
+
+<div id="sec-status-banner"></div>
+
+<div class="card" style="padding:1.25rem;margin-bottom:1.5rem">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+    <strong>Secrets Registry</strong>
+    <button class="btn-secondary" onclick="loadSecrets()" id="refresh-btn">&#x21BB; Refresh</button>
+  </div>
+  <div id="secrets-table">
+    <p style="color:var(--text-tertiary)">Loading...</p>
+  </div>
+</div>
+
+<!-- Manual instructions modal -->
+<div id="instructions-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center">
+  <div class="card" style="max-width:600px;width:90%;padding:1.5rem;margin:auto;position:relative;top:10vh">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <strong id="modal-title">Rotation Instructions</strong>
+      <button class="btn-secondary" onclick="closeModal()">&#x2715;</button>
+    </div>
+    <pre id="modal-body" style="white-space:pre-wrap;background:var(--bg-tertiary);padding:1rem;border-radius:6px;font-size:0.85rem;line-height:1.6;max-height:400px;overflow-y:auto"></pre>
+  </div>
+</div>
+
+<style>
+.sec-table { width:100%; border-collapse:collapse; font-size:0.875rem; }
+.sec-table th { text-align:left; padding:0.5rem 0.75rem; color:var(--text-secondary); border-bottom:1px solid var(--border-color); font-weight:500; }
+.sec-table td { padding:0.5rem 0.75rem; border-bottom:1px solid var(--border-color); vertical-align:middle; }
+.sec-table tr:last-child td { border-bottom:none; }
+.badge-ok    { background:var(--success,#2ea043); color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; }
+.badge-warn  { background:#d4a017; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; }
+.badge-expired { background:var(--danger,#da3633); color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; }
+.badge-unknown { background:var(--text-tertiary,#666); color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; }
+.age-bar-wrap { width:100px; height:8px; background:var(--bg-tertiary); border-radius:4px; overflow:hidden; }
+.age-bar { height:100%; border-radius:4px; transition:width 0.3s; }
+</style>
+
+<script>
+function somaKey() {
+  return localStorage.getItem('soma_key') || '';
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function loadSecrets() {
+  const btn = document.getElementById('refresh-btn');
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+  try {
+    const r = await fetch('/api/security/secrets', {
+      headers: {'X-Soma-Key': somaKey()}
+    });
+    const d = await r.json();
+    if (!d.ok) { showBanner('error', d.error || 'Failed to load'); return; }
+    renderTable(d.secrets || []);
+    updateBanner(d.secrets || []);
+  } catch(e) {
+    showBanner('error', 'Request failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '&#x21BB; Refresh';
+  }
+}
+
+function updateBanner(secrets) {
+  const expired = secrets.filter(s => s.status === 'expired');
+  const warn    = secrets.filter(s => s.status === 'warn');
+  const banner  = document.getElementById('sec-status-banner');
+  if (expired.length) {
+    banner.innerHTML = `<div class="alert-error" style="margin-bottom:1rem">&#x26A0; ${expired.length} secret(s) expired: ${expired.map(s=>escHtml(s.name)).join(', ')}</div>`;
+  } else if (warn.length) {
+    banner.innerHTML = `<div class="alert-warn" style="margin-bottom:1rem">&#x23F0; ${warn.length} secret(s) expiring soon: ${warn.map(s=>escHtml(s.name)).join(', ')}</div>`;
+  } else {
+    banner.innerHTML = `<div class="alert-ok" style="margin-bottom:1rem">&#x2705; All ${secrets.filter(s=>s.status==='ok').length} tracked secrets are within rotation window.</div>`;
+  }
+}
+
+function renderTable(secrets) {
+  if (!secrets.length) {
+    document.getElementById('secrets-table').innerHTML = '<p style="color:var(--text-tertiary)">No secrets in registry.</p>';
+    return;
+  }
+  let rows = secrets.map(s => {
+    const badge = `<span class="badge-${s.status}">${escHtml(s.status.toUpperCase())}</span>`;
+    const age   = s.age_days !== null ? `${s.age_days}d` : '—';
+    const rem   = s.days_remaining !== null ? `${s.days_remaining}d left` : '—';
+    const pct   = s.age_days !== null ? Math.min(100, Math.round(s.age_days / s.max_age_days * 100)) : 0;
+    const barColor = s.status === 'expired' ? '#da3633' : s.status === 'warn' ? '#d4a017' : '#2ea043';
+    const bar   = `<div class="age-bar-wrap"><div class="age-bar" style="width:${pct}%;background:${barColor}"></div></div>`;
+    const last  = s.last_rotated ? s.last_rotated.split('T')[0] : 'never';
+    const services = (s.services||[]).join(', ') || '—';
+
+    let actions = '';
+    if (s.auto_rotatable) {
+      actions += `<button class="btn-secondary" style="font-size:0.75rem;padding:2px 8px;margin-right:4px" onclick="rotateSecret('${escHtml(s.name)}')">&#x21BA; Rotate</button>`;
+    }
+    if (s.manual_instructions) {
+      actions += `<button class="btn-secondary" style="font-size:0.75rem;padding:2px 8px" onclick="showInstructions('${escHtml(s.name)}', \`${escHtml(s.manual_instructions)}\`)">&#x1F4CB; Instructions</button>`;
+    }
+
+    return `<tr>
+      <td><strong>${escHtml(s.name)}</strong><br><span style="color:var(--text-tertiary);font-size:0.8rem">${escHtml(s.description)}</span></td>
+      <td>${badge}</td>
+      <td>${age} / ${s.max_age_days}d<br>${bar}</td>
+      <td>${rem}</td>
+      <td>${last}</td>
+      <td style="color:var(--text-secondary);font-size:0.8rem">${escHtml(s.method)}</td>
+      <td style="color:var(--text-secondary);font-size:0.8rem">${escHtml(services)}</td>
+      <td>${actions}</td>
+    </tr>`;
+  });
+
+  document.getElementById('secrets-table').innerHTML = `
+    <table class="sec-table">
+      <thead><tr>
+        <th>Secret</th><th>Status</th><th>Age</th><th>Remaining</th>
+        <th>Last Rotated</th><th>Method</th><th>Services</th><th>Actions</th>
+      </tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>`;
+}
+
+async function rotateSecret(name) {
+  if (!confirm(`Rotate ${name} now? This will generate a new value and update Infisical.`)) return;
+  try {
+    const r = await fetch(`/api/security/rotate/${encodeURIComponent(name)}`, {
+      method: 'POST',
+      headers: {'X-Soma-Key': somaKey()}
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showBanner('ok', `${name} rotated successfully.`);
+      setTimeout(loadSecrets, 1000);
+    } else {
+      showBanner('error', `Rotation failed: ${d.error || 'unknown error'}`);
+    }
+  } catch(e) {
+    showBanner('error', 'Request failed: ' + e.message);
+  }
+}
+
+function showInstructions(name, instructions) {
+  document.getElementById('modal-title').textContent = `${name} — Rotation Instructions`;
+  document.getElementById('modal-body').textContent = instructions;
+  const m = document.getElementById('instructions-modal');
+  m.style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('instructions-modal').style.display = 'none';
+}
+
+function showBanner(type, msg) {
+  const banner = document.getElementById('sec-status-banner');
+  const cls = type === 'error' ? 'alert-error' : type === 'warn' ? 'alert-warn' : 'alert-ok';
+  banner.innerHTML = `<div class="${cls}" style="margin-bottom:1rem">${escHtml(msg)}</div>`;
+}
+
+// Close modal on backdrop click
+document.getElementById('instructions-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+loadSecrets();
+</script>
+{% endblock %}
