@@ -1,56 +1,43 @@
 # Module Index
 
-All 25 Lumina Constellation modules. Each module has a dedicated wiki page linked below.
+All Lumina Constellation modules. Each module has a dedicated wiki page linked below.
 
-## Orchestration
+## Core (always-on)
 
 | Module | Role | Inference | Docs |
 |--------|------|-----------|------|
-| **Lumina** | Lead orchestrator. Personality-first. Delegates to sub-agents. | Cloud Sonnet | — |
 | **Nexus** | Inter-agent inbox. Priority queue backed by Postgres. | Python ($0) | [nexus.md](nexus.md) |
-| **Engram** | Semantic memory. Namespaced per agent. sqlite-vec local embeddings. | Python ($0) | [engram.md](engram.md) |
 | **Axon** | Work queue manager. Polls Nexus, dispatches tasks to agents. | Python ($0) | [axon.md](axon.md) |
-| **Mr. Wizard** | Deep reasoning. The Obsidian Circle: four models deliberate. | Multi-model | — |
+| **Engram** | Semantic memory. Namespaced per agent. sqlite-vec local embeddings. | Python ($0) | [engram.md](engram.md) |
+| **Pulse** | Event bus and temporal markers. Tracks activity state across agents. | Python ($0) | — |
+| **Synapse** | Spontaneous conversation trigger. Surfaces relevant memories and events proactively. | Python + local ($0) | — |
 
-## Daily Life
+## Agents
 
 | Module | Role | Inference | Docs |
 |--------|------|-----------|------|
 | **Vigil** | Morning/evening briefings: weather, calendar, commute, news. | Python + local | [vigil.md](vigil.md) |
-| **Commute** | Traffic alert when commute is worse than baseline. | Python ($0) | — |
-| **Hearth** | Pantry tracking, recipe matching, meal planning, shopping lists. | Python + local | — |
-| **Ledger** | Budget tracking, spending alerts, category reports via Actual Budget. | Python ($0) | — |
-
-## Lifestyle
-
-| Module | Role | Inference | Docs |
-|--------|------|-----------|------|
-| **Crucible** | Course/book tracking, reading queue, streaks, hobby goals. | Python ($0) | — |
-| **Odyssey** | Bucket list travel, deal monitoring, loyalty point tracking. | Python + local | — |
-| **Vitals** | Health data import, coaching nudges, training programs. | Python + template | — |
-| **Relay** | Vehicle service history, fuel log, maintenance reminders. | Python ($0) | — |
-| **Meridian** | Paper trading sandbox with AI reasoning journal. | Cloud Sonnet | — |
-
-## Intelligence
-
-| Module | Role | Inference | Docs |
-|--------|------|-----------|------|
+| **Sentinel** | Cluster health monitoring. Alerts only on failure. | Python ($0) | [sentinel.md](sentinel.md) |
+| **Vector** | Autonomous dev loops with feedback gates. | Cloud (Claude Code) | [vector.md](vector.md) |
 | **Seer** | Multi-source web research, synthesized reports. | Cloud (tiered) | — |
-| **Cortex** | Code intelligence: AST analysis, blast radius, review certificates. | Cloud Sonnet | [cortex.md](cortex.md) |
-| **Myelin** | Token governance, cost tracking, runaway detection. | Python ($0) | [myelin.md](myelin.md) |
-| **Dashboard** | Read-only daily view: weather, calendar, health grid, cost summary. | Python ($0) | — |
+
+## Reasoning
+
+| Module | Role | Inference | Docs |
+|--------|------|-----------|------|
+| **Obsidian Circle** | Deep deliberation council. Four models (Opus, Sonnet, Wizard, Qwen) debate before deciding. | Multi-model | — |
 
 ## Infrastructure
 
 | Module | Role | Inference | Docs |
 |--------|------|-----------|------|
-| **Sentinel** | Cluster health monitoring. Alerts only on failure. | Python ($0) | [sentinel.md](sentinel.md) |
-| **Vector** | Autonomous dev loops with feedback gates. | Cloud (Claude Code) | [vector.md](vector.md) |
-| **Dura** | Backups, smoke tests, log aggregation, secret rotation. | Python ($0) | [dura.md](dura.md) |
 | **Soma** | Web admin panel. Onboarding wizard, config, conversation review. | FastAPI | [soma.md](soma.md) |
-| **Refractor** | Smart LLM proxy. Filters 200+ tools to 17–28 per turn. | Python ($0) | — |
+| **Refractor** | Smart LLM proxy. Filters 200+ tools to 17–28 per turn via keyword categories. | Python ($0) | — |
 | **Terminus** | MCP tool hub. 20 modules, 200+ tools, FastMCP stdio transport. | Python ($0) | — |
 | **The Plexus** | Work queue backed by Plane CE. Structured task dispatch. | Python ($0) | — |
+| **Myelin** | Token governance, cost tracking, runaway detection. | Python ($0) | [myelin.md](myelin.md) |
+| **Cortex** | Code intelligence: AST analysis, blast radius, review certificates. | Cloud Sonnet | [cortex.md](cortex.md) |
+| **Dura** | Backups, smoke tests, log aggregation, secret rotation. | Python ($0) | [dura.md](dura.md) |
 
 ## Container Map
 
