@@ -507,13 +507,41 @@ def get_insights(x_soma_key: str = Header(default='')):
 
 @app.post('/api/insights/{insight_id}/accept')
 def accept_insight(insight_id: int, x_soma_key: str = Header(default='')):
-    """Accept an insight — marks it accepted and wires to Calx."""
+    """Accept an insight — marks it accepted and appends to Calx rules."""
     _auth(x_soma_key)
     try:
-        import sqlite3
-        conn = sqlite3.connect('/opt/lumina-fleet/soma/soma.db')
-        conn.execute("UPDATE insights SET status='accepted', acted_on=datetime('now') WHERE id=?", (insight_id,))
+        import sqlite3 as _sq3
+        conn = _sq3.connect('/opt/lumina-fleet/soma/soma.db')
+        cur = conn.cursor()
+        cur.execute("UPDATE insights SET status='accepted', acted_on=datetime('now') WHERE id=?", (insight_id,))
+        cur.execute("SELECT id, type, title, description, action FROM insights WHERE id=?", (insight_id,))
+        row = cur.fetchone()
         conn.commit(); conn.close()
+
+        # Write to Calx rules file (NPC-F2-5)
+        if row:
+            calx_dir = FLEET_DIR / "engram" / "system" / "calx"
+            calx_dir.mkdir(parents=True, exist_ok=True)
+            calx_file = calx_dir / "rules.json"
+            try:
+                rules = json.loads(calx_file.read_text()) if calx_file.exists() else []
+                new_rule = {
+                    "id": f"soma-insight-{row[0]}",
+                    "source": "soma-review",
+                    "type": row[1] or "suggestion",
+                    "title": row[2] or "",
+                    "description": row[3] or "",
+                    "action": row[4] or "",
+                    "accepted_at": datetime.now(timezone.utc).isoformat(),
+                    "enabled": True,
+                }
+                # Dedup by id
+                rules = [r for r in rules if r.get("id") != new_rule["id"]]
+                rules.append(new_rule)
+                calx_file.write_text(json.dumps(rules, indent=2))
+            except Exception:
+                pass  # Calx write failure doesn't block accept
+
         return {'status': 'accepted', 'id': insight_id}
     except Exception as e:
         return {'error': str(e)[:100]}
