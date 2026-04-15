@@ -19,12 +19,17 @@ Specs are written in `.docx` format for rich editing during planning, then refer
 
 ## Current Specs
 
+All 32 spec documents are in this directory. See [INDEX.md](INDEX.md) for the full inventory with descriptions.
+
+Key active specs:
+
 | File | Description | Plane project |
 |------|-------------|--------------|
-| [lumina-nexus-prd.docx](lumina-nexus-prd.docx) | Nexus inter-agent inbox system PRD. Phases 1-4: Postgres backend, MCP tools (nexus_tools.py), Lumina integration, Axon work queue. | LM (Lumina) |
-| [lumina-session11-build-spec.docx](lumina-session11-build-spec.docx) | Session 11 build spec. GitHub monorepo consolidation, module smoketests, MCP tool verification, Plane backlog reconciliation. | LM |
-
-> Additional spec documents (sessions 1-10 build specs, individual module specs) are maintained on the MooseNet NAS and referenced in Plane project history.
+| [lumina-nexus-prd.docx](lumina-nexus-prd.docx) | Nexus inter-agent inbox system PRD. Phases 1-4: Postgres backend, MCP tools, Lumina integration, Axon work queue. | LM |
+| [lumina-session12-build-spec.docx](lumina-session12-build-spec.docx) | Session 12 build spec. Security sprint, README audit, OpenRouter routing fix. | LM |
+| [lumina-session11-build-spec.docx](lumina-session11-build-spec.docx) | Session 11 build spec. Monorepo consolidation, module smoketests, MCP tool verification. | LM |
+| [lumina-soma-prd.docx](lumina-soma-prd.docx) | Soma admin panel PRD. | LM |
+| [lumina-vector-enhancement-spec.docx](lumina-vector-enhancement-spec.docx) | Vector enhancement — Calx behavioral correction, skill evolution. | LM |
 
 ---
 
@@ -50,9 +55,9 @@ Specs are written in `.docx` format for rich editing during planning, then refer
 
 ## History / Lineage
 
-The specs directory was established in session 11 as the formal home for `.docx` specification documents. Prior to this, specs were stored informally on the MooseNet NAS and referenced verbally in build sessions. The session 11 consolidation brought the two active specs (Nexus PRD and session 11 build spec) into the repository to make them version-controlled and accessible to Claude Code during build sessions without filesystem mounting.
+The specs directory was established in session 11 as the formal home for `.docx` specification documents. Prior to this, specs were stored informally and referenced verbally in build sessions. The session 11 consolidation began bringing specs into the repository for version control and direct access during Claude Code sessions.
 
-Historical session specs (sessions 1-10) remain on the NAS and are referenced in Plane project history. They are not committed here to keep the repository size manageable.
+Session 12 completed the full migration: all 32 historical spec documents (sessions 1-12, all module specs, predecessor ARCADE specs) are now in this directory. The repository is now the single source of truth — no external file system mounting required.
 
 ## Credits
 
