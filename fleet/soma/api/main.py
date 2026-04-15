@@ -853,17 +853,15 @@ def _check_matrix_bridge():
 
 def _check_refractor_categories():
     """Count Refractor keyword categories from llm-proxy.py on the IronClaw host."""
-    # Strategy: grep for top-level dict keys that look like category names
-    # These appear as '    "categoryname": [' or '    "categoryname": {'
+    pvs_host = os.environ.get("PVS_HOST", "")
     r = subprocess.run(
-        ["ssh", os.environ.get("PVS_SSH_HOST", ""),
+        ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", pvs_host,
          "pct exec 305 -- python3 -c \""
-         "import re, sys; "
+         "import re; "
          "src=open('/usr/local/bin/llm-proxy.py').read(); "
          "cats=re.findall(r'\\\"([a-z_]+)\\\"\\s*:\\s*[\\[\\{]', src); "
-         "unique=[c for c in cats if len(c)>2]; "
-         "print(len(set(unique)))\" 2>/dev/null"],
-        capture_output=True, text=True, timeout=8
+         "print(len(set(c for c in cats if len(c)>2)))\" 2>/dev/null"],
+        capture_output=True, text=True, timeout=10
     )
     count_str = r.stdout.strip()
     try:
@@ -1136,6 +1134,38 @@ def search_sessions(q: str = "", x_soma_key: str = Header(default="")):
     return {"ok": True, "results": [], "note": f"Search for '{q}' — FTS requires IronClaw schema access"}
 
 
+def _fmt_timer_ts(us: int) -> str:
+    """Convert systemd microsecond epoch timestamp to human-readable string."""
+    if not us or us <= 0:
+        return ""
+    try:
+        import time as _time
+        dt = datetime.fromtimestamp(us / 1_000_000, tz=timezone.utc)
+        now = datetime.now(timezone.utc)
+        delta = dt - now
+        secs = int(delta.total_seconds())
+        if secs < 0:
+            secs = -secs
+            if secs < 60:
+                return f"{secs}s ago"
+            if secs < 3600:
+                return f"{secs // 60}m ago"
+            if secs < 86400:
+                return f"{secs // 3600}h ago"
+            return f"{secs // 86400}d ago"
+        else:
+            if secs < 60:
+                return f"in {secs}s"
+            if secs < 3600:
+                return f"in {secs // 60}m"
+            if secs < 86400:
+                h, m = divmod(secs // 60, 60)
+                return f"in {h}h {m}m" if m else f"in {h}h"
+            return f"in {secs // 86400}d"
+    except Exception:
+        return str(us)
+
+
 @app.get("/api/timers")
 def list_timers(x_soma_key: str = Header(default="")):
     """List all systemd timers with status and schedule."""
@@ -1157,9 +1187,9 @@ def list_timers(x_soma_key: str = Header(default="")):
                     "description": t.get("description", ""),
                     "active": t.get("active", "") == "active",
                     "enabled": t.get("enabled", "") in ("enabled", "static"),
-                    "next": t.get("next", ""),
-                    "last": t.get("last", ""),
-                    "passed": t.get("passed", ""),
+                    "next": _fmt_timer_ts(t.get("next", 0)),
+                    "last": _fmt_timer_ts(t.get("last", 0)),
+                    "passed": _fmt_timer_ts(t.get("passed", 0)),
                     "unit": name.replace(".timer", ".service"),
                 })
         else:

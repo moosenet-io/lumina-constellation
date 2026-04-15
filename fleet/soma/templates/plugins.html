@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Plugins{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+  <h1 style="font-size:1.5rem;font-weight:700;">&#x1F50C; Plugins</h1>
+  <button class="btn-secondary" onclick="loadPlugins()" style="font-size:0.85rem;">&#x21BA; Refresh</button>
+</div>
+
+<div id="plugin-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;">
+  <div class="card" style="color:var(--text-tertiary);font-size:0.85rem;">Loading plugins…</div>
+</div>
+
+<script>
+async function loadPlugins() {
+  const grid = document.getElementById('plugin-grid');
+  grid.innerHTML = '<div class="card" style="color:var(--text-tertiary);font-size:0.85rem;">Loading…</div>';
+  try {
+    const resp = await fetch('/api/plugins', {headers: {'X-Soma-Key': ''}});
+    const data = await resp.json();
+    const plugins = data.plugins || data || [];
+    if (!plugins.length) {
+      grid.innerHTML = '<div class="card"><span style="color:var(--text-tertiary);">No plugins found in /opt/ai-mcp/plugins/</span></div>';
+      return;
+    }
+    grid.innerHTML = plugins.map(p => {
+      const loc = p.location === 'plugins' ? '&#x1F4E6; plugin' : '&#x1F527; core';
+      const tools = p.tool_count > 0 ? `${p.tool_count} tool${p.tool_count !== 1 ? 's' : ''}` : 'no tools';
+      const kb = p.size ? `${(p.size/1024).toFixed(1)} KB` : '';
+      return `<div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+          <strong style="font-size:0.95rem;">${p.name.replace('_tools','').replace('_plugin','').replace(/_/g,' ')}</strong>
+          <span class="badge-success" style="font-size:0.75rem;padding:0.1rem 0.4rem;border-radius:4px;">active</span>
+        </div>
+        <div style="font-size:0.8rem;color:var(--text-secondary);display:flex;gap:1rem;">
+          <span>${loc}</span>
+          <span>&#x1F527; ${tools}</span>
+          ${kb ? `<span>${kb}</span>` : ''}
+        </div>
+        <div style="margin-top:0.4rem;font-size:0.75rem;color:var(--text-tertiary);">${p.name}</div>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    grid.innerHTML = `<div class="card"><span style="color:var(--color-error);">Error: ${err.message}</span></div>`;
+  }
+}
+loadPlugins();
+</script>
+{% endblock %}
