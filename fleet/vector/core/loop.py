@@ -170,6 +170,7 @@ class VectorLoop:
                 # Phase 3.6: Calx behavioral correction — pure-Python trigger checks
                 calx_correction_prefix = ''
                 if self.calx:
+                    self.calx.reload_soma_rules()  # SOM P5-19: refresh Soma-derived rules
                     # Gather git diff for trigger analysis (best-effort)
                     _git_diff = ''
                     try:

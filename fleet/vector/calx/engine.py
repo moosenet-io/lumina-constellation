@@ -1,8 +1,14 @@
 """
 CalxEngine — orchestrates all trigger checks for a loop iteration.
 Behavioral correction concepts adapted from getcalx/oss (archived).
+
+SOM P5-19: Also reads soft rules from engram/system/calx/rules.json
+(populated by Soma /api/insights accept endpoint) and injects them
+as corrections.
 """
 import os
+import json
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
 from .triggers import T1TestTriggers, T2StyleTriggers, T3SecurityTriggers, T4PoisonedPromiseTriggers, TriggerResult, TriggerLevel
@@ -48,12 +54,31 @@ class CalxVerdict:
 class CalxEngine:
     """Orchestrates trigger evaluation across all three tiers."""
 
+    # Soma-derived rules file path (SOM P5-19)
+    _SOMA_RULES_FILE = Path(os.environ.get('FLEET_DIR', '/opt/lumina-fleet')) / 'engram' / 'system' / 'calx' / 'rules.json'
+
     def __init__(self, history=None):
         self.t1 = T1TestTriggers()
         self.t2 = T2StyleTriggers()
         self.t3 = T3SecurityTriggers()
         self.t4 = T4PoisonedPromiseTriggers()
         self.history = history  # Optional CalxHistory for logging
+        self._soma_rules: list[dict] = self._load_soma_rules()
+
+    @classmethod
+    def _load_soma_rules(cls) -> list[dict]:
+        """Load soft rules from Soma insights (engram/system/calx/rules.json)."""
+        try:
+            if cls._SOMA_RULES_FILE.exists():
+                rules = json.loads(cls._SOMA_RULES_FILE.read_text())
+                return [r for r in rules if r.get('enabled', True)]
+        except Exception:
+            pass
+        return []
+
+    def reload_soma_rules(self):
+        """Reload Soma rules from disk (call at start of each iteration)."""
+        self._soma_rules = self._load_soma_rules()
 
     def evaluate(self, ctx: IterationContext) -> CalxVerdict:
         """Evaluate all triggers for this loop iteration."""
@@ -87,6 +112,13 @@ class CalxEngine:
 
         blocked = any(t.level == TriggerLevel.HARD for t in all_triggers)
         corrections = [t.correction for t in all_triggers if t.correction]
+
+        # SOM P5-19: Inject Soma-derived soft rules as additional corrections
+        for rule in self._soma_rules:
+            description = rule.get('description', '')
+            action = rule.get('action', '')
+            if description or action:
+                corrections.append(f"[Soma rule: {rule.get('title', rule.get('id', ''))}] {description or action}")
 
         verdict = CalxVerdict(
             blocked=blocked,
