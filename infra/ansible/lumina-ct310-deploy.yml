@@ -1,0 +1,221 @@
+---
+# lumina-ct310-deploy.yml — Deploy Lumina Fleet to CT310 (arcade-reflexa)
+# INFRA-ANSIBLE-1
+#
+# Usage:
+#   ansible-playbook lumina-ct310-deploy.yml -i hosts.ini
+#   ansible-playbook lumina-ct310-deploy.yml -i hosts.ini --tags services
+#   ansible-playbook lumina-ct310-deploy.yml -i hosts.ini --check
+#
+# Prerequisites:
+#   - CT310 running Debian/Ubuntu
+#   - SSH access as root (or sudo user)
+#   - Gitea accessible at git.moosenet.online
+#   - /opt/lumina-fleet/axon/.env populated with secrets (not in this playbook)
+
+- name: Deploy Lumina Fleet to CT310
+  hosts: ct310
+  become: true
+  vars:
+    fleet_dir: /opt/lumina-fleet
+    fleet_repo: http://192.168.0.223:3000/moosenet/lumina-constellation.git
+    fleet_branch: main
+    fleet_user: root
+    python_bin: /usr/bin/python3
+    # Subdirectory in repo that contains the fleet code
+    repo_fleet_subdir: fleet
+
+    # Services and their timers to enable
+    services_simple:
+      - soma
+      - axon
+      - gateway
+      - synapse
+      - vector
+      - wizard
+      - sentinel-metrics
+      - node_exporter
+
+    oneshot_timers:
+      - {service: vigil-morning,        timer: vigil-morning}
+      - {service: vigil-afternoon,      timer: vigil-afternoon}
+      - {service: sentinel-health,      timer: sentinel-health}
+      - {service: synapse,              timer: synapse}
+      - {service: synapse-scan,         timer: synapse-scan}
+      - {service: myelin-collect,       timer: myelin-collect}
+      - {service: myelin-alerts,        timer: myelin-alerts}
+      - {service: myelin-burn-planner,  timer: myelin-burn-planner}
+      - {service: myelin-weekly-report, timer: myelin-weekly-report}
+      - {service: dura-backup-hourly,   timer: dura-backup-hourly}
+      - {service: dura-backup-daily,    timer: dura-backup-daily}
+      - {service: dura-secret-rotation, timer: dura-secret-rotation}
+      - {service: skill-evolution,      timer: skill-evolution}
+      - {service: inbox-monitor-py,     timer: inbox-monitor-py}
+      - {service: inbox-monitor,        timer: inbox-monitor}
+      - {service: commute-morning,      timer: commute-morning}
+      - {service: commute-evening,      timer: commute-evening}
+      - {service: soma-review,          timer: soma-review}
+
+  tasks:
+
+    # ── System packages ────────────────────────────────────────────────────────
+    - name: Install required packages
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-yaml
+          - python3-requests
+          - git
+          - curl
+          - rsync
+          - sqlite3
+          - prometheus-node-exporter
+        state: present
+        update_cache: true
+
+    - name: Install Python packages
+      pip:
+        name:
+          - fastapi
+          - uvicorn[standard]
+          - jinja2
+          - psycopg2-binary
+          - prometheus-client
+          - httpx
+          - pyyaml
+        executable: pip3
+        extra_args: --break-system-packages
+
+    # ── Directory structure ────────────────────────────────────────────────────
+    - name: Create fleet directory structure
+      file:
+        path: "{{ fleet_dir }}/{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - axon
+        - vigil/output
+        - sentinel/output
+        - synapse
+        - myelin/logs
+        - myelin/reports
+        - myelin/output
+        - dura/backups
+        - dura/logs
+        - dura/output
+        - soma/templates
+        - soma/api
+        - soma/static
+        - soma/wiki
+        - engram
+        - shared/templates
+        - vector
+        - seer/output
+        - seer/logs
+        - wizard/sessions
+        - wizard/council
+        - docs/modules
+        - security
+        - gateway/logs
+
+    - name: Create Apache web root for reports
+      file:
+        path: /var/www/html/cost
+        state: directory
+        mode: '0755'
+
+    # ── Clone or update repo ───────────────────────────────────────────────────
+    - name: Clone lumina-constellation repo to /tmp
+      git:
+        repo: "{{ fleet_repo }}"
+        dest: /tmp/lumina-constellation
+        version: "{{ fleet_branch }}"
+        force: true
+      register: git_result
+
+    - name: Sync fleet source to {{ fleet_dir }}
+      synchronize:
+        src: /tmp/lumina-constellation/{{ repo_fleet_subdir }}/
+        dest: "{{ fleet_dir }}/"
+        delete: false
+        recursive: true
+        rsync_opts:
+          - "--exclude=__pycache__"
+          - "--exclude=*.pyc"
+          - "--exclude=.git"
+
+    # ── Systemd services ───────────────────────────────────────────────────────
+    - name: Copy service unit files
+      copy:
+        src: /tmp/lumina-constellation/{{ repo_fleet_subdir }}/{{ item.src }}
+        dest: /etc/systemd/system/{{ item.dest }}
+        mode: '0644'
+        remote_src: true
+      loop:
+        - {src: soma/soma.service,                               dest: soma.service}
+        - {src: axon/axon.service,                               dest: axon.service}
+        - {src: vigil/vigil-morning.service,                     dest: vigil-morning.service}
+        - {src: vigil/vigil-afternoon.service,                   dest: vigil-afternoon.service}
+        - {src: vigil/vigil-morning.timer,                       dest: vigil-morning.timer}
+        - {src: vigil/vigil-afternoon.timer,                     dest: vigil-afternoon.timer}
+        - {src: sentinel/sentinel-health.service,                dest: sentinel-health.service}
+        - {src: sentinel/sentinel-health.timer,                  dest: sentinel-health.timer}
+        - {src: sentinel/sentinel-metrics.service,               dest: sentinel-metrics.service}
+        - {src: synapse/synapse.service,                         dest: synapse.service}
+        - {src: synapse/synapse.timer,                           dest: synapse.timer}
+        - {src: synapse/synapse-scan.service,                    dest: synapse-scan.service}
+        - {src: synapse/synapse-scan.timer,                      dest: synapse-scan.timer}
+        - {src: myelin/myelin-collect.service,                   dest: myelin-collect.service}
+        - {src: myelin/myelin-collect.timer,                     dest: myelin-collect.timer}
+        - {src: myelin/myelin-alerts.service,                    dest: myelin-alerts.service}
+        - {src: myelin/myelin-alerts.timer,                      dest: myelin-alerts.timer}
+        - {src: myelin/myelin-burn-planner.service,              dest: myelin-burn-planner.service}
+        - {src: myelin/myelin-burn-planner.timer,                dest: myelin-burn-planner.timer}
+        - {src: myelin/myelin-weekly-report.service,             dest: myelin-weekly-report.service}
+        - {src: myelin/myelin-weekly-report.timer,               dest: myelin-weekly-report.timer}
+        - {src: dura/dura-secret-rotation.service,               dest: dura-secret-rotation.service}
+        - {src: dura/dura-secret-rotation.timer,                 dest: dura-secret-rotation.timer}
+      notify: Reload systemd
+
+    - name: Enable and start long-running services
+      systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+        daemon_reload: false
+      loop: "{{ services_simple }}"
+
+    - name: Enable timers for oneshot services
+      systemd:
+        name: "{{ item.timer }}.timer"
+        state: started
+        enabled: true
+        daemon_reload: false
+      loop: "{{ oneshot_timers }}"
+
+    # ── Initialise databases ───────────────────────────────────────────────────
+    - name: Initialise Myelin DB
+      command: "{{ python_bin }} {{ fleet_dir }}/myelin/init_db.py"
+      args:
+        creates: "{{ fleet_dir }}/myelin/myelin.db"
+
+    # ── Verify ─────────────────────────────────────────────────────────────────
+    - name: Check soma is responding
+      uri:
+        url: http://localhost:8082/health
+        return_content: false
+        status_code: 200
+      retries: 5
+      delay: 3
+      ignore_errors: true
+      register: soma_health
+
+    - name: Report soma health
+      debug:
+        msg: "Soma health: {{ 'OK' if soma_health.status == 200 else 'NOT RESPONDING — check logs' }}"
+
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: true

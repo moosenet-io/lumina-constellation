@@ -1,0 +1,245 @@
+---
+# lumina-ct214-deploy.yml — Deploy Lumina Terminus (MCP hub) to CT214
+# INFRA-ANSIBLE-2
+#
+# Usage:
+#   ansible-playbook lumina-ct214-deploy.yml -i hosts.ini
+#   ansible-playbook lumina-ct214-deploy.yml -i hosts.ini --tags mcp
+#   ansible-playbook lumina-ct214-deploy.yml -i hosts.ini --check
+#
+# Prerequisites:
+#   - CT214 running Debian/Ubuntu
+#   - SSH access as root
+#   - Gitea accessible at http://192.168.0.223:3000
+#   - /opt/ai-mcp/.env populated with secrets (not in this playbook)
+#   - socat or ironclaw stdio bridge on CT305 configured separately
+
+- name: Deploy Lumina Terminus (MCP hub) to CT214
+  hosts: ct214
+  become: true
+  vars:
+    mcp_dir: /opt/ai-mcp
+    terminus_repo: http://192.168.0.223:3000/moosenet/lumina-terminus.git
+    fleet_repo: http://192.168.0.223:3000/moosenet/lumina-constellation.git
+    fleet_branch: main
+    python_bin: /usr/bin/python3
+    mcp_port: 8080
+    plane_helper_dir: /opt/plane-helper
+
+    # All tool modules to deploy (from terminus repo root)
+    tool_modules:
+      - server.py
+      - stdio.sh
+      - pii_gate.py
+      - plugin_loader.py
+      - naming.py
+      - memory_provider.py
+      # Core tools
+      - nexus_tools.py
+      - axon_tools.py
+      - vigil_tools.py
+      - sentinel_tools.py
+      - engram_tools.py
+      - synapse_tools.py
+      # Agent/orchestration
+      - council_tools.py
+      - wizard_tools.py
+      - soma_tools.py
+      - skills_tools.py
+      - routines_tools.py
+      # Infrastructure
+      - gitea_tools.py
+      - github_tools.py
+      - plane_tools.py
+      - prometheus_tools.py
+      - network_tools.py
+      - ansible_tools.py
+      - infisical_tools.py
+      - portainer_tools.py
+      - litellm_tools.py
+      - dev_tools.py
+      # Modules
+      - vigil_tools.py
+      - myelin_tools.py
+      - dura_tools.py
+      - vector_tools.py
+      - seer_tools.py
+      - cortex_tools.py
+      - gateway_tools.py
+      - pulse_tools.py
+      - hearth_tools.py
+      - ledger_tools.py
+      - relay_tools.py
+      - meridian_tools.py
+      - vitals_tools.py
+      - crucible_tools.py
+      - odyssey_tools.py
+      - honcho_tools.py
+      - commute_tools.py
+      - news_tools.py
+      - web_tools.py
+      - lumina_web_tools.py
+
+  tasks:
+
+    # ── System packages ────────────────────────────────────────────────────────
+    - name: Install required packages
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - git
+          - curl
+          - sqlite3
+          - socat
+        state: present
+        update_cache: true
+
+    - name: Install Python packages
+      pip:
+        name:
+          - fastmcp
+          - psycopg2-binary
+          - httpx
+          - requests
+          - pyyaml
+          - presidio-analyzer
+          - presidio-anonymizer
+          - spacy
+        executable: pip3
+        extra_args: --break-system-packages
+      ignore_errors: true  # some may need extra deps
+
+    # ── Directory structure ────────────────────────────────────────────────────
+    - name: Create MCP directory
+      file:
+        path: "{{ mcp_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Create plugins directory
+      file:
+        path: "{{ mcp_dir }}/plugins"
+        state: directory
+        mode: '0755'
+
+    - name: Create plane-helper directory
+      file:
+        path: "{{ plane_helper_dir }}"
+        state: directory
+        mode: '0755'
+
+    # ── Clone/sync repos ───────────────────────────────────────────────────────
+    - name: Clone lumina-terminus repo
+      git:
+        repo: "{{ terminus_repo }}"
+        dest: /tmp/lumina-terminus
+        version: main
+        force: true
+      ignore_errors: true
+      register: terminus_git
+
+    - name: Clone lumina-constellation repo (for plane-helper)
+      git:
+        repo: "{{ fleet_repo }}"
+        dest: /tmp/lumina-constellation
+        version: "{{ fleet_branch }}"
+        force: true
+
+    - name: Sync tool modules to MCP directory (from terminus repo)
+      copy:
+        src: /tmp/lumina-terminus/{{ item }}
+        dest: "{{ mcp_dir }}/{{ item }}"
+        mode: '0644'
+        remote_src: true
+      loop: "{{ tool_modules }}"
+      when: terminus_git is succeeded
+      ignore_errors: true
+
+    - name: Make stdio.sh executable
+      file:
+        path: "{{ mcp_dir }}/stdio.sh"
+        mode: '0755'
+      ignore_errors: true
+
+    - name: Deploy plane-helper
+      copy:
+        src: /tmp/lumina-constellation/deploy/plane_helper.py
+        dest: "{{ plane_helper_dir }}/plane_helper.py"
+        mode: '0644'
+        remote_src: true
+
+    # ── Systemd MCP service ────────────────────────────────────────────────────
+    - name: Install MCP server service
+      copy:
+        dest: /etc/systemd/system/ai-mcp.service
+        content: |
+          [Unit]
+          Description=Lumina Terminus MCP Server
+          After=network.target
+
+          [Service]
+          Type=simple
+          ExecStart={{ python_bin }} {{ mcp_dir }}/server.py
+          EnvironmentFile=-{{ mcp_dir }}/.env
+          WorkingDirectory={{ mcp_dir }}
+          Restart=on-failure
+          RestartSec=10
+          StandardOutput=journal
+          StandardError=journal
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+      notify: Reload and restart MCP
+
+    # ── Secrets stub ───────────────────────────────────────────────────────────
+    - name: Create .env stub if it doesn't exist
+      copy:
+        dest: "{{ mcp_dir }}/.env"
+        content: |
+          # Lumina Terminus secrets — populate via fetch-mcp-secrets.sh
+          # LITELLM_BASE_URL=
+          # LITELLM_API_KEY=
+          # ENGRAM_DB_PATH=/opt/lumina-fleet/engram/engram.db
+          # PLANE_API_TOKEN=
+          # GITEA_TOKEN=
+          # SOMA_JWT_SECRET=
+          # IRONCLAW_GATEWAY_TOKEN=
+          # OPENROUTER_API_KEY=
+          # INBOX_DB_HOST=
+          # INBOX_DB_USER=
+          # INBOX_DB_PASS=
+          # PVS_HOST=
+          # OLLAMA_URL=
+        mode: '0600'
+        force: false  # don't overwrite existing
+
+    # ── Verify ─────────────────────────────────────────────────────────────────
+    - name: Check server.py syntax
+      command: "{{ python_bin }} -m py_compile {{ mcp_dir }}/server.py"
+      register: syntax_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: Report syntax check
+      debug:
+        msg: "server.py syntax: {{ 'OK' if syntax_check.rc == 0 else 'ERRORS — check ' + mcp_dir + '/server.py' }}"
+
+    - name: List deployed tool modules
+      find:
+        paths: "{{ mcp_dir }}"
+        patterns: "*_tools.py"
+      register: tool_files
+
+    - name: Report tool count
+      debug:
+        msg: "Deployed {{ tool_files.files | length }} tool modules to {{ mcp_dir }}"
+
+  handlers:
+    - name: Reload and restart MCP
+      systemd:
+        name: ai-mcp
+        state: restarted
+        enabled: true
+        daemon_reload: true
