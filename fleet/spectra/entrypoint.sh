@@ -4,6 +4,26 @@ set -e
 echo "[spectra] Starting entrypoint..."
 
 # ── 1. Network isolation (BA.2) ─────────────────────────────────────────────
+# In INTERNAL mode, Docker's internal:true network handles isolation from internet.
+# We skip iptables blocking of private ranges (we NEED LAN access in internal mode).
+if [ "${SPECTRA_INTERNAL_MODE:-false}" = "true" ]; then
+    echo "[spectra-internal] Internal mode — blocking internet, allowing LAN only."
+    # Allow loopback
+    iptables -A OUTPUT -o lo -j ACCEPT 2>/dev/null || true
+    iptables -A INPUT  -i lo -j ACCEPT 2>/dev/null || true
+    # Allow established connections
+    iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
+    # Allow DNS
+    iptables -A OUTPUT -p udp --dport 53 -j ACCEPT 2>/dev/null || true
+    iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT 2>/dev/null || true
+    # Allow all private/LAN ranges
+    for LAN in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.0/8; do
+        iptables -A OUTPUT -d "$LAN" -j ACCEPT 2>/dev/null || true
+    done
+    # Block all public internet (80, 443, and everything else)
+    iptables -A OUTPUT -j DROP 2>/dev/null || true
+    echo "[spectra-internal] Internet blocked, LAN accessible."
+else
 echo "[spectra] Configuring iptables network isolation..."
 
 # COREDNS_IP: private DNS resolver. Set via environment (defaults to empty = skip specific rule)
@@ -46,6 +66,7 @@ iptables -A OUTPUT -p tcp --dport 443 -j ACCEPT
 iptables -A OUTPUT -j DROP
 
 echo "[spectra] Network isolation configured."
+fi  # end of external mode iptables block
 
 # ── 2. TLS certificate generation (BA.1) ────────────────────────────────────
 # Generate in /tmp (always writable tmpfs) then copy to /certs volume.

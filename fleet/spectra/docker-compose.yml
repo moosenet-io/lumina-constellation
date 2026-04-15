@@ -104,6 +104,10 @@ services:
       - SYS_ADMIN
       - NET_ADMIN
       - NET_RAW
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
     read_only: true
     mem_limit: 1g
     cpus: 1.0
@@ -115,15 +119,18 @@ services:
       - spectra_data:/data/spectra
       - spectra_certs:/certs
       - ./spectra_config.yaml:/app/spectra_config.yaml:ro
+      - ./spectra_service.py:/app/spectra_service.py:ro
+      - ./spectra_worker.py:/app/spectra_worker.py:ro
+      - ./spectra_sanitizer.py:/app/spectra_sanitizer.py:ro
     networks:
-      - spectra-internal-net  # LAN only, no internet routing
+      - spectra-net   # Same network as main — iptables in SPECTRA_INTERNAL_MODE blocks internet
     ports:
-      - "127.0.0.1:8085:8084"   # localhost only
+      - "8085:8084"   # Published for Terminus MCP access
     environment:
       - DISPLAY=:99
       - SPECTRA_DATA=/data/spectra
       - SPECTRA_CONFIG=/app/spectra_config.yaml
-      - SPECTRA_INTERNAL_MODE=true
+      - SPECTRA_INTERNAL_MODE=true    # Entrypoint uses LAN-allow/internet-block iptables
       - SPECTRA_OPERATOR_KEY=${SPECTRA_OPERATOR_KEY:-spectra-operator-dev}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8084/health"]

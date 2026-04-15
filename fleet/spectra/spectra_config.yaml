@@ -59,10 +59,11 @@ consumers:
     rate_limit_per_sec: 0
 
 # Internal screenshot allowlist (spectra-internal container only)
+# Use Docker bridge gateway to reach host services (internal:true net allows bridge access)
 internal_allowlist:
-  - "http://localhost:8082"          # Soma
-  - "http://localhost:9090"          # Prometheus
-  - "http://localhost:9100"          # Node exporter
+  - "http://YOUR_DOCKER_BRIDGE:8082"   # Soma (e.g. 172.20.0.1 — check docker network inspect)
+  - "http://YOUR_DOCKER_BRIDGE:9090"   # Prometheus
+  - "http://YOUR_DOCKER_BRIDGE:9100"   # Node exporter
 
 # URL blocklist (regex patterns)
 url_blocklist:

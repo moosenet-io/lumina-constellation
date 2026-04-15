@@ -609,6 +609,34 @@ async def self_test(consumer_key: str = "MY.1"):
     }
 
 
+@app.post("/internal-screenshot")
+async def internal_screenshot(url: str, consumer_key: str = "MY.1"):
+    """Proxy to spectra-internal container (LAN-only, no internet, URL allowlist)."""
+    _validate_consumer(consumer_key)
+    internal_base = os.environ.get("SPECTRA_INTERNAL_CONTAINER_URL", "http://spectra-internal:8084")
+    _audit(consumer_key, "internal_screenshot", url, 200)
+    import urllib.request as _ur
+    try:
+        payload = json.dumps({"url": url, "consumer_key": consumer_key}).encode()
+        req = _ur.Request(f"{internal_base}/navigate", data=payload,
+                          headers={"Content-Type": "application/json"}, method="POST")
+        with _ur.urlopen(req, timeout=25) as r:
+            nav = json.loads(r.read())
+        if nav.get("ok") and nav.get("session_id"):
+            sid = nav["session_id"]
+            req2 = _ur.Request(f"{internal_base}/screenshot?session_id={sid}&consumer_key={consumer_key}",
+                               data=b"", method="POST")
+            with _ur.urlopen(req2, timeout=20) as r:
+                scr = json.loads(r.read())
+            _ur.urlopen(_ur.Request(
+                f"{internal_base}/session/close?session_id={sid}&consumer_key={consumer_key}",
+                data=b"", method="POST"), timeout=5)
+            return {"ok": True, "url": url, "png_b64": scr.get("png_b64", ""), "title": nav.get("title")}
+        return {"ok": False, "error": str(nav)[:200]}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:300]}
+
+
 @app.get("/rrweb.min.js")
 async def rrweb_js():
     return FileResponse("/app/static/rrweb.min.js", media_type="application/javascript")
