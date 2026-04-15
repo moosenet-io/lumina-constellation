@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lumina Setup Wizard</title>
-  <link rel="stylesheet" href="http://YOUR_FLEET_SERVER_IP/shared/constellation.css">
+  <title>Lumina — Setup</title>
+  <link rel="stylesheet" href="/shared/constellation.css">
   <script src="https://unpkg.com/htmx.org@1.9.10" crossorigin="anonymous"></script>
 </head>
 <body hx-headers='{"X-Soma-Key": "YOUR_SOMA_ADMIN_KEY"}' style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;">
@@ -45,7 +45,7 @@
 const WIZ_KEY = 'lumina-wizard-state';
 let state = JSON.parse(localStorage.getItem(WIZ_KEY) || '{}');
 let currentStep = state.step || 1;
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 9;
 
 function saveState() {
   state.step = currentStep;
@@ -62,10 +62,21 @@ function updateProgress() {
 
 // FIX 4c: Validated wizNext
 function wizNext() {
+  // Step 1.5 — disclaimer required
   if (currentStep === 2) {
+    if (!state.disclaimerAccepted) {
+      var el = document.getElementById('disclaimer-err');
+      if (el) el.style.display = 'block';
+      return;
+    }
+    // Record acceptance via API
+    fetch('/api/setup/accept-disclaimer', {method:'POST', headers:{'X-Soma-Key': window._somaKey || ''}}).catch(function(){});
+  }
+  // Step 3 (was 2) — name validation
+  if (currentStep === 3) {
     const name = document.getElementById('assistant-name')?.value?.trim();
-    if (!name) {
-      document.getElementById('name-preview').textContent = '⚠️ Please enter a name before continuing.';
+    if (!name || name.length < 2 || name.length > 30) {
+      document.getElementById('name-preview').textContent = '⚠️ Name must be 2-30 characters.';
       document.getElementById('name-preview').style.color = 'var(--danger, #f85149)';
       return;
     }
@@ -105,7 +116,7 @@ function resetWizard() {
 // Render each step
 function renderStep(n) {
   updateProgress();
-  const steps = [null, step1, step2, step3, step4, step5, step6, step7, step8];
+  const steps = [null, step1, step1b, step2, step3, step4, step5, step6, step7, step8];
   document.getElementById('step-content').innerHTML = steps[n]();
 
   // Re-process HTMX on new content
@@ -140,6 +151,30 @@ function step1() {
     '<div style="margin-top:1rem;">' +
     '<button onclick="resetWizard()" style="background:none;border:1px solid var(--border-color);border-radius:6px;padding:0.375rem 0.75rem;cursor:pointer;font-size:0.875rem;color:var(--text-secondary);margin-top:0.5rem;">&#x21BA; Reset wizard</button>' +
     '</div>' +
+    '</div>';
+}
+
+// ── Step 1.5: Disclaimer ───────────────────────────────────────────────────
+function step1b() {
+  var accepted = state.disclaimerAccepted || false;
+  return '<div style="padding:1rem;">' +
+    '<h2 style="font-size:1.375rem;font-weight:700;margin-bottom:0.5rem;">Terms of Use &amp; Disclaimer</h2>' +
+    '<div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;font-size:0.875rem;line-height:1.7;color:var(--text-secondary);">' +
+    '<p><strong style="color:var(--text-primary);">Lumina Constellation is experimental software.</strong> Please read and accept:</p>' +
+    '<ul style="margin:0.75rem 0 0 1.25rem;display:flex;flex-direction:column;gap:0.4rem;">' +
+    '<li>AI responses may be inaccurate — always verify important decisions independently.</li>' +
+    '<li><strong>Meridian</strong> (trading module) is for paper trading only — not financial advice.</li>' +
+    '<li><strong>Vitals</strong> (health module) is for tracking only — not medical advice.</li>' +
+    '<li>The operator is responsible for securing their deployment, credentials, and data.</li>' +
+    '<li>Data stays on the operator\'s hardware — no cloud telemetry is sent to any third party.</li>' +
+    '<li>Open source software — provided as-is, without warranty of any kind.</li>' +
+    '</ul>' +
+    '</div>' +
+    '<label style="display:flex;align-items:flex-start;gap:0.75rem;cursor:pointer;">' +
+    '<input type="checkbox" id="disclaimer-check" ' + (accepted ? 'checked' : '') + ' style="margin-top:0.25rem;width:1.1rem;height:1.1rem;" onchange="state.disclaimerAccepted=this.checked;saveState();document.getElementById(\'disclaimer-err\').style.display=\'none\';">' +
+    '<span style="font-size:0.875rem;">I understand and accept these terms.</span>' +
+    '</label>' +
+    '<div id="disclaimer-err" style="display:none;color:var(--danger,#f85149);font-size:0.875rem;margin-top:0.5rem;">Please accept the terms to continue.</div>' +
     '</div>';
 }
 
@@ -202,39 +237,41 @@ function step3() {
     '</div>';
 }
 
-// FIX 3: Format scan results from raw JSON into a checklist
+// Format scan results from raw JSON into a checklist (handles both old checks{} and new services{} format)
 document.addEventListener('htmx:afterSwap', function(e) {
   if (!e.detail.elt || e.detail.elt.id !== 'scan-results') return;
   try {
     const status = JSON.parse(e.detail.elt.innerText);
+    // New format: status.services = {name: {name, ok, latency_ms, ...}}
+    // Old format: status.checks = {key: {ok, value, error}}
+    const services = status.services || {};
     const checks = status.checks || {};
+    const items = Object.keys(services).length > 0 ? services : checks;
+    const isNew = Object.keys(services).length > 0;
+
     let html = '<div style="display:flex;flex-direction:column;gap:0.5rem;">';
-    const serviceNames = {
-      'ironclaw_version': 'IronClaw (agent runtime)',
-      'litellm_models': 'LiteLLM (AI proxy)',
-      'nexus_messages': 'Nexus inbox',
-      'matrix_bridge': 'Matrix bridge',
-      'plane_projects': 'Plane CE (work queue)',
-    };
-    for (const [key, check] of Object.entries(checks)) {
-      const label = serviceNames[key] || key;
-      const ok = check.ok;
-      const val = check.value || '';
-      const dot = ok ? '🟢' : '🔴';
-      const detail = ok ? (typeof val === 'string' ? val : JSON.stringify(val)).slice(0,40) : (check.error || 'unreachable');
-      html += `<div style="display:flex;align-items:center;gap:0.75rem;">
-        <span style="font-size:1.25rem;">${dot}</span>
-        <div><div style="font-weight:600;font-size:0.875rem;">${label}</div>
-        <div style="font-size:0.75rem;color:var(--text-secondary);">${detail}</div></div></div>`;
+    for (const [key, svc] of Object.entries(items)) {
+      const label = isNew ? (svc.name || key) : (key.replace(/_/g,' '));
+      const ok = svc.ok;
+      const dot = ok ? '&#x1F7E2;' : '&#x1F534;';
+      const latency = svc.latency_ms != null ? svc.latency_ms + 'ms' : '';
+      const extra = isNew ? (ok ? latency : (svc.error || 'unreachable')) : (ok ? (svc.value || '') : (svc.error || 'unreachable'));
+      html += '<div style="display:flex;align-items:center;gap:0.75rem;padding:0.4rem 0;">' +
+        '<span style="font-size:1.1rem;">' + dot + '</span>' +
+        '<div><div style="font-weight:600;font-size:0.875rem;">' + label + '</div>' +
+        '<div style="font-size:0.75rem;color:var(--text-secondary);">' + String(extra).slice(0,60) + '</div></div></div>';
     }
-    const allOk = Object.values(checks).every(c => c.ok);
-    html += `<div style="margin-top:1rem;padding:0.75rem;border-radius:8px;background:${allOk ? 'var(--bg-success,#1a2e1a)' : 'var(--bg-tertiary)'};">
-      <strong>${allOk ? '&#x2705; All systems ready' : '&#x26A0;&#xFE0F; Some services degraded'}</strong>
-      <div style="font-size:0.75rem;color:var(--text-secondary);">Minimum required: IronClaw + LiteLLM</div></div>`;
+    const allOk = Object.values(items).every(function(c) { return c.ok; });
+    const level = status.status_level || (allOk ? 'ok' : 'degraded');
+    const bg = level === 'ok' ? 'rgba(34,197,94,0.1)' : 'var(--bg-tertiary)';
+    const label = status.status || (allOk ? '&#x2705; All systems ready' : '&#x26A0; Some services unavailable');
+    html += '<div style="margin-top:1rem;padding:0.75rem;border-radius:8px;background:' + bg + ';">' +
+      '<strong>' + label + '</strong>' +
+      '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.25rem;">Minimum required: IronClaw + LiteLLM</div></div>';
     html += '</div>';
     e.detail.elt.innerHTML = html;
   } catch(err) {
-    // keep raw if parse fails
+    // keep raw if parse fails — better than crashing
   }
 });
 

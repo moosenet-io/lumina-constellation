@@ -563,6 +563,39 @@ def wizard_page():
     return HTMLResponse("<h1>Setup not found</h1>", status_code=404)
 
 
+@app.post("/api/setup/accept-disclaimer")
+async def accept_disclaimer(request: Request, x_soma_key: str = Header(default="")):
+    """Record operator disclaimer acceptance (ADD.3). Writes disclaimer-accepted.json."""
+    import socket
+    try:
+        local_ip = socket.gethostbyname(socket.gethostname())
+    except Exception:
+        local_ip = "unknown"
+    record = {
+        "accepted_at": datetime.now(timezone.utc).isoformat(),
+        "accepted_by": "admin",
+        "version": "1.0",
+        "ip": local_ip,
+    }
+    try:
+        disclaimer_file = FLEET_DIR / "disclaimer-accepted.json"
+        disclaimer_file.write_text(json.dumps(record, indent=2))
+        return {"ok": True, "accepted_at": record["accepted_at"]}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:100]}
+
+# Redirect to setup if disclaimer not accepted (checked on startup)
+@app.get("/api/setup/disclaimer-status")
+def disclaimer_status():
+    disclaimer_file = FLEET_DIR / "disclaimer-accepted.json"
+    if disclaimer_file.exists():
+        try:
+            data = json.loads(disclaimer_file.read_text())
+            return {"accepted": True, "accepted_at": data.get("accepted_at"), "version": data.get("version")}
+        except Exception:
+            pass
+    return {"accepted": False}
+
 @app.post("/api/wizard/apply")
 def wizard_apply(config: dict = Body(...), x_soma_key: str = Header(default="")):
     """Apply wizard configuration. Writes constellation.yaml changes."""
