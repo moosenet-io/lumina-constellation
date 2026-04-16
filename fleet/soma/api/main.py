@@ -207,10 +207,10 @@ def rename_agent(agent_id: str, name: str = Body(..., embed=True), x_soma_key: s
 
 # ── Modules ───────────────────────────────────────────────────────────────────
 @app.get("/api/modules")
-def list_modules(x_soma_key: str = Header(default="")):
-    _auth(x_soma_key)
+def list_modules(request: Request, x_soma_key: str = Header(default="")):
+    _auth(x_soma_key, request)
     try:
-        import yaml
+        import yaml, sqlite3, subprocess as _sp
         cfg = {}
         if CONSTELLATION_YAML.exists():
             with open(CONSTELLATION_YAML) as f:
@@ -219,6 +219,261 @@ def list_modules(x_soma_key: str = Header(default="")):
         return {"modules": modules, "count": len(modules)}
     except Exception as e:
         return {"error": str(e)}
+
+
+@app.get("/api/modules/status")
+def modules_status(request: Request, x_soma_key: str = Header(default="")):
+    """Full constellation module status with live KPIs and relationship data."""
+    _auth(x_soma_key, request)
+    import sqlite3, subprocess as _sp
+
+    # ── KPI collection (all best-effort) ──────────────────────────────────────
+    kpis = {}
+
+    # Engram facts
+    try:
+        conn = sqlite3.connect(str(FLEET_DIR / "engram" / "engram.db"), timeout=2)
+        kpis["engram_facts"] = conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0]
+        conn.close()
+    except Exception:
+        kpis["engram_facts"] = None
+
+    # Nexus messages
+    try:
+        import psycopg2
+        nc = psycopg2.connect(host=os.environ.get("INBOX_DB_HOST",""),
+            dbname="lumina_inbox", user=os.environ.get("INBOX_DB_USER","lumina_inbox_user"),
+            password=os.environ.get("INBOX_DB_PASS",""), connect_timeout=2)
+        kpis["nexus_total"] = nc.cursor().execute("SELECT COUNT(*) FROM inbox_messages").fetchone()[0]
+        kpis["nexus_pending"] = nc.cursor().execute("SELECT COUNT(*) FROM inbox_messages WHERE status='pending'").fetchone()[0]
+        nc.close()
+    except Exception:
+        kpis["nexus_total"] = None
+
+    # Sentinel health summary
+    try:
+        import json as _j
+        h = _j.loads((FLEET_DIR / "sentinel" / "output" / "health.json").read_text())
+        kpis["sentinel_ok"] = h.get("ok", 0)
+        kpis["sentinel_total"] = h.get("total", 0)
+        kpis["sentinel_critical"] = h.get("critical", 0)
+        kpis["sentinel_warn"] = h.get("warn", 0)
+    except Exception:
+        pass
+
+    # Myelin spend today
+    try:
+        import json as _j
+        m = _j.loads((FLEET_DIR / "myelin" / "output" / "usage.json").read_text())
+        kpis["myelin_today_usd"] = m.get("today_usd", 0)
+        kpis["myelin_limit_usd"] = m.get("daily_limit_usd", 10)
+    except Exception:
+        kpis["myelin_today_usd"] = None
+
+    # Skills count
+    try:
+        kpis["skills_count"] = len(list((FLEET_DIR / "skills").rglob("*.md")))
+    except Exception:
+        kpis["skills_count"] = None
+
+    # Synapse sent today
+    try:
+        import json as _j, datetime as _dt
+        g = _j.loads((FLEET_DIR / "synapse" / "gate_log.json").read_text())
+        today = _dt.datetime.now(_dt.timezone.utc).date().isoformat()
+        kpis["synapse_sent_today"] = sum(1 for e in g if e.get("sent") and str(e.get("ts","")).startswith(today[:10]))
+    except Exception:
+        kpis["synapse_sent_today"] = None
+
+    # Service running state
+    def _svc_active(name):
+        try:
+            r = _sp.run(["systemctl", "is-active", name], capture_output=True, text=True, timeout=3)
+            return r.stdout.strip() == "active"
+        except Exception:
+            return None
+
+    svc_status = {s: _svc_active(s) for s in ["axon", "vigil", "soma", "spectra"]}
+
+    # ── Module definitions: all 25 modules with relationship + KPI ─────────────
+    # Layers: core, nervous_system, senses, body, life, identity
+    modules = [
+        # ── Identity ──────────────────────────────────────────────────────────
+        {"id": "lumina", "name": "Lumina", "layer": "identity", "role": "orchestrator",
+         "desc": "Lead orchestrator — the personality at the centre of the constellation",
+         "icon": "✦", "color": "#7F77DD",
+         "kpi": None, "kpi_label": None,
+         "status": "active",  # always the hub
+         "connects_to": ["terminus", "nexus", "engram", "refractor"]},
+        {"id": "lumiere", "name": "Lumière", "layer": "identity", "role": "partner",
+         "desc": "Partner agent — second personality, household companion",
+         "icon": "💕", "color": "#D4537E",
+         "kpi": None, "kpi_label": None,
+         "status": "configuring",
+         "connects_to": ["lumina"]},
+
+        # ── Core nervous system ────────────────────────────────────────────────
+        {"id": "terminus", "name": "Terminus", "layer": "nervous_system", "role": "mcp_hub",
+         "desc": "MCP tool hub — 272+ tools exposed to IronClaw",
+         "icon": "⚡", "color": "#1D9E75",
+         "kpi": None, "kpi_label": "tools",
+         "status": "active",
+         "connects_to": ["lumina"]},
+        {"id": "nexus", "name": "Nexus", "layer": "nervous_system", "role": "inbox",
+         "desc": "Inter-agent inbox — every message routes through here",
+         "icon": "📥", "color": "#1D9E75",
+         "kpi": kpis.get("nexus_total"), "kpi_label": "messages",
+         "status": "active" if kpis.get("nexus_total") is not None else "degraded",
+         "connects_to": ["lumina", "axon", "vigil", "sentinel", "synapse"]},
+        {"id": "refractor", "name": "Refractor", "layer": "nervous_system", "role": "router",
+         "desc": "Smart request router — maps intent to tool category",
+         "icon": "🔀", "color": "#1D9E75",
+         "kpi": None, "kpi_label": "categories",
+         "status": "active",
+         "connects_to": ["lumina"]},
+        {"id": "myelin", "name": "Myelin", "layer": "nervous_system", "role": "cost",
+         "desc": "Inference cost governance — per-consumer budgets & circuit breaker",
+         "icon": "💡", "color": "#BA7517",
+         "kpi": f"${kpis['myelin_today_usd']:.2f}" if kpis.get("myelin_today_usd") is not None else None,
+         "kpi_label": "spent today",
+         "status": "active" if kpis.get("myelin_today_usd") is not None else "unknown",
+         "connects_to": ["lumina", "terminus"]},
+        {"id": "synapse", "name": "Synapse", "layer": "nervous_system", "role": "notifications",
+         "desc": "Proactive notification engine — reaches out without being asked",
+         "icon": "🧠", "color": "#BA7517",
+         "kpi": kpis.get("synapse_sent_today"), "kpi_label": "sent today",
+         "status": "active" if svc_status.get("soma") else "unknown",
+         "connects_to": ["lumina", "nexus"]},
+        {"id": "axon", "name": "Axon", "layer": "nervous_system", "role": "executor",
+         "desc": "Work queue executor — polls Plexus, dispatches tasks to agents",
+         "icon": "⚙️", "color": "#BA7517",
+         "kpi": None, "kpi_label": "tasks",
+         "status": "active" if svc_status.get("axon") else "inactive",
+         "connects_to": ["lumina", "nexus", "plexus"]},
+
+        # ── Senses ────────────────────────────────────────────────────────────
+        {"id": "vigil", "name": "Vigil", "layer": "senses", "role": "briefings",
+         "desc": "Daily briefings — 7 AM weather, traffic, calendar, news, health",
+         "icon": "🌅", "color": "#D85A30",
+         "kpi": None, "kpi_label": "briefings",
+         "status": "active" if svc_status.get("vigil") else "inactive",
+         "connects_to": ["lumina", "nexus"]},
+        {"id": "sentinel", "name": "Sentinel", "layer": "senses", "role": "monitoring",
+         "desc": "Infrastructure monitoring — 20 checks, Prometheus, LLM runaway guard",
+         "icon": "🛡️", "color": "#D85A30",
+         "kpi": f"{kpis.get('sentinel_ok',0)}/{kpis.get('sentinel_total',0)}" if kpis.get("sentinel_total") else None,
+         "kpi_label": "checks OK",
+         "status": "active" if kpis.get("sentinel_total") else "unknown",
+         "connects_to": ["lumina", "nexus"]},
+        {"id": "spectra", "name": "Spectra", "layer": "senses", "role": "browser",
+         "desc": "Browser automation — Playwright, Live View, session recording, HITL",
+         "icon": "📷", "color": "#378ADD",
+         "kpi": None, "kpi_label": "sessions",
+         "status": "active" if svc_status.get("spectra") else "unknown",
+         "connects_to": ["lumina", "terminus", "engram"]},
+        {"id": "seer", "name": "Seer", "layer": "senses", "role": "research",
+         "desc": "Web research agent — SearXNG, prompt injection defense, synthesis",
+         "icon": "🔭", "color": "#378ADD",
+         "kpi": None, "kpi_label": "queries",
+         "status": "configured",
+         "connects_to": ["lumina", "engram"]},
+
+        # ── Body ──────────────────────────────────────────────────────────────
+        {"id": "soma", "name": "Soma", "layer": "body", "role": "dashboard",
+         "desc": "Admin dashboard — 14+ pages, Live View, config, wiki",
+         "icon": "🖥️", "color": "#D4537E",
+         "kpi": None, "kpi_label": None,
+         "status": "active",
+         "connects_to": ["lumina", "terminus"]},
+        {"id": "engram", "name": "Engram", "layer": "body", "role": "memory",
+         "desc": "Long-term memory — sqlite-vec, Zettelkasten, RAG-retrievable",
+         "icon": "🧬", "color": "#378ADD",
+         "kpi": kpis.get("engram_facts"), "kpi_label": "facts",
+         "status": "active" if kpis.get("engram_facts") is not None else "unknown",
+         "connects_to": ["lumina"]},
+        {"id": "plexus", "name": "Plexus", "layer": "body", "role": "projects",
+         "desc": "Work queue backed by Plane CE — 850+ items tracked",
+         "icon": "📋", "color": "#639922",
+         "kpi": None, "kpi_label": "projects",
+         "status": "active",
+         "connects_to": ["lumina", "axon"]},
+        {"id": "dura", "name": "Dura", "layer": "body", "role": "resilience",
+         "desc": "Operational resilience — secret rotation, backups, smoke tests",
+         "icon": "🔐", "color": "#639922",
+         "kpi": None, "kpi_label": None,
+         "status": "configured",
+         "connects_to": ["lumina"]},
+        {"id": "obsidian_circle", "name": "Obsidian Circle", "layer": "body", "role": "reasoning",
+         "desc": "Multi-model reasoning council — 7 presets, session checkpointing",
+         "icon": "⚖️", "color": "#7F77DD",
+         "kpi": None, "kpi_label": "deliberations",
+         "status": "configured",
+         "connects_to": ["lumina"]},
+        {"id": "cortex", "name": "Cortex", "layer": "body", "role": "code_intel",
+         "desc": "Code intelligence — repo analysis, dependency graph, blast radius",
+         "icon": "🔬", "color": "#639922",
+         "kpi": kpis.get("skills_count"), "kpi_label": "skills active",
+         "status": "configured",
+         "connects_to": ["lumina", "vector"]},
+
+        # ── Life modules ──────────────────────────────────────────────────────
+        {"id": "vector", "name": "Vector", "layer": "life", "role": "dev_loops",
+         "desc": "Autonomous dev loops — Calx behavioral correction, ARCADE methodology",
+         "icon": "🔁", "color": "#639922",
+         "kpi": None, "kpi_label": "loops",
+         "status": "configured",
+         "connects_to": ["lumina", "cortex", "plexus"]},
+        {"id": "meridian", "name": "Meridian", "layer": "life", "role": "trading",
+         "desc": "Paper trading sandbox — virtual portfolio, real data, decision journal",
+         "icon": "📈", "color": "#BA7517",
+         "kpi": None, "kpi_label": None,
+         "status": "configured",
+         "connects_to": ["lumina"]},
+        {"id": "vigil_life", "name": None, "layer": None, "role": None,  # placeholder
+         "desc": None, "icon": None, "color": None, "kpi": None, "kpi_label": None,
+         "status": None, "connects_to": []},  # skip
+        {"id": "odyssey", "name": "Odyssey", "layer": "life", "role": "travel",
+         "desc": "Travel planning — destinations, itineraries, booking research",
+         "icon": "✈️", "color": "#BA7517",
+         "kpi": None, "kpi_label": None,
+         "status": "spec_done",
+         "connects_to": ["lumina"]},
+        {"id": "vitals", "name": "Vitals", "layer": "life", "role": "health",
+         "desc": "Health tracking — personal metrics, trends, check-in prompts",
+         "icon": "❤️", "color": "#D85A30",
+         "kpi": None, "kpi_label": None,
+         "status": "spec_done",
+         "connects_to": ["lumina"]},
+        {"id": "hearth", "name": "Hearth", "layer": "life", "role": "household",
+         "desc": "Household management — Grocy inventory, shopping, routines",
+         "icon": "🏠", "color": "#D85A30",
+         "kpi": None, "kpi_label": None,
+         "status": "spec_done",
+         "connects_to": ["lumina"]},
+        {"id": "ledger", "name": "Ledger", "layer": "life", "role": "finance",
+         "desc": "Expense tracking — Actual Budget integration, weekly summaries",
+         "icon": "💰", "color": "#639922",
+         "kpi": None, "kpi_label": None,
+         "status": "partial",
+         "connects_to": ["lumina"]},
+        {"id": "relay", "name": "Relay", "layer": "life", "role": "vehicle",
+         "desc": "Vehicle maintenance — LubeLogger integration, service reminders",
+         "icon": "🚗", "color": "#639922",
+         "kpi": None, "kpi_label": None,
+         "status": "partial",
+         "connects_to": ["lumina"]},
+    ]
+
+    # Filter out placeholder entries
+    modules = [m for m in modules if m.get("name")]
+
+    return {
+        "ok": True,
+        "modules": modules,
+        "kpis": kpis,
+        "layers": ["identity", "nervous_system", "senses", "body", "life"],
+        "total": len(modules),
+    }
 
 # ── System health ─────────────────────────────────────────────────────────────
 @app.get("/api/system/health")

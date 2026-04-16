@@ -132,7 +132,7 @@ function switchTab(tab) {
 function loadTab(tab) {
   var endpoints = {
     'general':   '/api/config/general',
-    'modules':   '/api/modules',
+    'modules':   '/api/modules/status',
     'inference': '/api/config/inference',
     'channels':  '/api/config/channels',
     'secrets':   '/api/security/secrets',
@@ -214,24 +214,74 @@ function renderTab(tab, d) {
 
 
   } else if (tab === 'modules') {
-    var mods = d.modules || d || {};
-    var keys = Object.keys(mods);
-    if (!keys.length) { el.innerHTML = '<div style="color:var(--text-tertiary);">No modules configured</div>'; return; }
-    var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.75rem;">';
-    keys.forEach(function(k) {
-      var m = mods[k] || {};
-      var name = m.display_name || k;
-      var desc = m.description || '';
-      var enabled = m.enabled !== false;
-      html += '<div style="padding:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary);">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">' +
-          '<strong style="font-size:0.85rem;">' + _ec(name) + '</strong>' +
-          '<span class="badge-' + (enabled ? 'success' : 'secondary') + '" style="font-size:0.7rem;padding:0.1rem 0.35rem;border-radius:3px;">' + (enabled ? 'on' : 'off') + '</span>' +
+    var mods = d.modules || [];
+    if (!mods.length) { el.innerHTML = '<div style="color:var(--text-tertiary);">No module data available</div>'; return; }
+
+    var LAYER_LABELS = {
+      'identity':       '◎ Identity',
+      'nervous_system': '⚡ Nervous System',
+      'senses':         '👁️ Senses',
+      'body':           '🫀 Body',
+      'life':           '🌱 Life'
+    };
+    var STATUS_DOT = {
+      'active':     {c:'#3fb950', t:'Active'},
+      'inactive':   {c:'#f85149', t:'Inactive'},
+      'degraded':   {c:'#d29922', t:'Degraded'},
+      'configured': {c:'#58a6ff', t:'Configured'},
+      'partial':    {c:'#d29922', t:'Partial'},
+      'spec_done':  {c:'#8b949e', t:'Designed, not built'},
+      'configuring':{c:'#8b949e', t:'Configuring'},
+      'unknown':    {c:'#8b949e', t:'Unknown'}
+    };
+
+    function _dot(status) {
+      var s = STATUS_DOT[status] || STATUS_DOT['unknown'];
+      return '<span title="' + s.t + '" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + s.c + ';flex-shrink:0;"></span>';
+    }
+
+    function _moduleCard(m) {
+      var s = STATUS_DOT[m.status] || STATUS_DOT['unknown'];
+      var kpiHtml = '';
+      if (m.kpi !== null && m.kpi !== undefined && m.kpi_label) {
+        kpiHtml = '<div style="margin-top:0.4rem;font-size:0.7rem;background:var(--bg-tertiary,#161b22);padding:0.2rem 0.5rem;border-radius:4px;display:inline-block;">' +
+          '<span style="font-weight:700;color:var(--accent);">' + _ec(String(m.kpi)) + '</span>' +
+          ' <span style="color:var(--text-tertiary);">' + _ec(m.kpi_label) + '</span></div>';
+      }
+      return '<div style="display:flex;flex-direction:column;padding:0.75rem;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);min-height:90px;" title="' + _ec(m.desc||'') + '">' +
+        '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.3rem;">' +
+          '<span style="font-size:1.1rem;line-height:1;">' + (m.icon||'') + '</span>' +
+          '<span style="font-weight:600;font-size:0.875rem;">' + _ec(m.name) + '</span>' +
+          '<span style="margin-left:auto;">' + _dot(m.status) + '</span>' +
         '</div>' +
-        (desc ? '<div style="font-size:0.75rem;color:var(--text-tertiary);">' + _ec(desc.slice(0,80)) + '</div>' : '') +
+        '<div style="font-size:0.72rem;color:var(--text-tertiary);line-height:1.4;flex:1;">' + _ec((m.desc||'').slice(0,90)) + '</div>' +
+        kpiHtml +
       '</div>';
-    });
+    }
+
+    var layers = ['identity','nervous_system','senses','body','life'];
+    var html = '';
+
+    // Header: total counts
+    var active = mods.filter(function(m){ return m.status==='active'; }).length;
+    var total = mods.length;
+    html += '<div style="display:flex;gap:1.5rem;margin-bottom:1.5rem;flex-wrap:wrap;">';
+    html += '<div style="font-size:0.875rem;color:var(--text-secondary);">&#x2714; <strong style="color:var(--text-primary);">' + active + '</strong> active</div>';
+    html += '<div style="font-size:0.875rem;color:var(--text-secondary);">&#x25CB; <strong style="color:var(--text-primary);">' + (total-active) + '</strong> other</div>';
+    html += '<div style="font-size:0.875rem;color:var(--text-secondary);">Total: <strong style="color:var(--text-primary);">' + total + '</strong> modules</div>';
     html += '</div>';
+
+    // Render each layer as a section
+    layers.forEach(function(layer) {
+      var group = mods.filter(function(m){ return m.layer===layer; });
+      if (!group.length) return;
+      html += '<div style="margin-bottom:1.5rem;">';
+      html += '<div style="font-size:0.7rem;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.6rem;padding-bottom:0.4rem;border-bottom:1px solid var(--border-color);">' + (LAYER_LABELS[layer]||layer) + '</div>';
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:0.6rem;">';
+      group.forEach(function(m) { html += _moduleCard(m); });
+      html += '</div></div>';
+    });
+
     el.innerHTML = html;
 
   } else if (tab === 'inference') {
