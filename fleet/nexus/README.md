@@ -1,43 +1,35 @@
 # ✦ Nexus
 
-> "Everything lands here first."
+> Everything lands here first.
 
-**Nexus** is Lumina's inter-agent inbox — every notification, alert, work order, and message flows through Nexus before being routed to the right handler. It's the single communication backbone that lets agents talk to each other without peer-to-peer messaging.
+**Nexus** is the inbox and routing hub for incoming communications and household requests.
 
 ## What it does
 
-- **Inbox for all agents**: Axon, Vigil, Sentinel, Myelin, Synapse all send and receive via Nexus
-- **Work order dispatch**: Lumina sends work orders to Axon via Nexus; Axon reports completion back
-- **PostgreSQL backend**: persistent message store with indexing, acknowledgment, and history
-- **Priority queue**: urgent, high, normal, low — processed in order
-- **No peer-to-peer**: agents never contact each other directly; all routing through Nexus
+- Monitors the constellation's central "Inbox" for new requests and data.
+- Routes household-specific tasks to the appropriate sub-modules.
+- Integrates with Plane (Plexus) for project and task management.
+- Provides a unified interface for managing household configurations.
+- Archives incoming data streams for processing by other agents.
 
 ## Key files
 
 | File | Purpose |
 |------|---------|
-| `inbox_monitor.py` | Polls inbox for pending messages, dispatches to handlers |
-| `nexus_sqlite.py` | Local SQLite cache for offline/low-latency access |
-| `household_config.py` | Household routing configuration (legacy) |
-| `household_routing.py` | Message routing rules (legacy) |
+| `inbox_monitor.py` | Polls for new messages and requests |
+| `household_routing.py` | Rules for dispatching tasks to specialized agents |
+| `nexus_sqlite.py` | Local storage for the inbox and transient data |
+| `household_config.py` | Management of shared household settings |
 
 ## Talks to
 
-- **Terminus** (`nexus_tools.py`) — MCP tools: `nexus_send`, `nexus_check`, `nexus_read`, `nexus_ack`, `nexus_history`
-- **Axon** — receives work orders, sends completion receipts
-- **Sentinel** — sends alert messages
-- **Myelin** — sends budget alert messages
-- **Synapse** — receives notification routing requests
+- **[Axon](../axon/)** — Forwards validated requests for execution.
+- **[Soma](../soma/)** — Displays the current inbox and household status.
+- **[Synapse](../synapse/)** — Sends notifications about new urgent inbox items.
 
 ## Configuration
 
-```bash
-INBOX_DB_HOST=your-postgres-host
-INBOX_DB_USER=lumina_inbox_user
-INBOX_DB_PASS=...
-```
-
-Database: `lumina_inbox` on PostgreSQL. Schema applied via `fleet/nexus/schema.sql`.
+Inbox polling interval and routing rules defined in `household_config.py`.
 
 ---
 
