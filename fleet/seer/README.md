@@ -1,38 +1,34 @@
 # ✦ Seer
 
-> "Research that reads the whole internet so you don't have to."
+> Research that reads the whole internet so you don't have to.
 
-**Seer** is Lumina's web research agent — it decomposes complex queries, searches across multiple sources via SearXNG, extracts content with prompt injection defense, and synthesizes findings into a structured report.
+**Seer** is the web research module that performs deep, autonomous investigation across the public internet.
 
 ## What it does
 
-- **Query decomposition**: breaks complex research questions into targeted sub-queries
-- **Multi-source search**: queries SearXNG (self-hosted, privacy-preserving meta-search)
-- **Content extraction**: sanitizes web content before passing to LLM (blocks script injection)
-- **Report synthesis**: combines sources into structured markdown with citations
-- **Spectra integration**: uses Seer via `spectra_navigate` for JS-heavy pages that SearXNG can't index
+- Conducts multi-step research queries using search engines and direct site crawling.
+- Summarizes high-volume web content into structured briefings.
+- Sanitizes and filters web data to remove noise and irrelevant information.
+- Verifies facts and cross-references information from multiple sources.
+- Integrates findings directly into the constellation's memory (Engram).
 
 ## Key files
 
 | File | Purpose |
 |------|---------|
-| `seer.py` | Main research agent — query decomposition, search, synthesis |
-| `sanitizer.py` | Content sanitization before LLM ingestion |
+| `seer.py` | Main autonomous research orchestration |
+| `sanitizer.py` | Cleans and formats raw web data for LLM consumption |
+| `config/` | Search engine API keys and crawl parameters |
 
 ## Talks to
 
-- **Terminus** (`seer_tools.py`) — MCP tools expose Seer to IronClaw
-- **Engram** — stores research findings for RAG retrieval by other agents
-- **Spectra** — browser-based content extraction for JS-heavy sources
-- **Obsidian Circle** — council members can reference past Seer research via Engram
+- **[Spectra](../spectra/)** — Uses the browser module for advanced site navigation.
+- **[Engram](../engram/)** — Stores researched facts and source citations.
+- **[Synapse](../synapse/)** — Delivers urgent research findings to the operator.
 
 ## Configuration
 
-```bash
-SEARXNG_URL=http://your-searxng-host:8080
-LITELLM_URL=http://your-litellm-host:4000
-LITELLM_API_KEY=your-virtual-key   # Seer uses MY.6 (seer-research, $2/day budget)
-```
+Requires API keys for search providers (e.g., Tavily, Perplexity, or Google) in the environment.
 
 ---
 
