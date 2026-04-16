@@ -12,14 +12,26 @@
   </div>
   <div>
     {% if status.status == 'ok' %}
-      <span class="badge-success" style="padding:0.4rem 1rem;border-radius:6px;font-weight:600;">ALL SYSTEMS OK</span>
+      <span class="badge-success" style="padding:0.5rem 1.25rem;border-radius:6px;font-weight:700;font-size:1rem;">✓ ALL SYSTEMS OK</span>
     {% elif status.status == 'degraded' %}
-      <span class="badge-warning" style="padding:0.4rem 1rem;border-radius:6px;font-weight:600;">DEGRADED</span>
+      <span class="badge-warning" style="padding:0.5rem 1.25rem;border-radius:6px;font-weight:700;font-size:1rem;">⚠ DEGRADED</span>
     {% else %}
-      <span class="badge-error" style="padding:0.4rem 1rem;border-radius:6px;font-weight:600;">CRITICAL</span>
+      <span class="badge-error" style="padding:0.5rem 1.25rem;border-radius:6px;font-weight:700;font-size:1.1rem;animation:pulse-error 1.5s ease-in-out infinite;">⛔ CRITICAL</span>
     {% endif %}
   </div>
 </div>
+{% if status.status not in ('ok',) %}
+<div class="alert-error" style="margin-bottom:1.5rem;padding:0.75rem 1rem;border-radius:6px;display:flex;align-items:center;gap:0.5rem;">
+  <span style="font-weight:700;">System Alert:</span>
+  <span>One or more services are down. Check the cards below for details and use the Retry buttons to recover.</span>
+</div>
+{% endif %}
+<style>
+@keyframes pulse-error {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+</style>
 
 <div id="status-grid"
      hx-get="/status/grid"

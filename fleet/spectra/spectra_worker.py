@@ -97,10 +97,15 @@ class SpectraWorker:
                 """)
         return self._contexts[session_id]
 
-    async def navigate(self, session_id: str, url: str, headed: bool = False) -> dict:
+    async def navigate(self, session_id: str, url: str, headed: bool = False,
+                       wait_until: str = "networkidle") -> dict:
         await self._get_or_create_context(session_id, headed)
         page = self._get_page(session_id)
-        response = await page.goto(url, wait_until="networkidle", timeout=30000)
+        # For HTMX/SSE pages that never reach networkidle, fall back to domcontentloaded
+        try:
+            response = await page.goto(url, wait_until=wait_until, timeout=15000)
+        except Exception:
+            response = await page.goto(url, wait_until="domcontentloaded", timeout=15000)
         title = await page.title()
         status = response.status if response else 0
 

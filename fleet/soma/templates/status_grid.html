@@ -61,11 +61,11 @@
     {% if ic_ok %}
       {{ ic_val or 'online' }}{% if ic_ms %} &middot; {{ ic_ms }}ms{% endif %}
     {% else %}
-      <span style="color:var(--color-error);">{{ ic_err or 'unreachable' }}</span>
+      <span style="color:var(--color-error);" title="{{ ic_err }}">{{ (ic_err or 'unreachable')[:60] }}{% if ic_err and ic_err|length > 60 %}…{% endif %}</span>
       <button
         hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
         style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
-        &#x21BA; Retry
+        &#x21BA; Retry IronClaw
       </button>
     {% endif %}
   </div>
@@ -94,7 +94,7 @@
       <button
         hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
         style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
-        &#x21BA; Retry
+        &#x21BA; Retry Agents
       </button>
     {% endif %}
   </div>
@@ -110,11 +110,11 @@
     {% if nx_ok %}
       {{ nx_val or 0 }} pending message{% if nx_val != 1 %}s{% endif %}
     {% else %}
-      <span style="color:var(--color-error);">{{ nx_err or 'unreachable' }}</span>
+      <span style="color:var(--color-error);" title="{{ nx_err }}">{{ (nx_err or 'unreachable')[:60] }}{% if nx_err and nx_err|length > 60 %}…{% endif %}</span>
       <button
         hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
         style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
-        &#x21BA; Retry
+        &#x21BA; Retry Nexus
       </button>
     {% endif %}
   </div>
@@ -130,11 +130,11 @@
     {% if eg_ok %}
       {{ eg_val or '?' }} facts
     {% else %}
-      <span style="color:var(--color-error);">DB not found</span>
+      <span style="color:var(--color-error);">Engram DB not found</span>
       <button
         hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
         style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
-        &#x21BA; Retry
+        &#x21BA; Retry Engram
       </button>
     {% endif %}
   </div>
@@ -150,11 +150,11 @@
     {% if ll_ok %}
       {{ ll_val or 0 }} model{% if ll_val != 1 %}s{% endif %} available{% if ll_ms %} &middot; {{ ll_ms }}ms{% endif %}
     {% else %}
-      <span style="color:var(--color-error);">{{ ll_err or 'unreachable' }}</span>
+      <span style="color:var(--color-error);" title="{{ ll_err }}">{{ (ll_err or 'unreachable')[:60] }}{% if ll_err and ll_err|length > 60 %}…{% endif %}</span>
       <button
         hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
         style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
-        &#x21BA; Retry
+        &#x21BA; Retry LiteLLM
       </button>
     {% endif %}
   </div>
@@ -170,11 +170,11 @@
     {% if mx_ok %}
       online
     {% else %}
-      <span style="color:var(--color-error);">{{ mx_err or 'unreachable' }}</span>
+      <span style="color:var(--color-error);" title="{{ mx_err }}">{{ (mx_err or 'unreachable')[:60] }}{% if mx_err and mx_err|length > 60 %}…{% endif %}</span>
       <button
         hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
         style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
-        &#x21BA; Retry
+        &#x21BA; Retry Matrix
       </button>
     {% endif %}
   </div>
@@ -190,11 +190,11 @@
     {% if rf_ok %}
       {{ rf_val or 0 }} category match{% if rf_val != 1 %}es{% endif %}
     {% else %}
-      <span style="color:var(--color-error);">{{ rf_err or 'unreachable' }}</span>
+      <span style="color:var(--color-error);" title="{{ rf_err }}">{{ (rf_err or 'unreachable')[:60] }}{% if rf_err and rf_err|length > 60 %}…{% endif %}</span>
       <button
         hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
         style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
-        &#x21BA; Retry
+        &#x21BA; Retry Refractor
       </button>
     {% endif %}
   </div>
@@ -210,11 +210,11 @@
     {% if pl_ok %}
       {{ pl_val or 0 }} project{% if pl_val != 1 %}s{% endif %}{% if pl_ms %} &middot; {{ pl_ms }}ms{% endif %}
     {% else %}
-      <span style="color:var(--color-error);">{{ pl_err or 'unreachable' }}</span>
+      <span style="color:var(--color-error);" title="{{ pl_err }}">{{ (pl_err or 'unreachable')[:60] }}{% if pl_err and pl_err|length > 60 %}…{% endif %}</span>
       <button
         hx-get="/status/grid" hx-target="#status-grid" hx-swap="innerHTML"
         style="margin-top:0.4rem;display:block;font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">
-        &#x21BA; Retry
+        &#x21BA; Retry Plane
       </button>
     {% endif %}
   </div>

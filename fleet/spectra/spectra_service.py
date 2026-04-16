@@ -217,6 +217,7 @@ class NavigateRequest(BaseModel):
     session_id: Optional[str] = None
     headed: bool = False
     consumer_key: str = "MY.1"
+    wait_until: str = "networkidle"  # use "domcontentloaded" for HTMX pages
 
 
 class ClickRequest(BaseModel):
@@ -261,7 +262,8 @@ async def navigate(req: NavigateRequest):
         }
 
     try:
-        result = await _worker.navigate(session_id, req.url, headed=req.headed)
+        result = await _worker.navigate(session_id, req.url, headed=req.headed,
+                                         wait_until=req.wait_until)
         _sessions[session_id]["url"] = req.url
         _sessions[session_id]["pages"] = _sessions[session_id].get("pages", 0) + 1
         _sessions[session_id]["last_active"] = time.time()

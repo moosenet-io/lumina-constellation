@@ -44,8 +44,33 @@ function toggleAutoScroll() {
   document.getElementById('autoscroll-btn').textContent = autoScroll ? '⏸ Pause' : '▶ Resume';
 }
 
+// Color-code log lines by level
+function colorizeLog(html) {
+  return html.replace(/(<[^>]+>|[^<]+)/g, function(m) {
+    if (m.startsWith('<')) return m;
+    // Match log level keywords
+    if (/\b(ERROR|CRITICAL|FATAL|Exception|Traceback)\b/.test(m))
+      return '<span style="color:#f85149;">' + m + '</span>';
+    if (/\b(WARNING|WARN)\b/.test(m))
+      return '<span style="color:#d29922;">' + m + '</span>';
+    if (/\b(INFO)\b/.test(m))
+      return '<span style="color:var(--text-secondary);">' + m + '</span>';
+    if (/\b(DEBUG)\b/.test(m))
+      return '<span style="color:var(--text-tertiary);">' + m + '</span>';
+    return m;
+  });
+}
+
 // Auto-scroll to bottom when new content loads
 viewer.addEventListener('htmx:afterSwap', () => {
+  // Colorize log lines
+  const lines = viewer.querySelectorAll('div');
+  lines.forEach(div => {
+    if (!div.dataset.colorized) {
+      div.innerHTML = colorizeLog(div.innerHTML);
+      div.dataset.colorized = '1';
+    }
+  });
   if (autoScroll) viewer.scrollTop = viewer.scrollHeight;
 });
 

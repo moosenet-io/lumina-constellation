@@ -1,8 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Security{% endblock %}
 {% block content %}
-<h2>&#x1F512; Secret Rotation</h2>
-<p style="color:var(--text-secondary);margin-top:0">Tracks all managed secrets, their age, and rotation schedule.</p>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+  <h2 style="margin:0;">&#x1F512; Secret Rotation</h2>
+  <div id="sec-summary-badge" style="font-size:0.85rem;color:var(--text-secondary);">Loading…</div>
+</div>
+<p style="color:var(--text-secondary);margin-top:0;margin-bottom:1rem;">Tracks all managed secrets, their age, and rotation schedule.</p>
 
 <div id="sec-status-banner"></div>
 
@@ -72,13 +75,18 @@ async function loadSecrets() {
 function updateBanner(secrets) {
   const expired = secrets.filter(s => s.status === 'expired');
   const warn    = secrets.filter(s => s.status === 'warn');
+  const ok      = secrets.filter(s => s.status === 'ok');
   const banner  = document.getElementById('sec-status-banner');
+  const summary = document.getElementById('sec-summary-badge');
   if (expired.length) {
     banner.innerHTML = `<div class="alert-error" style="margin-bottom:1rem">&#x26A0; ${expired.length} secret(s) expired: ${expired.map(s=>escHtml(s.name)).join(', ')}</div>`;
+    if (summary) summary.innerHTML = `<span class="badge-error" style="padding:0.3rem 0.75rem;border-radius:6px;">${expired.length} expired · ${warn.length} warn · ${ok.length} ok</span>`;
   } else if (warn.length) {
     banner.innerHTML = `<div class="alert-warn" style="margin-bottom:1rem">&#x23F0; ${warn.length} secret(s) expiring soon: ${warn.map(s=>escHtml(s.name)).join(', ')}</div>`;
+    if (summary) summary.innerHTML = `<span class="badge-warning" style="padding:0.3rem 0.75rem;border-radius:6px;">${warn.length} expiring soon · ${ok.length} ok</span>`;
   } else {
-    banner.innerHTML = `<div class="alert-ok" style="margin-bottom:1rem">&#x2705; All ${secrets.filter(s=>s.status==='ok').length} tracked secrets are within rotation window.</div>`;
+    banner.innerHTML = `<div class="alert-ok" style="margin-bottom:1rem">&#x2705; All ${ok.length} tracked secrets are within rotation window.</div>`;
+    if (summary) summary.innerHTML = `<span class="badge-success" style="padding:0.3rem 0.75rem;border-radius:6px;">All ${ok.length} secrets OK</span>`;
   }
 }
 
