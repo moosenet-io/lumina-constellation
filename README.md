@@ -123,7 +123,7 @@ Each subdirectory has its own README with module-specific docs.
 
 **Personality first** — Lumina isn't a tool you configure. She's an agent you meet. The naming ceremony on first launch creates a relationship, not a setup wizard. She remembers your preferences, learns your patterns, and develops opinions about how your household should run.
 
-**Built by directing AI** — The entire system was built by a field marketing manager with no coding background, directing Claude through voice transcription and agentic development loops. 30 specification documents, 850+ Plane work items, 17 build sessions. If you can describe what you want clearly, you can build this.
+**Built by directing AI** — The entire system was built by a non-developer with no coding background, directing Claude through voice transcription and agentic development loops. 30 specification documents, 850+ Plane work items, 17 build sessions. If you can describe what you want clearly, you can build this.
 
 ---
 

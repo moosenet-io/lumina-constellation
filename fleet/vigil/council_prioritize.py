@@ -105,7 +105,7 @@ def get_briefing_priority(
             if k != 'alerts':
                 ctx_extra += f'  {k}: {v}\n'
 
-    question = f"""Vigil is preparing a {briefing_type} briefing for Peter (non-technical marketing manager).
+    question = f"""Vigil is preparing a {briefing_type} briefing for the operator (non-technical).
 
 Available sections: {sections_str}
 

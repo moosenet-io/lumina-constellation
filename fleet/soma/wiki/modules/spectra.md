@@ -51,7 +51,7 @@ Spectra uses consumer keys (MY.1–MY.9) for access control. Keys are configured
 
 | Key | Consumer | Budget/Day | Rate/s |
 |-----|----------|-----------|--------|
-| MY.1 | Peter (operator) | Unlimited | 50 |
+| MY.1 | Operator | Unlimited | 50 |
 | MY.2 | Lumina | 200 | 5 |
 | MY.3 | IronClaw (disabled) | 0 | — |
 | MY.4 | Vigil | 20 | 2 |

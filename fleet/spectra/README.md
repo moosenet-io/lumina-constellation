@@ -10,7 +10,7 @@
 - **Content extraction**: 10-stage sanitization pipeline strips prompt injection, hidden elements, scripts, and zero-width chars before any content reaches an LLM
 - **Session recording**: rrweb captures DOM mutations for replay in Soma's `/spectra/recordings`
 - **Visual diff**: Pillow + imagehash compares screenshots before/after changes — used in the Soma feedback loop
-- **Human-in-the-loop**: detects login forms and CAPTCHAs, notifies Peter via Matrix, waits for reply
+- **Human-in-the-loop**: detects login forms and CAPTCHAs, notifies the operator via Matrix, waits for reply
 - **5-layer security**: container sandbox, iptables network isolation, Chromium sandbox, content sanitization, access control with per-consumer rate limits and daily budgets
 
 ## Key files

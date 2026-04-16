@@ -1,0 +1,9 @@
+[Unit]
+Description=Myelin Weekly Cost Report Generator
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/lumina-fleet/myelin/myelin_weekly_report.py
+EnvironmentFile=-/opt/lumina-fleet/axon/.env
+WorkingDirectory=/opt/lumina-fleet/myelin

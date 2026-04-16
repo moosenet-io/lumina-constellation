@@ -25,7 +25,7 @@ Agent C ↔ Agent D           Nexus → Vigil
 
 In crewAI, work fans out across many agents. Tracing why a decision was made requires reconstructing a graph of agent-to-agent calls. In Lumina, Lumina sees every step. Every delegation is explicit (`nexus_send()`), every result comes back to Lumina before anything else acts on it.
 
-This matters because the operator (Peter) needs to understand what happened without reading logs. Lumina can explain the chain of events because it was the only agent that touched all of them.
+This matters because the operator needs to understand what happened without reading logs. Lumina can explain the chain of events because it was the only agent that touched all of them.
 
 ### 2. Budget Control
 
@@ -39,7 +39,7 @@ With peer delegation, Agent A can delegate to B, who delegates to C, who delegat
 
 ### 4. Personality Coherence
 
-Lumina has a persistent persona (voice, tone, relationship with Peter). If other agents could respond to Peter directly, that coherence breaks — Peter might get responses from Vigil, Axon, and Sentinel in three different styles. In Lumina, every user-facing response goes through Lumina's voice.
+Lumina has a persistent persona (voice, tone, relationship with the operator). If other agents could respond to the operator directly, that coherence breaks — the operator might get responses from Vigil, Axon, and Sentinel in three different styles. In Lumina, every user-facing response goes through Lumina's voice.
 
 ### 5. Deployability
 

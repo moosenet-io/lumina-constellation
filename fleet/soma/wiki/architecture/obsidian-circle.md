@@ -123,7 +123,7 @@ Each persona has a distinct system prompt that shapes reasoning direction.
 | `skeptic` | The Skeptic | Failure modes, assumptions, what can go wrong |
 | `pragmatist` | The Pragmatist | Operational reality, deployment, what ships |
 | `security` | The Security Analyst | Threat modeling, trust boundaries, blast radius |
-| `user` | The User Advocate | Peter's perspective — non-technical, voice-based |
+| `user` | The User Advocate | Operator's perspective — non-technical, voice-based |
 | `cost` | The Cost Analyst | Inference cost chain, de-bloating opportunities |
 | `devils_advocate` | Devil's Advocate | Argue the strongest case against the proposal |
 
@@ -169,7 +169,7 @@ After synthesis, the engine evaluates `confidence` and sets `action`:
 | Confidence | Action | Meaning |
 |-----------|--------|---------|
 | ≥ 0.80 | `auto_act` | High agreement — execute without operator confirmation |
-| 0.50–0.79 | `ask_operator` | Moderate agreement — surface to Peter for approval |
+| 0.50–0.79 | `ask_operator` | Moderate agreement — surface to the operator for approval |
 | < 0.50 | `surface_deliberation` | Low confidence — show full deliberation, do not act |
 
 These thresholds apply in all automatic integrations (Vector gate escalation, Sentinel remediation, Vigil prioritization).

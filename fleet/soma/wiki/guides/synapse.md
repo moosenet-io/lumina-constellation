@@ -1,6 +1,6 @@
 # Synapse: Spontaneous Conversation Subsystem
 
-Synapse is Lumina's initiative engine — it allows Lumina to reach out proactively, without waiting for Peter to send a message. Instead of being purely reactive (respond to input), Lumina monitors context and fires relevant observations, reminders, or ideas at appropriate moments.
+Synapse is Lumina's initiative engine — it allows Lumina to reach out proactively, without waiting for the operator to send a message. Instead of being purely reactive (respond to input), Lumina monitors context and fires relevant observations, reminders, or ideas at appropriate moments.
 
 **Status**: Designed (SY.1–SY.10). Implementation pending.
 
@@ -8,15 +8,15 @@ Synapse is Lumina's initiative engine — it allows Lumina to reach out proactiv
 
 ## The Problem Synapse Solves
 
-Without Synapse, Lumina is a request-response system. Peter asks, Lumina answers. The limitation: Peter has to think of the question. He has to know what to ask and when to ask it.
+Without Synapse, Lumina is a request-response system. Operator asks, Lumina answers. The limitation: The operator has to think of the question. He has to know what to ask and when to ask it.
 
 Synapse inverts this for bounded categories of situation:
 - A meeting ends and Lumina notices the task list didn't update
 - The morning briefing mentions a flight but calendar shows no travel buffer
 - A Vector task has been idle for 6 hours — Lumina asks if it should be aborted
-- Peter mentioned wanting to look at a budget item last week — it comes up in context
+- The operator mentioned wanting to look at a budget item last week — it comes up in context
 
-These are things a thoughtful assistant would notice. Synapse makes Lumina capable of noticing them without Peter having to prompt.
+These are things a thoughtful assistant would notice. Synapse makes Lumina capable of noticing them without the operator having to prompt.
 
 ---
 
@@ -58,7 +58,7 @@ Most triggers should use templates. LLM generation is reserved for observations 
 
 ### 3. Delivery
 
-Synapse delivers messages to Peter via Matrix. Messages are rate-limited to prevent noise.
+Synapse delivers messages to the operator via Matrix. Messages are rate-limited to prevent noise.
 
 ---
 
@@ -146,13 +146,13 @@ Synapse also respects **Pulse** for time-of-day context:
 
 ## Feedback Loop
 
-Synapse learns from Peter's responses:
+Synapse learns from the operator's responses:
 
 - **Dismissed without action**: Message was noise. Lower trigger sensitivity or increase cooldown.
 - **Acted on immediately**: Message was valuable. Maintain or increase frequency.
 - **Explicitly disabled**: Remove trigger from active set (save in constellation.yaml).
 
-Feedback is captured by Lumina's response handling, not by Synapse directly. Lumina calls `synapse_feedback(trigger_id, outcome)` after Peter's reaction is classified.
+Feedback is captured by Lumina's response handling, not by Synapse directly. Lumina calls `synapse_feedback(trigger_id, outcome)` after the operator's reaction is classified.
 
 ---
 

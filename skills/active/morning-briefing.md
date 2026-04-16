@@ -2,7 +2,7 @@
 name: morning-briefing
 description: Generate a personalized morning briefing with weather, calendar, commute, and curated news
 version: 1.0
-author: Peter Boose
+author: LeMajesticMoose
 license: MIT
 agent: vigil
 container: <fleet-host>

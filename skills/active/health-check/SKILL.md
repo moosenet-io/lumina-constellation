@@ -2,7 +2,7 @@
 name: health-check
 description: Check infrastructure health across all MooseNet containers and services
 version: 1.0
-author: Peter Boose
+author: LeMajesticMoose
 license: MIT
 agent: sentinel
 container: <fleet-host>

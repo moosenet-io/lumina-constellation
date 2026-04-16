@@ -7,7 +7,7 @@
 Lumina runs as a set of cooperating services. On a single box, everything is Docker Compose except Ollama (which runs natively for direct GPU access).
 
 ```
-Peter (Matrix / Element on phone)
+Operator (Matrix / Element)
   │
   ▼
 Lumina orchestrator (IronClaw, ironclaw-host)

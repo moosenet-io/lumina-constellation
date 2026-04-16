@@ -73,7 +73,7 @@
 
 ## Built with
 
-This project was built by [Peter Boose](https://github.com/LeMajesticMoose) ("Moose"), a Senior Manager in field marketing with no coding background, directing AI through voice transcription and agentic development loops.
+This project was built by [@LeMajesticMoose](https://github.com/LeMajesticMoose), a non-developer with no coding background, directing AI through voice transcription and agentic development loops.
 
 **Claude** ([Anthropic](https://anthropic.com)) served as co-developer — specifications, implementation, autonomous build sessions (up to 18 hours each), and infrastructure debugging via Claude Code.
 
