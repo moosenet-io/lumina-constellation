@@ -312,6 +312,529 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 
+<!-- BS.15: Dashboard graphs + density widgets ──────────────────────────────── -->
+<script src="/shared/chart.umd.min.js"></script>
+<style>
+/* BS.15 widget grid */
+.bs15-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.bs15-wide { grid-column: span 3; }
+.bs15-half { grid-column: span 1; }
+.bs15-two  { grid-column: span 2; }
+
+.widget-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);
+}
+.widget-title { font-size: 0.875rem; font-weight: 700; }
+.widget-subtitle { font-size: 0.75rem; color: var(--text-tertiary); }
+.widget-body { padding: 0.75rem 1rem; }
+.widget-stat { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
+.widget-stat-lbl { font-size: 0.75rem; color: var(--text-tertiary); margin-top: 0.1rem; }
+.sparkline-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.8125rem; }
+.sparkline-label { width: 60px; color: var(--text-secondary); flex-shrink: 0; font-size: 0.75rem; }
+.sparkline-val   { width: 36px; text-align: right; font-weight: 700; flex-shrink: 0; font-size: 0.8rem; }
+.sparkline-wrap  { flex: 1; height: 28px; }
+
+.activity-row { display: flex; gap: 0.75rem; padding: 0.3rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.8125rem; }
+.activity-row:last-child { border-bottom: none; }
+.activity-ts   { color: var(--text-tertiary); flex-shrink: 0; width: 60px; font-size: 0.75rem; }
+.activity-who  { color: var(--accent); flex-shrink: 0; width: 72px; font-size: 0.75rem; }
+.activity-what { color: var(--text-secondary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.household-row { display: flex; justify-content: space-between; align-items: center; padding: 0.3rem 0; font-size: 0.8125rem; border-bottom: 1px solid var(--border-color); }
+.household-row:last-child { border-bottom: none; }
+
+.empty-widget { color: var(--text-tertiary); font-size: 0.85rem; padding: 1.5rem 0; text-align: center; }
+
+@media (max-width: 900px) {
+  .bs15-grid { grid-template-columns: 1fr 1fr; }
+  .bs15-wide { grid-column: span 2; }
+  .bs15-two  { grid-column: span 2; }
+}
+@media (max-width: 600px) {
+  .bs15-grid { grid-template-columns: 1fr; }
+  .bs15-wide, .bs15-two, .bs15-half { grid-column: span 1; }
+}
+</style>
+
+<div class="bs15-grid">
+
+  <!-- Activity Monitor: CPU/RAM/Disk sparklines -->
+  <div class="card bs15-wide" id="widget-activity-monitor">
+    <div class="widget-header">
+      <div>
+        <span class="widget-title">&#x1F4CA; Activity Monitor</span>
+        <span class="widget-subtitle" style="margin-left:0.5rem;">1h · CT305 · CT310 · CT214 · CT300</span>
+      </div>
+      <span id="activity-monitor-age" style="font-size:0.7rem;color:var(--text-tertiary);"></span>
+    </div>
+    <div class="widget-body" id="activity-monitor-body">
+      <div class="empty-widget">Loading system metrics…</div>
+    </div>
+  </div>
+
+  <!-- Request Volume -->
+  <div class="card bs15-two" id="widget-request-volume">
+    <div class="widget-header">
+      <div>
+        <span class="widget-title">&#x26A1; Request Volume</span>
+        <span class="widget-subtitle" style="margin-left:0.5rem;">API req/min · 1h</span>
+      </div>
+    </div>
+    <div class="widget-body" style="position:relative;height:120px;" id="request-volume-body">
+      <canvas id="chart-request-volume"></canvas>
+    </div>
+  </div>
+
+  <!-- Engram Growth -->
+  <div class="card bs15-half" id="widget-engram">
+    <div class="widget-header">
+      <span class="widget-title">&#x1F9E0; Engram</span>
+    </div>
+    <div class="widget-body" id="engram-body">
+      <div class="empty-widget">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Spend Tracker -->
+  <div class="card bs15-two" id="widget-spend">
+    <div class="widget-header">
+      <div>
+        <span class="widget-title">&#x1F4B0; Spend Tracker</span>
+        <span class="widget-subtitle" style="margin-left:0.5rem;">Today's inference cost</span>
+      </div>
+    </div>
+    <div class="widget-body" style="position:relative;height:100px;" id="spend-body">
+      <canvas id="chart-spend"></canvas>
+    </div>
+  </div>
+
+  <!-- Household Status -->
+  <div class="card bs15-half" id="widget-household">
+    <div class="widget-header">
+      <span class="widget-title">&#x1F3E0; Household</span>
+    </div>
+    <div class="widget-body" id="household-body">
+      <div class="empty-widget">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Recent Activity (wide) -->
+  <div class="card bs15-wide" id="widget-activity">
+    <div class="widget-header">
+      <div>
+        <span class="widget-title">&#x1F553; Recent Activity</span>
+        <span class="widget-subtitle" style="margin-left:0.5rem;">System events only — no conversation content</span>
+      </div>
+    </div>
+    <div class="widget-body" id="activity-body">
+      <div class="empty-widget">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Invite Card -->
+  <div class="card bs15-half" id="widget-invite">
+    <div class="widget-header">
+      <span class="widget-title">&#x2B50; Invite</span>
+    </div>
+    <div class="widget-body" style="text-align:center;padding:1.25rem 1rem;">
+      <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.75rem;line-height:1.5;">
+        Add someone to the household.<br>They get their own private agent.
+      </div>
+      <button onclick="showInviteModal()" style="background:var(--accent);color:#fff;border:none;padding:0.5rem 1.25rem;border-radius:6px;font-size:0.875rem;font-weight:600;cursor:pointer;">
+        &#x2B50; Invite Someone
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Invite modal (stub — BS.16 builds backend) -->
+<div id="invite-modal" hidden style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;display:flex;align-items:center;justify-content:center;">
+  <div class="card" style="width:420px;max-width:90vw;padding:0;">
+    <div class="widget-header" style="border-bottom:1px solid var(--border-color);">
+      <span class="widget-title">&#x2B50; Invite Someone</span>
+      <button onclick="hideInviteModal()" style="background:none;border:none;color:var(--text-secondary);font-size:1.25rem;cursor:pointer;line-height:1;">&#x2715;</button>
+    </div>
+    <div style="padding:1.25rem;">
+      <div style="margin-bottom:1rem;">
+        <label style="display:block;font-size:0.8125rem;font-weight:600;margin-bottom:0.375rem;">Their name</label>
+        <input type="text" id="invite-name" placeholder="e.g. Odin" style="width:100%;padding:0.5rem 0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);font-size:0.875rem;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:1rem;">
+        <label style="display:block;font-size:0.8125rem;font-weight:600;margin-bottom:0.375rem;">Suggested assistant name <span style="font-weight:400;color:var(--text-tertiary);">(optional)</span></label>
+        <input type="text" id="invite-agent-name" placeholder="e.g. Atlas" style="width:100%;padding:0.5rem 0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);font-size:0.875rem;box-sizing:border-box;">
+      </div>
+      <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0 0 1rem;line-height:1.6;">
+        &#x1F512; Their conversations with their agent are private. You won't be able to read them.
+      </p>
+      <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+        <button onclick="hideInviteModal()" style="background:none;border:1px solid var(--border-color);padding:0.5rem 1rem;border-radius:6px;font-size:0.875rem;color:var(--text-secondary);cursor:pointer;">Cancel</button>
+        <button onclick="generateInvite()" style="background:var(--accent);color:#fff;border:none;padding:0.5rem 1.25rem;border-radius:6px;font-size:0.875rem;font-weight:600;cursor:pointer;">Generate Invite</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── BS.15: Dashboard widgets ──────────────────────────────────────────────────
+
+var SOMA_KEY_W = (function() { return localStorage.getItem('soma_key') || ''; })();
+function _hw() { var h = {'Content-Type':'application/json'}; if (SOMA_KEY_W) h['X-Soma-Key'] = SOMA_KEY_W; return h; }
+function _escW(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+var PROMETHEUS = 'http://192.168.0.222:9090';
+
+// ── CT IPs for Activity Monitor ──
+var AM_HOSTS = [
+  {label: 'CT305', ip: '192.168.0.217'},
+  {label: 'CT310', ip: '192.168.0.120'},
+  {label: 'CT214', ip: '192.168.0.226'},
+  {label: 'CT300', ip: '192.168.0.200'}
+];
+
+// ── Activity Monitor (Prometheus sparklines) ──────────────────────────────────
+function loadActivityMonitor() {
+  var body = document.getElementById('activity-monitor-body');
+  var now = Math.floor(Date.now()/1000);
+  var start = now - 3600;
+  var step = 120;
+
+  var metrics = AM_HOSTS.map(function(host) {
+    var cpuQ = encodeURIComponent('100-(irate(node_cpu_seconds_total{instance="' + host.ip + ':9100",mode="idle"}[5m])*100)');
+    var ramQ = encodeURIComponent('(1-(node_memory_MemAvailable_bytes{instance="' + host.ip + ':9100"}/node_memory_MemTotal_bytes{instance="' + host.ip + ':9100"}))*100');
+    return [
+      fetch(PROMETHEUS + '/api/v1/query_range?query=' + cpuQ + '&start=' + start + '&end=' + now + '&step=' + step).then(function(r){return r.json();}).catch(function(){return null;}),
+      fetch(PROMETHEUS + '/api/v1/query_range?query=' + ramQ + '&start=' + start + '&end=' + now + '&step=' + step).then(function(r){return r.json();}).catch(function(){return null;})
+    ];
+  });
+
+  var allFetches = [].concat.apply([], metrics);
+  Promise.all(allFetches).then(function(results) {
+    var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0.5rem;">';
+    AM_HOSTS.forEach(function(host, i) {
+      var cpuData = results[i*2];
+      var ramData = results[i*2+1];
+      var cpuVals = (cpuData && cpuData.data && cpuData.data.result && cpuData.data.result[0]) ? cpuData.data.result[0].values : null;
+      var ramVals = (ramData && ramData.data && ramData.data.result && ramData.data.result[0]) ? ramData.data.result[0].values : null;
+
+      var cpuNow = cpuVals ? parseFloat(cpuVals[cpuVals.length-1][1]).toFixed(0) : '?';
+      var ramNow = ramVals ? parseFloat(ramVals[ramVals.length-1][1]).toFixed(0) : '?';
+
+      var canvasId = 'spark-' + host.label + '-cpu';
+      var canvasIdRam = 'spark-' + host.label + '-ram';
+
+      html += '<div style="background:var(--bg-secondary);border-radius:6px;padding:0.625rem 0.75rem;">';
+      html += '<div style="font-size:0.8125rem;font-weight:700;margin-bottom:0.5rem;color:var(--text-primary);">' + _escW(host.label) + ' <span style="font-size:0.7rem;color:var(--text-tertiary);">' + _escW(host.ip) + '</span></div>';
+
+      html += '<div class="sparkline-row"><span class="sparkline-label">CPU</span><canvas class="sparkline-wrap" id="' + canvasId + '" height="28"></canvas><span class="sparkline-val">' + cpuNow + '%</span></div>';
+      html += '<div class="sparkline-row"><span class="sparkline-label">RAM</span><canvas class="sparkline-wrap" id="' + canvasIdRam + '" height="28"></canvas><span class="sparkline-val">' + ramNow + '%</span></div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    body.innerHTML = html;
+
+    // Draw sparklines after DOM update
+    AM_HOSTS.forEach(function(host, i) {
+      var cpuVals = (results[i*2] && results[i*2].data && results[i*2].data.result && results[i*2].data.result[0]) ? results[i*2].data.result[0].values : null;
+      var ramVals = (results[i*2+1] && results[i*2+1].data && results[i*2+1].data.result && results[i*2+1].data.result[0]) ? results[i*2+1].data.result[0].values : null;
+      if (cpuVals) _drawSparkline('spark-' + host.label + '-cpu', cpuVals.map(function(v){return parseFloat(v[1]);}), 'rgba(88,166,255,0.8)');
+      if (ramVals) _drawSparkline('spark-' + host.label + '-ram', ramVals.map(function(v){return parseFloat(v[1]);}), 'rgba(63,185,80,0.8)');
+    });
+
+    document.getElementById('activity-monitor-age').textContent = new Date().toLocaleTimeString();
+  }).catch(function() {
+    body.innerHTML = '<div class="empty-widget">Prometheus unreachable — <a href="http://192.168.0.222:9090" style="color:var(--accent);">check metrics server</a></div>';
+  });
+}
+
+function _drawSparkline(canvasId, values, color) {
+  var canvas = document.getElementById(canvasId);
+  if (!canvas || !values || !values.length) return;
+  if (!window.Chart) return;
+  var ctx = canvas.getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: values.map(function(_, i) { return i; }),
+      datasets: [{
+        data: values,
+        borderColor: color,
+        backgroundColor: color.replace('0.8', '0.1'),
+        borderWidth: 1.5,
+        pointRadius: 0,
+        tension: 0.3,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: {
+        x: { display: false },
+        y: { display: false, min: 0, max: 100 }
+      }
+    }
+  });
+}
+
+// ── Request Volume (Prometheus) ───────────────────────────────────────────────
+function loadRequestVolume() {
+  var now = Math.floor(Date.now()/1000);
+  var start = now - 3600;
+  // LiteLLM request rate metric (common pattern)
+  var q = encodeURIComponent('rate(litellm_proxy_total_requests_total[2m])*60');
+  fetch(PROMETHEUS + '/api/v1/query_range?query=' + q + '&start=' + start + '&end=' + now + '&step=120')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var canvas = document.getElementById('chart-request-volume');
+      if (!canvas || !window.Chart) return;
+      var result = (d.data && d.data.result) ? d.data.result : [];
+      if (!result.length) {
+        document.getElementById('request-volume-body').innerHTML = '<div class="empty-widget">No request volume data yet</div>';
+        return;
+      }
+      var vals = result[0].values || [];
+      var ctx = canvas.getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: vals.map(function(v) {
+            var d = new Date(v[0]*1000);
+            return d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0');
+          }),
+          datasets: [{
+            label: 'req/min',
+            data: vals.map(function(v) { return parseFloat(v[1]).toFixed(2); }),
+            borderColor: 'rgba(88,166,255,0.9)',
+            backgroundColor: 'rgba(88,166,255,0.15)',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+          scales: {
+            x: { ticks: { font: { size: 9 }, color: 'rgba(139,148,158,0.7)', maxTicksLimit: 8 }, grid: { display: false } },
+            y: { ticks: { font: { size: 9 }, color: 'rgba(139,148,158,0.7)' }, grid: { color: 'rgba(139,148,158,0.1)' }, min: 0 }
+          }
+        }
+      });
+    })
+    .catch(function() {
+      document.getElementById('request-volume-body').innerHTML = '<div class="empty-widget">Prometheus unreachable</div>';
+    });
+}
+
+// ── Engram Growth ─────────────────────────────────────────────────────────────
+function loadEngramWidget() {
+  fetch('/api/status', {headers: _hw()})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var services = d.services || {};
+      var eg = services.engram || {};
+      var count = eg.fact_count || eg.value || '?';
+      var ok = eg.ok;
+      document.getElementById('engram-body').innerHTML =
+        '<div style="text-align:center;padding:0.5rem 0;">' +
+          '<div class="widget-stat">' + _escW(count) + '</div>' +
+          '<div class="widget-stat-lbl">facts stored</div>' +
+          '<div style="margin-top:0.5rem;">' +
+            '<span class="health-dot ' + (ok ? 'healthy' : 'dead') + '" style="margin-right:0.4rem;"></span>' +
+            '<span style="font-size:0.75rem;color:var(--text-secondary);">' + (ok ? 'Engram online' : 'Engram offline') + '</span>' +
+          '</div>' +
+        '</div>';
+    })
+    .catch(function() {
+      document.getElementById('engram-body').innerHTML = '<div class="empty-widget">Engram data unavailable</div>';
+    });
+}
+
+// ── Spend Tracker ─────────────────────────────────────────────────────────────
+function loadSpendWidget() {
+  fetch('/api/cost', {headers: _hw()})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var body = document.getElementById('spend-body');
+      if (d.note || d.error) {
+        body.innerHTML = '<div class="empty-widget">' + _escW(d.note || d.error) + '</div>';
+        return;
+      }
+      var today = d.today || {};
+      var perAgent = d.per_agent || {};
+      var canvas = document.getElementById('chart-spend');
+
+      // Show today summary above, bar chart per agent below
+      var costStr = today.cost_usd !== undefined ? ('$' + parseFloat(today.cost_usd).toFixed(4)) : '$0.0000';
+      var tokStr = today.tokens ? today.tokens.toLocaleString() + ' tokens' : '';
+
+      if (!window.Chart) {
+        body.innerHTML = '<div style="text-align:center;padding:0.5rem 0;"><div class="widget-stat">' + costStr + '</div><div class="widget-stat-lbl">today · ' + tokStr + '</div></div>';
+        return;
+      }
+
+      var agents = Object.keys(perAgent);
+      if (!agents.length) {
+        body.innerHTML = '<div style="text-align:center;padding:0.5rem;"><div class="widget-stat">' + costStr + '</div><div class="widget-stat-lbl">today · ' + tokStr + '</div><div style="margin-top:0.3rem;font-size:0.75rem;color:var(--text-tertiary);">no per-agent data yet</div></div>';
+        return;
+      }
+
+      var ctx = canvas.getContext('2d');
+      body.innerHTML = '<canvas id="chart-spend"></canvas>';
+      new Chart(document.getElementById('chart-spend').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: agents,
+          datasets: [{
+            data: agents.map(function(a) { return parseFloat((perAgent[a].cost_usd || 0)).toFixed(5); }),
+            backgroundColor: 'rgba(88,166,255,0.6)',
+            borderColor: 'rgba(88,166,255,0.9)',
+            borderWidth: 1,
+            borderRadius: 3
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return '$' + parseFloat(ctx.raw).toFixed(5); } } } },
+          scales: {
+            x: { ticks: { font: { size: 9 }, color: 'rgba(139,148,158,0.7)', callback: function(v) { return '$' + v; } }, grid: { color: 'rgba(139,148,158,0.1)' }, min: 0 },
+            y: { ticks: { font: { size: 9 }, color: 'rgba(139,148,158,0.7)' }, grid: { display: false } }
+          }
+        }
+      });
+    })
+    .catch(function() {
+      document.getElementById('spend-body').innerHTML = '<div class="empty-widget">Spend data unavailable</div>';
+    });
+}
+
+// ── Recent Activity ───────────────────────────────────────────────────────────
+function loadRecentActivity() {
+  // Uses Nexus audit if available; falls back to spectra audit as proxy for system events
+  fetch('/api/spectra/audit?limit=20', {headers: _hw()})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var body = document.getElementById('activity-body');
+      if (!d.ok || !d.entries || !d.entries.length) {
+        // Try Nexus (endpoint pending T1)
+        body.innerHTML = '<div class="empty-widget">No system events yet — <span style="font-size:0.75rem;color:var(--text-tertiary);">Nexus activity feed pending (T1)</span></div>';
+        return;
+      }
+      var rows = d.entries.slice(0, 20).map(function(e) {
+        var ts = e.ts ? new Date(e.ts * 1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+        return '<div class="activity-row">' +
+          '<span class="activity-ts">' + _escW(ts) + '</span>' +
+          '<span class="activity-who">' + _escW(e.consumer || 'system') + '</span>' +
+          '<span class="activity-what">' + _escW(e.action || '') + (e.resource ? ' · ' + _escW((e.resource||'').slice(0,60)) : '') + '</span>' +
+        '</div>';
+      }).join('');
+      body.innerHTML = '<div>' + rows + '</div>';
+    })
+    .catch(function() {
+      document.getElementById('activity-body').innerHTML = '<div class="empty-widget">Activity feed unavailable</div>';
+    });
+}
+
+// ── Household Status ──────────────────────────────────────────────────────────
+function loadHouseholdStatus() {
+  fetch('/api/status', {headers: _hw()})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var body = document.getElementById('household-body');
+      var agents = ((d.services || {}).agents || {}).agents || {};
+      var agentList = Object.entries(agents);
+      if (!agentList.length) {
+        body.innerHTML = '<div class="empty-widget">No agents configured</div>';
+        return;
+      }
+      var rows = agentList.map(function(kv) {
+        var name = kv[0], running = kv[1];
+        return '<div class="household-row">' +
+          '<span style="color:var(--text-primary);font-size:0.8125rem;">' + _escW(name) + '</span>' +
+          '<span class="badge-' + (running ? 'success' : 'error') + '" style="font-size:0.7rem;padding:0.1rem 0.4rem;border-radius:4px;">' + (running ? 'online' : 'offline') + '</span>' +
+        '</div>';
+      }).join('');
+      body.innerHTML = rows;
+    })
+    .catch(function() {
+      document.getElementById('household-body').innerHTML = '<div class="empty-widget">Agent data unavailable</div>';
+    });
+}
+
+// ── Invite Modal ──────────────────────────────────────────────────────────────
+function showInviteModal() {
+  document.getElementById('invite-modal').hidden = false;
+  document.getElementById('invite-modal').style.display = 'flex';
+}
+function hideInviteModal() {
+  document.getElementById('invite-modal').hidden = true;
+  document.getElementById('invite-modal').style.display = 'none';
+}
+function generateInvite() {
+  var name = document.getElementById('invite-name').value.trim();
+  if (!name) { alert('Please enter their name'); return; }
+  var agentName = document.getElementById('invite-agent-name').value.trim();
+  // POST to /api/invites (BS.16 — T1 backend)
+  fetch('/api/invites', {
+    method: 'POST',
+    headers: _hw(),
+    body: JSON.stringify({invitee_name: name, suggested_agent_name: agentName || null})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.invite_url) {
+      hideInviteModal();
+      var modal = document.createElement('div');
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:600;display:flex;align-items:center;justify-content:center;';
+      modal.innerHTML = '<div class="card" style="width:400px;max-width:90vw;padding:1.5rem;text-align:center;">' +
+        '<div style="font-size:1.25rem;margin-bottom:0.75rem;">&#x2B50; Invite generated!</div>' +
+        '<p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1rem;">Share this link with ' + _escW(name) + ':</p>' +
+        '<code style="display:block;background:var(--bg-tertiary);padding:0.75rem;border-radius:6px;font-size:0.8rem;word-break:break-all;margin-bottom:1rem;">' + _escW(d.invite_url) + '</code>' +
+        '<button onclick="this.closest(\'div\').parentElement.remove()" style="background:var(--accent);color:#fff;border:none;padding:0.5rem 1.25rem;border-radius:6px;cursor:pointer;font-weight:600;">Done</button>' +
+        '</div>';
+      document.body.appendChild(modal);
+    } else {
+      alert('Failed to generate invite: ' + (d.detail || d.error || 'Invite API not yet available (BS.16 pending)'));
+    }
+  })
+  .catch(function() {
+    hideInviteModal();
+    alert('Invite API not yet available — BS.16 pending (T1 backend needed)');
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadActivityMonitor();
+loadRequestVolume();
+loadEngramWidget();
+loadSpendWidget();
+loadRecentActivity();
+loadHouseholdStatus();
+
+// Refresh widgets every 60s
+setInterval(function() {
+  loadActivityMonitor();
+  loadEngramWidget();
+  loadHouseholdStatus();
+  loadRecentActivity();
+}, 60000);
+</script>
+
 <!-- Cortex Code Quality Widget (CTX-P5-3) -->
 <div id="cortex-widget" style="margin-top:1.5rem;">
   <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
