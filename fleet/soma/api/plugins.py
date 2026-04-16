@@ -145,5 +145,5 @@ async def get_available_plugins():
         data = json.loads(registry_path.read_text(encoding="utf-8")) if registry_path.exists() else []
     except Exception:
         data = []
-    plugins = data.get("plugins", data if isinstance(data, list) else [])
+    plugins = data.get("plugins", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
     return {"ok": True, "count": len(plugins), "plugins": plugins}
