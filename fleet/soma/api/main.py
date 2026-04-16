@@ -53,6 +53,13 @@ SOMA_KEY = os.environ.get("SOMA_SECRET_KEY", "soma-dev-key")
 FLEET_DIR = Path("/opt/lumina-fleet")
 CONSTELLATION_YAML = FLEET_DIR / "constellation.yaml"
 
+try:
+    from . import skills as skills_api
+except ImportError:
+    import skills as skills_api
+
+app.include_router(skills_api.router)
+
 # ── Auth module (SP.2) ────────────────────────────────────────────────────────
 try:
     _sys.path.insert(0, str(Path("/opt/lumina-fleet/soma")))
