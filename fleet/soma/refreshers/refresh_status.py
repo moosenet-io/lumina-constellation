@@ -190,32 +190,32 @@ def refresh_status() -> dict:
         'error': pl_err,
     }
 
-    # Agents — check systemd service states locally (soma runs on CT310 alongside the fleet)
+    # Agents — check systemd service states locally (soma runs on fleet-host alongside the fleet)
     _pvs = os.environ.get('PVS_SSH_HOST', '')
     _ag_agents = {}
     _ag_err = None
     try:
         if _pvs:
-            # SSH to PVS host → pct exec 310 (the fleet container)
+            # SSH to infra host → pct exec $FLEET_CT (the fleet container)
             for _svc, _name in [
                 ('axon.service', 'axon'),
                 ('sentinel-health.timer', 'sentinel'),
             ]:
                 _r = subprocess.run(
                     ['ssh', '-o', 'ConnectTimeout=4', '-o', 'BatchMode=yes', _pvs,
-                     f'pct exec 310 -- systemctl is-active {_svc} 2>/dev/null'],
+                     f'pct exec {os.environ.get("FLEET_CT","310")} -- systemctl is-active {_svc} 2>/dev/null'],
                     capture_output=True, text=True, timeout=8
                 )
                 _ag_agents[_name] = _r.stdout.strip() == 'active'
             # Vigil: check for briefing process
             _r3 = subprocess.run(
                 ['ssh', '-o', 'ConnectTimeout=4', '-o', 'BatchMode=yes', _pvs,
-                 'pct exec 310 -- pgrep -f briefing.py 2>/dev/null'],
+                 f'pct exec {os.environ.get("FLEET_CT","310")} -- pgrep -f briefing.py 2>/dev/null'],
                 capture_output=True, text=True, timeout=8
             )
             _ag_agents['vigil'] = bool(_r3.stdout.strip())
         else:
-            # Soma IS on CT310 — check locally
+            # Soma IS on fleet-host — check locally
             for _svc, _name in [
                 ('axon.service', 'axon'),
                 ('sentinel-health.timer', 'sentinel'),
@@ -241,7 +241,7 @@ def refresh_status() -> dict:
         'error': _ag_err if not _ag_ok else None,
     }
 
-    # Refractor — llm-proxy.py on CT305:4000 (127.0.0.1 only, SSH-check via PVS)
+    # Refractor — llm-proxy.py on ironclaw-host:4000 (127.0.0.1 only, SSH-check via PVS)
     _rf_ok = False
     _rf_count = 0
     _rf_display = None
@@ -253,7 +253,7 @@ def refresh_status() -> dict:
         if _pvs_rf:
             _r = subprocess.run(
                 ['ssh', '-o', 'ConnectTimeout=4', '-o', 'BatchMode=yes', _pvs_rf,
-                 'pct exec 305 -- pgrep -f llm-proxy.py 2>/dev/null'],
+                 f'pct exec {os.environ.get("IRONCLAW_CT","305")} -- pgrep -f llm-proxy.py 2>/dev/null'],
                 capture_output=True, text=True, timeout=8
             )
             _rf_ok = bool(_r.stdout.strip())
@@ -261,7 +261,7 @@ def refresh_status() -> dict:
                 # Get model count from models endpoint via SSH
                 _rm = subprocess.run(
                     ['ssh', '-o', 'ConnectTimeout=4', '-o', 'BatchMode=yes', _pvs_rf,
-                     'pct exec 305 -- curl -s -o /dev/null -w "%{http_code}" '
+                     f'pct exec {os.environ.get("IRONCLAW_CT","305")} -- curl -s -o /dev/null -w "%{http_code}" '
                      '-H "Authorization: Bearer ' + os.environ.get('LITELLM_MASTER_KEY', '') + '" '
                      'http://localhost:4000/v1/models 2>/dev/null'],
                     capture_output=True, text=True, timeout=8
@@ -269,7 +269,7 @@ def refresh_status() -> dict:
                 _rf_display = 'running' if _rf_ok else None
                 _rf_count = 1 if _rf_ok else 0
         else:
-            # Fallback: local pgrep (shouldn't happen, Refractor is on CT305)
+            # Fallback: local pgrep (shouldn't happen, Refractor is on ironclaw-host)
             _r = subprocess.run(['pgrep', '-f', 'llm-proxy.py'],
                                 capture_output=True, text=True, timeout=4)
             _rf_ok = bool(_r.stdout.strip())

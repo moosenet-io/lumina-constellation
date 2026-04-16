@@ -20,8 +20,8 @@ modules:
       audit
     display_name: Cortex
     emoji: 🧠
-    location: CT310 /opt/lumina-fleet/cortex/
-    mcp_tools: CT214 cortex_tools.py
+    location: fleet-host /opt/lumina-fleet/cortex/
+    mcp_tools: terminus-host cortex_tools.py
     module_number: 15
   crucible:
     description: Learning & skills
@@ -45,8 +45,8 @@ modules:
       limits
     display_name: Myelin
     emoji: 💡
-    location: CT310 /opt/lumina-fleet/myelin/
-    mcp_tools: CT214 myelin_tools.py
+    location: fleet-host /opt/lumina-fleet/myelin/
+    mcp_tools: terminus-host myelin_tools.py
     module_number: 16
   odyssey:
     description: Trip planning
