@@ -3,6 +3,113 @@
 {% block title %}Status{% endblock %}
 
 {% block content %}
+<style>
+@keyframes pulse-error {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* BS.12 — Critical tooltip / popover */
+.critical-badge-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+}
+
+#critical-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 200;
+  width: 340px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  padding: 0;
+  overflow: hidden;
+}
+
+#critical-popover .popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+}
+
+#critical-popover .popover-header h3 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+#critical-popover .popover-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 1.125rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+#critical-popover .popover-close:hover { color: var(--text-primary); }
+
+#critical-issues-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+#critical-issues-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 1px solid var(--border-color);
+}
+#critical-issues-list li:last-child { border-bottom: none; }
+#critical-issues-list li:hover { background: var(--bg-tertiary); }
+
+.issue-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.issue-dot.offline  { background: #f85149; }
+.issue-dot.degraded { background: #d29922; }
+.issue-dot.config   { background: #58a6ff; }
+.issue-dot.network  { background: #f0883e; }
+
+.issue-body { flex: 1; min-width: 0; }
+.issue-name { font-size: 0.8125rem; font-weight: 600; color: var(--text-primary); }
+.issue-error { font-size: 0.75rem; color: var(--text-secondary); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.issue-type  { font-size: 0.7rem; color: var(--text-tertiary); margin-top: 2px; }
+
+/* Mobile: full-screen overlay */
+@media (max-width: 600px) {
+  #critical-popover {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    border-radius: 0;
+    top: 0;
+    right: 0;
+  }
+  #critical-issues-list { max-height: calc(100vh - 60px); }
+}
+</style>
+
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
   <div>
     <h1 style="margin:0;font-size:1.5rem;">System Status</h1>
@@ -10,28 +117,40 @@
       Auto-refreshes every 10s &mdash; <span id="last-updated">{{ status.timestamp }}</span>
     </div>
   </div>
-  <div>
+  <div style="position:relative;">
     {% if status.status == 'ok' %}
       <span class="badge-success" style="padding:0.5rem 1.25rem;border-radius:6px;font-weight:700;font-size:1rem;">✓ ALL SYSTEMS OK</span>
     {% elif status.status == 'degraded' %}
-      <span class="badge-warning" style="padding:0.5rem 1.25rem;border-radius:6px;font-weight:700;font-size:1rem;">⚠ DEGRADED</span>
+      <button class="critical-badge-btn" onclick="toggleCriticalPopover()" aria-expanded="false" id="critical-badge-btn">
+        <span class="badge-warning" style="padding:0.5rem 1.25rem;border-radius:6px;font-weight:700;font-size:1rem;display:inline-block;">⚠ DEGRADED</span>
+      </button>
     {% else %}
-      <span class="badge-error" style="padding:0.5rem 1.25rem;border-radius:6px;font-weight:700;font-size:1.1rem;animation:pulse-error 1.5s ease-in-out infinite;">⛔ CRITICAL</span>
+      <button class="critical-badge-btn" onclick="toggleCriticalPopover()" aria-expanded="false" id="critical-badge-btn">
+        <span class="badge-error" style="padding:0.5rem 1.25rem;border-radius:6px;font-weight:700;font-size:1.1rem;display:inline-block;animation:pulse-error 1.5s ease-in-out infinite;">⛔ CRITICAL</span>
+      </button>
     {% endif %}
+
+    <div id="critical-popover" hidden role="dialog" aria-label="Issues requiring attention">
+      <div class="popover-header">
+        <h3>Issues requiring attention</h3>
+        <button class="popover-close" onclick="hideCriticalPopover()" aria-label="Close">&#x2715;</button>
+      </div>
+      <ul id="critical-issues-list">
+        <li style="padding:1rem;color:var(--text-secondary);font-size:0.875rem;cursor:default;">Scanning services…</li>
+      </ul>
+    </div>
   </div>
 </div>
+
 {% if status.status not in ('ok',) %}
 <div class="alert-error" style="margin-bottom:1.5rem;padding:0.75rem 1rem;border-radius:6px;display:flex;align-items:center;gap:0.5rem;">
   <span style="font-weight:700;">System Alert:</span>
-  <span>One or more services are down. Check the cards below for details and use the Retry buttons to recover.</span>
+  <span>One or more services are down. <button onclick="toggleCriticalPopover()" style="background:none;border:none;color:var(--accent);cursor:pointer;padding:0;font-size:inherit;text-decoration:underline;">View issues</button> or check the cards below and use the Retry buttons to recover.</span>
 </div>
 {% endif %}
-<style>
-@keyframes pulse-error {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-</style>
+
+<!-- Embed status data for JS consumption -->
+<script id="status-data" type="application/json">{{ status | tojson }}</script>
 
 <div id="status-grid"
      hx-get="/status/grid"
@@ -42,11 +161,155 @@
 </div>
 
 <script>
-  document.body.addEventListener('htmx:afterSwap', function(evt) {
-    if (evt.detail.target.id === 'status-grid') {
-      document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
-    }
+// ── BS.12: Critical badge tooltip ─────────────────────────────────────────────
+
+var _popoverOpen = false;
+
+function _classifyError(err) {
+  if (!err) return {type: 'offline', label: 'Service offline'};
+  var e = String(err).toLowerCase();
+  if (e.includes('connection refused') || e.includes('unreachable') || e.includes('urlopen'))
+    return {type: 'network', label: 'Network error'};
+  if (e.includes('timeout'))
+    return {type: 'network', label: 'Timeout'};
+  if (e.includes('config') || e.includes('missing') || e.includes('not found'))
+    return {type: 'config', label: 'Configuration missing'};
+  if (e.includes('degraded') || e.includes('partial'))
+    return {type: 'degraded', label: 'Degraded performance'};
+  return {type: 'offline', label: 'Service offline'};
+}
+
+function _buildIssueList() {
+  var issues = [];
+
+  // Scan DOM cards for dead/degraded health dots
+  var cards = document.querySelectorAll('#status-grid .card');
+  cards.forEach(function(card) {
+    var heading = card.querySelector('h3');
+    if (!heading) return;
+    var name = heading.textContent.trim();
+
+    var dot = card.querySelector('.health-dot');
+    if (!dot) return;
+    var isDead = dot.classList.contains('dead');
+    var isDegraded = dot.classList.contains('degraded');
+    if (!isDead && !isDegraded) return;
+
+    // Get error text from the error span (has title attr with full error)
+    var errSpan = card.querySelector('[style*="color:var(--color-error)"]');
+    var errText = errSpan ? (errSpan.getAttribute('title') || errSpan.textContent.trim()) : '';
+
+    var classification = isDegraded ? {type: 'degraded', label: 'Degraded performance'} : _classifyError(errText);
+
+    issues.push({name: name, error: errText, classification: classification, card: card});
   });
+
+  // Also check status data JSON for agents
+  try {
+    var statusData = JSON.parse(document.getElementById('status-data').textContent);
+    var agents = (statusData.services || {}).agents || {};
+    var agentMap = agents.agents || {};
+    Object.entries(agentMap).forEach(function(kv) {
+      var agName = kv[0], running = kv[1];
+      if (!running) {
+        issues.push({
+          name: 'Agent: ' + agName,
+          error: 'process not running',
+          classification: {type: 'offline', label: 'Service offline'},
+          card: null
+        });
+      }
+    });
+  } catch(e) {}
+
+  return issues;
+}
+
+function _renderIssues() {
+  var issues = _buildIssueList();
+  var list = document.getElementById('critical-issues-list');
+  if (!issues.length) {
+    list.innerHTML = '<li style="padding:1rem;color:var(--text-secondary);font-size:0.875rem;cursor:default;">✓ No issues detected. Status may have just cleared.</li>';
+    return;
+  }
+  list.innerHTML = issues.map(function(issue) {
+    var cardId = issue.card ? ('card-' + issue.name.replace(/\s+/g, '-').toLowerCase()) : '';
+    if (issue.card && !issue.card.id) issue.card.id = cardId;
+    var onclick = issue.card ? 'scrollToCard(\'' + (issue.card.id || cardId) + '\')' : '';
+    var errDisplay = issue.error ? issue.error.substring(0, 80) + (issue.error.length > 80 ? '…' : '') : '';
+    return '<li onclick="' + onclick + '" ' + (onclick ? '' : 'style="cursor:default;"') + '>' +
+      '<span class="issue-dot ' + issue.classification.type + '"></span>' +
+      '<div class="issue-body">' +
+        '<div class="issue-name">' + _esc(issue.name) + '</div>' +
+        (errDisplay ? '<div class="issue-error">' + _esc(errDisplay) + '</div>' : '') +
+        '<div class="issue-type">' + issue.classification.label + '</div>' +
+      '</div>' +
+    '</li>';
+  }).join('');
+}
+
+function _esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function scrollToCard(id) {
+  var el = document.getElementById(id);
+  if (el) {
+    hideCriticalPopover();
+    el.scrollIntoView({behavior: 'smooth', block: 'center'});
+    el.style.outline = '2px solid var(--accent)';
+    setTimeout(function() { el.style.outline = ''; }, 2000);
+  }
+}
+
+function toggleCriticalPopover() {
+  if (_popoverOpen) { hideCriticalPopover(); } else { showCriticalPopover(); }
+}
+
+function showCriticalPopover() {
+  var pop = document.getElementById('critical-popover');
+  pop.hidden = false;
+  _popoverOpen = true;
+  var btn = document.getElementById('critical-badge-btn');
+  if (btn) btn.setAttribute('aria-expanded', 'true');
+  _renderIssues();
+  // Close on outside click
+  setTimeout(function() {
+    document.addEventListener('click', _outsideClickHandler, {once: true, capture: true});
+  }, 0);
+}
+
+function hideCriticalPopover() {
+  var pop = document.getElementById('critical-popover');
+  pop.hidden = true;
+  _popoverOpen = false;
+  var btn = document.getElementById('critical-badge-btn');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+function _outsideClickHandler(e) {
+  var pop = document.getElementById('critical-popover');
+  var btn = document.getElementById('critical-badge-btn');
+  if (pop && !pop.hidden && !pop.contains(e.target) && (!btn || !btn.contains(e.target))) {
+    hideCriticalPopover();
+  } else if (!pop.hidden) {
+    // Re-attach if click was inside
+    document.addEventListener('click', _outsideClickHandler, {once: true, capture: true});
+  }
+}
+
+// Re-render issues list after HTMX grid refresh
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+  if (evt.detail.target.id === 'status-grid') {
+    document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+    if (_popoverOpen) _renderIssues();
+  }
+});
+
+// Keyboard: Escape closes popover
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && _popoverOpen) hideCriticalPopover();
+});
 </script>
 
 <!-- Cortex Code Quality Widget (CTX-P5-3) -->
@@ -90,7 +353,7 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
         '</div>' +
         (repoHtml || '<div style="color:var(--text-tertiary);font-size:0.8rem;">No repos indexed yet</div>') +
       '</div>';
-  } catch(e) { /* keep loading state if JSON fails */ }
+  } catch(e) {}
 });
 </script>
 {% endblock %}
