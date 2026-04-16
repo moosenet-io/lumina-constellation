@@ -37,6 +37,23 @@ def _display_name(data: dict[str, Any], fallback: str) -> str:
     return str(data.get("display_name") or data.get("name") or fallback)
 
 
+def _safe_value(key: str, value: Any) -> Any:
+    sensitive_fragments = ("token", "secret", "password", "api_key", "apikey", "webhook")
+    if any(fragment in key.lower() for fragment in sensitive_fragments):
+        return bool(value)
+    if isinstance(value, dict):
+        return {k: _safe_value(k, v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_safe_value(key, item) for item in value]
+    return value
+
+
+def _safe_section(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: _safe_value(k, v) for k, v in value.items()}
+    return value if value is not None else {}
+
+
 @router.get("/general")
 async def get_general_config():
     cfg = load_config()
@@ -67,3 +84,26 @@ async def get_modules_config():
         }
         for name, settings in sorted(modules.items())
     ]
+
+
+@router.get("/inference")
+async def get_inference_config():
+    cfg = load_config()
+    inference = cfg.get("inference", {}) if isinstance(cfg.get("inference", {}), dict) else {}
+    return {
+        "fleet_preset": inference.get("preset") or inference.get("fleet_preset") or os.environ.get("LUMINA_MODEL_PRESET", ""),
+        "models": inference.get("models", []),
+        "routing": inference.get("routing", {}),
+        "providers": _safe_section(inference.get("providers", {})),
+    }
+
+
+@router.get("/channels")
+async def get_channels_config():
+    cfg = load_config()
+    channels = cfg.get("channels", {}) if isinstance(cfg.get("channels", {}), dict) else {}
+    return {
+        "matrix": _safe_section(channels.get("matrix", {})),
+        "email": _safe_section(channels.get("email", {})),
+        "webhook": _safe_section(channels.get("webhook", {})),
+    }
