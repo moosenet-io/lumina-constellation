@@ -2,134 +2,235 @@
 {% block title %}Spectra — Browser Agent{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <h1>Spectra</h1>
-  <p class="page-subtitle">Browser automation agent — Live View, sessions, usage</p>
+<style>
+  .spectra-stat { display:flex;flex-direction:column;gap:0.125rem; }
+  .spectra-stat .stat-val { font-size:1rem;font-weight:700;color:var(--text-primary); }
+  .spectra-stat .stat-lbl { font-size:0.75rem;color:var(--text-tertiary); }
+  .session-row { display:flex;gap:1rem;align-items:center;padding:0.5rem 0;border-bottom:1px solid var(--border-color);font-size:0.8125rem; }
+  .session-row:last-child { border-bottom:none; }
+  #liveview-iframe { width:100%;height:420px;border:none;background:#111;border-radius:0 0 8px 8px;display:block; }
+</style>
+
+<!-- Operator-only access check (client-side; T1 TODO: add server-side guard on /spectra route) -->
+<div id="spectra-auth-gate" hidden>
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;padding:2rem;">
+    <div style="font-size:3rem;margin-bottom:1.5rem;">&#x1F512;</div>
+    <h1 style="font-size:1.5rem;font-weight:700;margin:0 0 0.75rem;">Not available for your agent</h1>
+    <p style="color:var(--text-secondary);max-width:420px;line-height:1.6;margin:0 0 2rem;">
+      Browser automation (Spectra) is currently available only to the household operator.
+      Ask the operator to enable it for your agent account.
+    </p>
+    <a href="/status" class="btn-secondary" style="padding:0.6rem 1.5rem;border-radius:6px;text-decoration:none;font-weight:600;">
+      ← Back to Dashboard
+    </a>
+  </div>
 </div>
 
-<!-- Status bar -->
-<div id="spectra-status" class="card" style="margin-bottom:1rem;"
-     hx-get="/api/spectra/status" hx-trigger="load, every 10s" hx-swap="innerHTML">
-  <div class="card-body"><span class="text-secondary">Loading Spectra status...</span></div>
+<div id="spectra-content">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+    <div>
+      <h1 style="margin:0;font-size:1.5rem;">Spectra</h1>
+      <div style="color:var(--text-tertiary);font-size:0.85rem;margin-top:0.2rem;">Browser automation — Live View, sessions, usage</div>
+    </div>
+    <button onclick="loadStatus()" class="btn-secondary" style="font-size:0.8125rem;padding:0.4rem 0.9rem;border-radius:6px;">
+      &#x21BB; Refresh
+    </button>
+  </div>
+
+  <!-- Status bar -->
+  <div id="spectra-status" class="card" style="padding:0.875rem 1rem;margin-bottom:1.25rem;">
+    <span style="color:var(--text-secondary);font-size:0.875rem;">Loading Spectra status…</span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem;">
+
+    <!-- Live View -->
+    <div class="card" style="overflow:hidden;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.875rem 1rem;border-bottom:1px solid var(--border-color);">
+        <div>
+          <span style="font-weight:700;">Live View</span>
+          <span style="font-size:0.75rem;color:var(--text-tertiary);margin-left:0.5rem;">headed browser session stream</span>
+        </div>
+      </div>
+      <div style="background:#0d1117;">
+        <iframe id="liveview-iframe" src="about:blank" allowfullscreen></iframe>
+      </div>
+      <div style="padding:0.75rem 1rem;display:flex;gap:0.75rem;align-items:center;border-top:1px solid var(--border-color);">
+        <button onclick="startLiveView()" style="padding:0.375rem 0.875rem;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:0.8125rem;font-weight:600;">
+          &#x25B6; Start Live View
+        </button>
+        <button onclick="stopLiveView()" style="padding:0.375rem 0.875rem;border-radius:6px;background:none;border:1px solid var(--border-color);color:var(--text-secondary);cursor:pointer;font-size:0.8125rem;">
+          &#x25A0; Stop
+        </button>
+        <span id="live-status" style="font-size:0.8rem;color:var(--text-tertiary);">Click to start</span>
+      </div>
+    </div>
+
+    <!-- Active Sessions -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.875rem 1rem;border-bottom:1px solid var(--border-color);">
+        <span style="font-weight:700;">Active Sessions</span>
+        <span id="session-count" style="font-size:0.75rem;color:var(--text-tertiary);">—</span>
+      </div>
+      <div id="sessions-list" style="padding:0.75rem 1rem;min-height:80px;">
+        <div style="color:var(--text-secondary);font-size:0.875rem;">Loading…</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Daily Usage -->
+  <div class="card">
+    <div style="padding:0.875rem 1rem;border-bottom:1px solid var(--border-color);">
+      <span style="font-weight:700;">&#x1F4CA; Daily Usage</span>
+    </div>
+    <div id="spectra-audit" style="padding:0.875rem 1rem;">
+      <span style="color:var(--text-secondary);font-size:0.875rem;">Loading audit data…</span>
+    </div>
+  </div>
 </div>
 
 <script>
-document.body.addEventListener('htmx:afterSwap', function(e) {
-  if (e.detail.target.id === 'spectra-status') {
-    try {
-      const d = JSON.parse(e.detail.xhr.response);
-      const h = d.health || {};
-      const sessions = d.sessions || [];
-      const ok = d.ok;
-      const chromiumOk = h.chromium === true;
-      e.detail.target.innerHTML = `
-        <div class="card-body">
-          <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center">
-            <span class="badge ${ok ? 'badge-success' : 'badge-error'}">
-              ${ok ? '● Online' : '● Offline'}
-            </span>
-            <span class="badge ${chromiumOk ? 'badge-success' : 'badge-warning'}">
-              Chromium: ${chromiumOk ? 'Ready' : 'Not Ready'}
-            </span>
-            <span class="text-secondary">${sessions.length} active session${sessions.length !== 1 ? 's' : ''}</span>
-            <span class="text-secondary">Uptime: ${h.uptime_s ? Math.floor(h.uptime_s/60) + 'm' : '?'}</span>
-          </div>
-        </div>`;
-    } catch(err) {
-      e.detail.target.innerHTML = '<div class="card-body text-secondary">Status unavailable</div>';
+var SOMA_KEY = (function() {
+  // Try localStorage first (set by login/security page), fall back to empty
+  return localStorage.getItem('soma_key') || '';
+})();
+
+function _headers() {
+  var h = {'Content-Type': 'application/json'};
+  if (SOMA_KEY) h['X-Soma-Key'] = SOMA_KEY;
+  return h;
+}
+
+// ── Operator access check ────────────────────────────────────────────────────
+fetch('/api/auth/me', {headers: _headers()})
+  .then(function(r) { return r.json(); })
+  .then(function(user) {
+    if (user.role !== 'admin' && user.role !== 'operator') {
+      document.getElementById('spectra-content').hidden = true;
+      document.getElementById('spectra-auth-gate').hidden = false;
     }
-  }
-});
-</script>
+  })
+  .catch(function() {
+    // If /api/auth/me fails, show content (backend auth will handle it)
+  });
 
-<div class="grid-2" style="gap:1.5rem">
+// ── Status ───────────────────────────────────────────────────────────────────
+function loadStatus() {
+  fetch('/api/spectra/status', {headers: _headers()})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var el = document.getElementById('spectra-status');
+      if (!d.ok) {
+        el.innerHTML = '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+          '<span style="width:8px;height:8px;border-radius:50%;background:#f85149;display:inline-block;flex-shrink:0;"></span>' +
+          '<span style="color:var(--text-secondary);font-size:0.875rem;">Spectra unreachable — ' + _esc(d.error || 'unknown error') + '</span>' +
+          '<button onclick="loadStatus()" style="margin-left:auto;background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.2rem 0.6rem;font-size:0.75rem;color:var(--accent);cursor:pointer;">&#x21BA; Retry</button>' +
+          '</div>';
+        return;
+      }
+      var h = d.health || {};
+      var sessions = d.sessions || [];
+      var active = sessions.filter(function(s) { return s.state === 'active'; });
+      var statusColor = d.ok && h.chromium ? '#3fb950' : '#d29922';
 
-  <!-- Live View (BA.8) -->
-  <div class="card">
-    <div class="card-header">
-      <h3>Live View</h3>
-      <small class="text-secondary">Browser stream (requires active headed session)</small>
-    </div>
-    <div class="card-body" style="padding:0;background:#000;border-radius:0 0 8px 8px;">
-      {% if spectra_url %}
-      <iframe
-        id="spectra-livview"
-        src="about:blank"
-        style="width:100%;height:400px;border:none;background:#111;"
-        allowfullscreen>
-      </iframe>
-      <div style="padding:0.75rem;display:flex;gap:0.75rem;align-items:center">
-        <button class="btn btn-primary btn-sm" onclick="startLiveView()">Start Live View</button>
-        <button class="btn btn-secondary btn-sm" onclick="stopLiveView()">Stop</button>
-        <span id="live-status" class="text-secondary text-sm">Click to start</span>
-      </div>
-      {% else %}
-      <div style="height:200px;display:flex;align-items:center;justify-content:center;color:var(--text-secondary)">
-        SPECTRA_URL not configured
-      </div>
-      {% endif %}
-    </div>
-  </div>
+      el.innerHTML =
+        '<div style="display:flex;gap:2rem;flex-wrap:wrap;align-items:center;">' +
+          '<span style="display:flex;align-items:center;gap:0.5rem;">' +
+            '<span style="width:8px;height:8px;border-radius:50%;background:' + statusColor + ';display:inline-block;"></span>' +
+            '<span style="font-size:0.875rem;font-weight:600;">' + (d.ok ? 'Online' : 'Degraded') + '</span>' +
+          '</span>' +
+          '<div class="spectra-stat"><span class="stat-val">' + active.length + '</span><span class="stat-lbl">active sessions</span></div>' +
+          '<div class="spectra-stat"><span class="stat-val">' + (h.sessions || 0) + '</span><span class="stat-lbl">total sessions</span></div>' +
+          '<div class="spectra-stat"><span class="stat-val">' + (h.uptime_s ? Math.floor(h.uptime_s / 60) + 'm' : '—') + '</span><span class="stat-lbl">uptime</span></div>' +
+          '<div class="spectra-stat"><span class="stat-val">' + (h.chromium ? '✓' : '✗') + '</span><span class="stat-lbl">Chromium</span></div>' +
+        '</div>';
 
-  <!-- Active Sessions -->
-  <div class="card">
-    <div class="card-header">
-      <h3>Active Sessions</h3>
-      <button class="btn btn-secondary btn-sm"
-              hx-get="/api/spectra/status" hx-target="#sessions-list" hx-swap="innerHTML">
-        Refresh
-      </button>
-    </div>
-    <div class="card-body" id="sessions-list">
-      <div class="text-secondary text-sm">Loading...</div>
-    </div>
-  </div>
+      // Render sessions list
+      var list = document.getElementById('sessions-list');
+      document.getElementById('session-count').textContent = active.length + ' active';
+      if (!active.length) {
+        list.innerHTML = '<div style="color:var(--text-tertiary);font-size:0.875rem;padding:0.5rem 0;">No active sessions</div>';
+      } else {
+        list.innerHTML = active.map(function(s) {
+          return '<div class="session-row">' +
+            '<code style="font-size:0.75rem;color:var(--accent);">' + _esc(s.id) + '</code>' +
+            '<span style="color:var(--text-secondary);font-size:0.75rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _esc(s.url || '—') + '</span>' +
+            '<span style="font-size:0.7rem;color:var(--text-tertiary);">' + _esc(s.consumer || '') + '</span>' +
+            '</div>';
+        }).join('');
+      }
+    })
+    .catch(function(e) {
+      var el = document.getElementById('spectra-status');
+      el.innerHTML = '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:#f85149;display:inline-block;"></span>' +
+        '<span style="color:var(--text-secondary);font-size:0.875rem;">Could not reach Spectra status endpoint</span>' +
+        '<button onclick="loadStatus()" style="margin-left:auto;background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.2rem 0.6rem;font-size:0.75rem;color:var(--accent);cursor:pointer;">&#x21BA; Retry</button>' +
+        '</div>';
+    });
+}
 
-</div>
+// ── Audit ────────────────────────────────────────────────────────────────────
+function loadAudit() {
+  fetch('/api/spectra/audit?limit=30', {headers: _headers()})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var el = document.getElementById('spectra-audit');
+      if (!d.ok || !d.entries || !d.entries.length) {
+        el.innerHTML = '<div style="color:var(--text-tertiary);font-size:0.875rem;">No audit entries yet</div>';
+        return;
+      }
+      // Group by action type for daily summary
+      var counts = {};
+      d.entries.forEach(function(e) {
+        counts[e.action] = (counts[e.action] || 0) + 1;
+      });
+      var summary = Object.entries(counts).map(function(kv) {
+        return '<span style="margin-right:1rem;font-size:0.875rem;"><strong>' + kv[1] + '</strong> <span style="color:var(--text-secondary);">' + _esc(kv[0]) + '</span></span>';
+      }).join('');
+      // Recent 10 entries
+      var rows = d.entries.slice(0, 10).map(function(e) {
+        var ts = e.ts ? new Date(e.ts * 1000).toLocaleTimeString() : '';
+        return '<div style="display:flex;gap:1rem;padding:0.3rem 0;font-size:0.8rem;border-bottom:1px solid var(--border-color);">' +
+          '<span style="color:var(--text-tertiary);flex-shrink:0;">' + _esc(ts) + '</span>' +
+          '<span style="color:var(--accent);">' + _esc(e.action || '') + '</span>' +
+          '<span style="color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _esc((e.resource || '').slice(0, 60)) + '</span>' +
+          '<span style="color:var(--text-tertiary);flex-shrink:0;">' + _esc(e.consumer || '') + '</span>' +
+          '</div>';
+      }).join('');
+      el.innerHTML =
+        '<div style="margin-bottom:0.75rem;">' + summary + '</div>' +
+        '<div>' + rows + '</div>';
+    })
+    .catch(function() {
+      document.getElementById('spectra-audit').innerHTML =
+        '<div style="color:var(--text-tertiary);font-size:0.875rem;">Audit data unavailable</div>';
+    });
+}
 
-<!-- Usage chart placeholder -->
-<div class="card" style="margin-top:1.5rem">
-  <div class="card-header"><h3>Daily Usage</h3></div>
-  <div class="card-body" id="spectra-usage">
-    <div hx-get="/api/spectra/audit" hx-trigger="load" hx-swap="innerHTML">
-      <span class="text-secondary">Loading audit data...</span>
-    </div>
-  </div>
-</div>
-
-<script>
+// ── Live View ────────────────────────────────────────────────────────────────
 function startLiveView() {
-  const iframe = document.getElementById('spectra-livview');
-  const status = document.getElementById('live-status');
-  // Note: Direct noVNC access goes through Soma WebSocket proxy (BA.8)
+  var iframe = document.getElementById('liveview-iframe');
+  var status = document.getElementById('live-status');
   iframe.src = '/ws/spectra/novnc';
-  status.textContent = 'Connecting...';
+  status.textContent = 'Connecting…';
+  iframe.onload = function() { status.textContent = 'Connected'; };
+  iframe.onerror = function() { status.textContent = 'Connection failed'; };
 }
 function stopLiveView() {
-  document.getElementById('spectra-livview').src = 'about:blank';
+  document.getElementById('liveview-iframe').src = 'about:blank';
   document.getElementById('live-status').textContent = 'Stopped';
 }
 
-// Render sessions list when status loads
-document.body.addEventListener('htmx:afterSwap', function(e) {
-  if (e.detail.target.id === 'sessions-list') {
-    try {
-      const d = JSON.parse(e.detail.xhr.response);
-      const sessions = (d.sessions || []).filter(s => s.state === 'active');
-      if (sessions.length === 0) {
-        e.detail.target.innerHTML = '<div class="text-secondary text-sm">No active sessions</div>';
-        return;
-      }
-      const rows = sessions.map(s => `
-        <div class="table-row">
-          <span class="font-mono text-sm">${s.id}</span>
-          <span class="text-secondary text-sm">${s.consumer}</span>
-          <span class="text-secondary text-sm">${s.url ? s.url.slice(0,40) : '—'}</span>
-          <span class="badge badge-success">${s.state}</span>
-        </div>`).join('');
-      e.detail.target.innerHTML = `<div class="table">${rows}</div>`;
-    } catch(err) {}
-  }
-});
+function _esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Initial load
+loadStatus();
+loadAudit();
+// Auto-refresh status every 15s
+setInterval(loadStatus, 15000);
 </script>
 {% endblock %}

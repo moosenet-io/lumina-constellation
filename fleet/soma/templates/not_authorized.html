@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Not Available{% endblock %}
+
+{% block content %}
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;padding:2rem;">
+  <div style="font-size:3rem;margin-bottom:1.5rem;">&#x1F512;</div>
+  <h1 style="font-size:1.5rem;font-weight:700;margin:0 0 0.75rem;">Not available for your agent</h1>
+  <p style="color:var(--text-secondary);max-width:420px;line-height:1.6;margin:0 0 1rem;">
+    Browser automation (Spectra) is currently available only to the household operator.
+    If you'd like this enabled for your agent, ask
+    <strong>{{ operator_name or 'the operator' }}</strong> to enable it.
+  </p>
+  <p style="color:var(--text-tertiary);font-size:0.85rem;max-width:380px;line-height:1.6;margin:0 0 2rem;">
+    This restriction keeps browser sessions secure and prevents unauthorized web access
+    from agent accounts.
+  </p>
+  <a href="/status" class="btn-secondary" style="padding:0.6rem 1.5rem;border-radius:6px;text-decoration:none;font-weight:600;">
+    ← Back to Dashboard
+  </a>
+</div>
+{% endblock %}
