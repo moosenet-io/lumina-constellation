@@ -190,6 +190,104 @@ def refresh_status() -> dict:
         'error': pl_err,
     }
 
+    # Agents — check systemd service states locally (soma runs on CT310 alongside the fleet)
+    _pvs = os.environ.get('PVS_SSH_HOST', '')
+    _ag_agents = {}
+    _ag_err = None
+    try:
+        if _pvs:
+            # SSH to PVS host → pct exec 310 (the fleet container)
+            for _svc, _name in [
+                ('axon.service', 'axon'),
+                ('sentinel-health.timer', 'sentinel'),
+            ]:
+                _r = subprocess.run(
+                    ['ssh', '-o', 'ConnectTimeout=4', '-o', 'BatchMode=yes', _pvs,
+                     f'pct exec 310 -- systemctl is-active {_svc} 2>/dev/null'],
+                    capture_output=True, text=True, timeout=8
+                )
+                _ag_agents[_name] = _r.stdout.strip() == 'active'
+            # Vigil: check for briefing process
+            _r3 = subprocess.run(
+                ['ssh', '-o', 'ConnectTimeout=4', '-o', 'BatchMode=yes', _pvs,
+                 'pct exec 310 -- pgrep -f briefing.py 2>/dev/null'],
+                capture_output=True, text=True, timeout=8
+            )
+            _ag_agents['vigil'] = bool(_r3.stdout.strip())
+        else:
+            # Soma IS on CT310 — check locally
+            for _svc, _name in [
+                ('axon.service', 'axon'),
+                ('sentinel-health.timer', 'sentinel'),
+            ]:
+                _r = subprocess.run(
+                    ['systemctl', 'is-active', _svc],
+                    capture_output=True, text=True, timeout=4
+                )
+                _ag_agents[_name] = _r.stdout.strip() == 'active'
+            _r3 = subprocess.run(['pgrep', '-f', 'briefing.py'],
+                                 capture_output=True, text=True, timeout=4)
+            _ag_agents['vigil'] = bool(_r3.stdout.strip())
+    except Exception as _ae:
+        _ag_err = str(_ae)[:80]
+
+    _ag_active = sum(1 for v in _ag_agents.values() if v)
+    _ag_ok = _ag_active > 0 or bool(_ag_agents)
+    services['agents'] = {
+        'name': 'Agents',
+        'ok': _ag_ok,
+        'agents': _ag_agents,
+        'active_count': _ag_active,
+        'error': _ag_err if not _ag_ok else None,
+    }
+
+    # Refractor — llm-proxy.py on CT305:4000 (127.0.0.1 only, SSH-check via PVS)
+    _rf_ok = False
+    _rf_count = 0
+    _rf_display = None
+    _rf_err = None
+    _rf_ms = 0
+    _pvs_rf = os.environ.get('PVS_SSH_HOST', '')
+    try:
+        _t0 = time.time()
+        if _pvs_rf:
+            _r = subprocess.run(
+                ['ssh', '-o', 'ConnectTimeout=4', '-o', 'BatchMode=yes', _pvs_rf,
+                 'pct exec 305 -- pgrep -f llm-proxy.py 2>/dev/null'],
+                capture_output=True, text=True, timeout=8
+            )
+            _rf_ok = bool(_r.stdout.strip())
+            if _rf_ok:
+                # Get model count from models endpoint via SSH
+                _rm = subprocess.run(
+                    ['ssh', '-o', 'ConnectTimeout=4', '-o', 'BatchMode=yes', _pvs_rf,
+                     'pct exec 305 -- curl -s -o /dev/null -w "%{http_code}" '
+                     '-H "Authorization: Bearer ' + os.environ.get('LITELLM_MASTER_KEY', '') + '" '
+                     'http://localhost:4000/v1/models 2>/dev/null'],
+                    capture_output=True, text=True, timeout=8
+                )
+                _rf_display = 'running' if _rf_ok else None
+                _rf_count = 1 if _rf_ok else 0
+        else:
+            # Fallback: local pgrep (shouldn't happen, Refractor is on CT305)
+            _r = subprocess.run(['pgrep', '-f', 'llm-proxy.py'],
+                                capture_output=True, text=True, timeout=4)
+            _rf_ok = bool(_r.stdout.strip())
+            _rf_display = 'running' if _rf_ok else None
+            _rf_count = 1 if _rf_ok else 0
+        _rf_ms = int((time.time() - _t0) * 1000)
+    except Exception as _rfe:
+        _rf_err = str(_rfe)[:80]
+
+    services['refractor'] = {
+        'name': 'Refractor',
+        'ok': _rf_ok,
+        'latency_ms': _rf_ms,
+        'category_count': _rf_count,
+        'display': _rf_display or ('running' if _rf_ok else 'unreachable'),
+        'error': _rf_err if not _rf_ok else None,
+    }
+
     # Synapse (config + daily count from gate_log)
     try:
         import yaml as _yaml
@@ -229,16 +327,21 @@ def refresh_status() -> dict:
         services['synapse'] = {'name': 'Synapse', 'ok': False, 'enabled': False, 'sent_today': 0, 'max_per_day': 3, 'muted': False}
 
     # Overall status
-    core_services = ['ironclaw']
-    core_ok = all(services[s]['ok'] for s in core_services if s in services)
-    any_down = any(not v['ok'] for v in services.values())
+    # Core = services whose failure is critical; non-core failures → degraded
+    core_services = ['ironclaw', 'litellm']
+    # Synapse 'disabled' (ok=True) and agents partial should not degrade the banner
+    non_alerting = {'synapse'}  # Synapse disabled is expected, not an alert
+    core_ok = all(services.get(s, {}).get('ok', False) for s in core_services)
+    non_core_down = [
+        v['name'] for k, v in services.items()
+        if not v.get('ok', False) and k not in core_services and k not in non_alerting
+    ]
 
-    if core_ok and not any_down:
+    if core_ok and not non_core_down:
         status_label = 'ALL SYSTEMS OK'
         status_level = 'ok'
-    elif core_ok and any_down:
-        down_names = [v['name'] for v in services.values() if not v['ok']]
-        status_label = f"DEGRADED — {', '.join(down_names)} unavailable"
+    elif core_ok and non_core_down:
+        status_label = f"DEGRADED — {', '.join(non_core_down)} unavailable"
         status_level = 'degraded'
     else:
         status_label = 'CRITICAL — core services down'
