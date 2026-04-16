@@ -97,14 +97,52 @@ def refresh_status() -> dict:
         'error': mx_data.get('error') if not mx_ok else None,
     }
 
-    # Nexus (local DB-backed service on fleet host)
-    nx_ok, nx_data, nx_ms = _probe_http(f'{nexus_db_url}/health')
+    # Nexus (SQLite-backed inbox — check DB file, then count messages)
+    import sqlite3 as _sqlite3
+    nexus_db = '/opt/lumina-fleet/nexus/nexus.db'
+    _nexus_pg_host = os.environ.get('INBOX_DB_HOST', '')
+    nx_ok = False
+    nx_message_count = None
+    nx_unacked = None
+    nx_err = None
+    if _nexus_pg_host:
+        # Postgres-backed Nexus — probe the DB directly
+        try:
+            import psycopg2 as _pg2
+            _pg_conn = _pg2.connect(
+                host=_nexus_pg_host,
+                dbname='lumina_inbox',
+                user=os.environ.get('INBOX_DB_USER', 'lumina_inbox_user'),
+                password=os.environ.get('INBOX_DB_PASS', ''),
+                connect_timeout=3,
+            )
+            _cur = _pg_conn.cursor()
+            _cur.execute("SELECT COUNT(*) FROM inbox_messages")
+            nx_message_count = _cur.fetchone()[0]
+            _cur.execute("SELECT COUNT(*) FROM inbox_messages WHERE status='pending'")
+            nx_unacked = _cur.fetchone()[0]
+            _pg_conn.close()
+            nx_ok = True
+        except Exception as _e:
+            nx_err = f'Nexus DB: {str(_e)[:60]}'
+    elif os.path.exists(nexus_db):
+        try:
+            conn = _sqlite3.connect(nexus_db, timeout=2)
+            nx_message_count = conn.execute("SELECT COUNT(*) FROM inbox_messages").fetchone()[0]
+            nx_unacked = conn.execute("SELECT COUNT(*) FROM inbox_messages WHERE status='pending'").fetchone()[0]
+            conn.close()
+            nx_ok = True
+        except Exception as e:
+            nx_err = str(e)[:80]
+    else:
+        nx_err = 'Nexus DB not found (inbox not initialised)'
+        nx_ok = False
     services['nexus'] = {
         'name': 'Nexus', 'ok': nx_ok,
-        'latency_ms': nx_ms,
-        'message_count': nx_data.get('message_count') if nx_ok else None,
-        'unacked': nx_data.get('unacked') if nx_ok else None,
-        'error': nx_data.get('error') if not nx_ok else None,
+        'latency_ms': 0,
+        'message_count': nx_message_count,
+        'unacked': nx_unacked,
+        'error': nx_err if not nx_ok else None,
     }
 
     # Engram (local check)
