@@ -1,14 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Wiki — Soma</title>
-<link rel="stylesheet" href="/shared/constellation.css">
-<script src="/shared/htmx.min.js"></script>
+{% extends "base.html" %}
+{% block title %}Wiki{% endblock %}
+
+{% block content %}
 <style>
-  .wiki-sidebar { width:220px;flex-shrink:0;overflow-y:auto;padding:1rem; }
-  .wiki-content { flex:1;padding:1.5rem;max-width:800px; }
+  .wiki-layout { display:flex;height:100%;overflow:hidden;margin:-1.5rem; }
+  .wiki-sidebar { width:220px;flex-shrink:0;overflow-y:auto;padding:1rem;border-right:1px solid var(--border-color); }
+  .wiki-content-area { flex:1;padding:1.5rem;overflow-y:auto; }
   .wiki-nav-item { display:block;padding:0.3rem 0.5rem;border-radius:4px;text-decoration:none;color:var(--text-secondary);font-size:0.875rem;cursor:pointer; }
   .wiki-nav-item:hover,.wiki-nav-item.active { background:var(--bg-tertiary);color:var(--text-primary); }
   .wiki-nav-section { font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-tertiary);padding:0.75rem 0.5rem 0.25rem;margin-top:0.5rem; }
@@ -26,10 +23,9 @@
   .wiki-content td{padding:0.5rem;border-bottom:1px solid var(--border-color);}
   .wiki-content a{color:var(--accent);}
 </style>
-</head>
-<body>
-<div style="display:flex;height:100vh;overflow:hidden;">
-  <nav class="wiki-sidebar card" style="margin:1rem 0 1rem 1rem;">
+
+<div class="wiki-layout">
+  <nav class="wiki-sidebar">
     <div style="font-weight:700;margin-bottom:1rem;">&#128218; Wiki</div>
     <div style="margin-bottom:0.75rem;">
       <input type="text" id="wiki-search" placeholder="Search..." oninput="searchWiki(this.value)"
@@ -37,7 +33,7 @@
     </div>
     <div id="wiki-nav">Loading...</div>
   </nav>
-  <main class="wiki-content" id="wiki-main" style="overflow-y:auto;">
+  <main class="wiki-content-area" id="wiki-main">
     <div style="color:var(--text-secondary);text-align:center;padding:3rem;">
       Select a page from the sidebar to begin.
     </div>
@@ -47,16 +43,14 @@
 <script>
 let allPages = [];
 
-// Load navigation
 fetch('/api/wiki/pages')
   .then(r => r.json())
   .then(data => {
     allPages = data.pages || [];
     renderNav(allPages);
-    // Load first page automatically
     if (allPages.length > 0) loadPage(allPages[0].path);
   })
-  .catch(e => {
+  .catch(() => {
     document.getElementById('wiki-nav').innerHTML = '<div style="color:var(--text-secondary);font-size:0.875rem;">No wiki pages found.<br>Add .md files to /opt/lumina-fleet/soma/wiki/</div>';
   });
 
@@ -68,7 +62,6 @@ function renderNav(pages) {
     if (!sections[section]) sections[section] = [];
     sections[section].push(p);
   });
-
   let html = '';
   Object.entries(sections).forEach(([section, items]) => {
     if (section !== 'root') {
@@ -82,22 +75,17 @@ function renderNav(pages) {
 }
 
 function loadPage(path) {
-  // Update active state
   document.querySelectorAll('.wiki-nav-item').forEach(el => el.classList.remove('active'));
   const navItem = document.getElementById('nav-' + path.replace(/[/.]/g, '-'));
   if (navItem) navItem.classList.add('active');
-
   document.getElementById('wiki-main').innerHTML = '<div style="color:var(--text-secondary);padding:2rem;">Loading...</div>';
-
   fetch('/api/wiki/' + path)
     .then(r => r.json())
     .then(data => {
-      document.getElementById('wiki-main').innerHTML =
-        `<div class="wiki-content">${data.html}</div>`;
+      document.getElementById('wiki-main').innerHTML = `<div class="wiki-content">${data.html}</div>`;
     })
     .catch(e => {
-      document.getElementById('wiki-main').innerHTML =
-        `<div class="alert-error">Failed to load page: ${e.message}</div>`;
+      document.getElementById('wiki-main').innerHTML = `<div class="alert-error">Failed to load page: ${e.message}</div>`;
     });
 }
 
@@ -108,5 +96,4 @@ function searchWiki(query) {
   renderNav(filtered);
 }
 </script>
-</body>
-</html>
+{% endblock %}
