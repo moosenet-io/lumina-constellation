@@ -127,6 +127,75 @@ Each subdirectory has its own README with module-specific docs.
 
 ---
 
+
+---
+
+### Project structure
+
+```
+lumina-constellation/
+├── agents/          # Agent personalities (Lumina, Lumière)
+├── deploy/          # Docker Compose, Dockerfiles, install script
+├── docs/            # Architecture, modules, hardware guide
+├── engram/          # Memory store (sqlite-vec, Zettelkasten)
+├── fleet/           # Agent services (14 modules)
+│   ├── axon/        # Work queue executor
+│   ├── cortex/      # Code intelligence
+│   ├── dura/        # Backup + secret rotation
+│   ├── meridian/    # Paper trading sandbox
+│   ├── myelin/      # Cost governance
+│   ├── nexus/       # Inbox
+│   ├── obsidian_circle/  # Multi-model council
+│   ├── security/    # PII gate, key generation
+│   ├── seer/        # Web research
+│   ├── sentinel/    # Infrastructure monitoring
+│   ├── soma/        # Dashboard (14+ pages)
+│   ├── synapse/     # Notification routing
+│   ├── vector/      # Dev loops + Calx
+│   └── vigil/       # Daily briefings
+├── plugins/         # Plugin loader
+├── skills/          # Agent skill definitions
+├── fleet/spectra/   # Browser automation (Playwright)
+├── specs/           # 30 specification documents
+├── terminus/        # MCP tool hub (38 modules, 272+ tools)
+└── tests/           # Test suites
+```
+
+### Specification library
+
+Every module was designed before it was built. The [specs/](specs/) directory contains the full design bible — 30 documents written in Claude.ai before a single line of code was executed.
+
+| Range | Documents | What they cover |
+|-------|-----------|----------------|
+| 1–5 | Nexus, Seer, Vector, Productivity sprint, Lifestyle modules | Core agent primitives |
+| 6–10 | Dashboard, Meridian, Multi-claw, Identity, Routines | UX + household layer |
+| 11–17 | Cortex, Obsidian Circle, Myelin, Dura, Soma, Design system | Intelligence + governance |
+| 18–24 | Inference de-bloat, NPC features, Docker, Semi-formal reasoning | Architecture amendments |
+| 25–30 | Session build specs (T1–T17) | Sprint-specific execution plans |
+
+### Development
+
+Built by directing AI — no IDE expertise required.
+
+| Tool | Role |
+|------|------|
+| **Claude.ai** | Architecture, planning, specification writing |
+| **Claude Code** | Autonomous implementation (17 build sessions, up to 18 hours each) |
+| **Plane CE** | 850+ work items tracked across 23 projects |
+| **Gitea** | Source of truth. PR-based governance. |
+| **Infisical** | Runtime secret management |
+
+### Contributing
+
+1. Read the relevant spec in [specs/](specs/)
+2. Check the Plane backlog for open items
+3. Follow the patterns in `CLAUDE.md` (the build instructions Claude Code follows)
+4. Submit a PR — the same process the AI uses
+
+### License
+
+MIT. See [LICENSE](LICENSE) for details.
+
 <p align="center">
   <a href="docs/architecture.md">Architecture</a> ·
   <a href="docs/modules.md">All modules</a> ·
