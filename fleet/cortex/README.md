@@ -1,38 +1,33 @@
 # ✦ Cortex
 
-> "Your code has opinions about itself. Cortex reads them."
+> Your code has opinions about itself. Cortex reads them.
 
-**Cortex** is Lumina's code intelligence module — it analyzes repository structure, quality metrics, and dependency graphs so Vector and the Obsidian Circle can reason about code without reading every file.
+**Cortex** is the code intelligence module that provides deep architectural analysis of the Lumina codebase.
 
 ## What it does
 
-- **Repository structure analysis**: module map, file counts, dependency graph
-- **Code quality metrics**: complexity, test coverage, lint status, blast radius estimation
-- **Audit reports**: generates HTML reports with constellation.css styling
-- **Integrates with Vector**: provides code context for autonomous dev loops
-- **Integrates with Circle**: council members can query code structure before deliberating
+- Builds and maintains a dependency graph of all constellation modules.
+- Analyzes repository structure to identify risks and technical debt.
+- Detects architectural "communities" and module clusters.
+- Provides risk scores for proposed changes during dev loops.
+- Feeds codebase metadata to agents for better context during coding tasks.
 
 ## Key files
 
 | File | Purpose |
 |------|---------|
-| `cortex.py` | Main analysis engine — repo scanning, metrics, HTML report generation |
+| `cortex.py` | Main entry point for repository analysis |
+| `README.md` | This documentation |
 
 ## Talks to
 
-- **Vector** — provides repository context for development loops
-- **Obsidian Circle** — answers code structure queries during deliberation
-- **Terminus** (`cortex_tools.py`) — MCP tools expose Cortex via IronClaw
+- **[Vector](../vector/)** — Provides risk signals and dependency context for PRs.
+- **[Engram](../engram/)** — Stores architectural patterns and graph metadata.
+- **[Terminus](../../terminus/)** — Uses Gitea tools to fetch repository history.
 
 ## Configuration
 
-```bash
-FLEET_DIR=/opt/lumina-fleet
-GITEA_URL=http://your-gitea-host:3000
-GITEA_TOKEN=...
-```
-
-Reports output to `cortex/output/` as HTML files with the constellation design system.
+Requires path to the local repository. Uses `code_review_graph` for incremental updates.
 
 ---
 
