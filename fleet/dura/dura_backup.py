@@ -2,7 +2,7 @@
 """
 Dura — Lumina Nexus Backup System (Phase 1)
 Runs on fleet-host. Hourly critical backups, daily full backups.
-NFS target: PVS host /mnt/nfs/lumina-backup/ (via rsync)
+NFS target: infrastructure host /mnt/nfs/lumina-backup/ (via rsync)
 Local fallback: /opt/lumina-fleet/dura/backups/
 
 Usage:
@@ -23,15 +23,14 @@ from pathlib import Path
 # ── Config ────────────────────────────────────────────────────────────────────
 ENV_FILE = "/opt/lumina-fleet/axon/.env"
 LOCAL_BACKUP_ROOT = "/opt/lumina-fleet/dura/backups"
-NFS_RSYNC_TARGET = "root@YOUR_PVS_HOST_IP:/mnt/nfs/lumina-backup"
+NFS_RSYNC_TARGET = os.environ.get("DURA_RSYNC_TARGET", "")
 LOG_FILE = "/opt/lumina-fleet/dura/logs/dura_backup.log"
 STATUS_FILE = "/opt/lumina-fleet/dura/output/backup_status.json"
 
-# CT IDs for pct exec backups
-CT_POSTGRES = 300    # lumina_inbox lives here
-CT_PLANE_DB = 315    # Plane CE — uses Docker container
-
-PVS_HOST = "root@YOUR_PVS_HOST_IP"
+REMOTE_SSH_HOST = os.environ.get("REMOTE_SSH_HOST", "")
+REMOTE_EXEC_TEMPLATE = os.environ.get("REMOTE_EXEC_TEMPLATE", "")
+POSTGRES_REMOTE_TARGET = os.environ.get("POSTGRES_REMOTE_TARGET", "")
+PLANE_REMOTE_TARGET = os.environ.get("PLANE_REMOTE_TARGET", "")
 
 # SQLite databases on fleet-host
 SQLITE_DBS = {
@@ -48,9 +47,9 @@ SQLITE_DBS_EXTRA = {
 
 # Postgres databases on postgres-host
 POSTGRES_DBS = [
-    {"name": "lumina_inbox", "ct_id": 300, "user": "lumina_inbox_user", "pass_env": "INBOX_DB_PASS"},
-    {"name": "ironclaw",     "ct_id": 300, "user": "ironclaw",          "pass_env": ""},
-    {"name": "litellm",      "ct_id": 300, "user": "litellm_user",      "pass_env": ""},
+    {"name": "lumina_inbox", "target_env": "POSTGRES_REMOTE_TARGET", "user": "lumina_inbox_user", "pass_env": "INBOX_DB_PASS"},
+    {"name": "ironclaw",     "target_env": "POSTGRES_REMOTE_TARGET", "user": "ironclaw",          "pass_env": ""},
+    {"name": "litellm",      "target_env": "POSTGRES_REMOTE_TARGET", "user": "litellm_user",      "pass_env": ""},
 ]
 
 # ── Logging ───────────────────────────────────────────────────────────────────
@@ -95,33 +94,29 @@ def get_backup_dir(subdir="") -> str:
 
 
 def nfs_available() -> bool:
-    """Check if NFS is reachable from fleet-host via SSH to PVS host."""
+    """Check if the configured remote backup target is reachable."""
+    if not NFS_RSYNC_TARGET:
+        return False
     try:
         result = subprocess.run(
-            ["ssh", "-o", "ConnectTimeout=3", "-o", "BatchMode=yes",
-             PVS_HOST, "test -d /mnt/nfs/lumina-backup && echo ok"],
+            ["rsync", "--dry-run", NFS_RSYNC_TARGET + "/", "/tmp/dura-rsync-check/"],
             capture_output=True, text=True, timeout=8
         )
-        return result.returncode == 0 and "ok" in result.stdout
+        return result.returncode == 0
     except Exception:
         return False
 
 
 def rsync_to_nfs(local_dir: str) -> bool:
-    """Rsync local backup dir to NFS via PVS host."""
+    """Rsync local backup dir to the configured remote target."""
+    if not NFS_RSYNC_TARGET:
+        return False
     try:
-        cmd = [
-            "ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes",
-            PVS_HOST,
-            f"rsync -a --delete /mnt/nfs/lumina-backup/ /mnt/nfs/lumina-backup/ 2>/dev/null; "
-            f"echo rsync_placeholder"
-        ]
-        # Actual rsync: push from fleet-host to PVS host path
         result = subprocess.run(
             ["rsync", "-rltz", "--delete",
              "--no-perms", "--no-owner", "--no-group",
              local_dir + "/",
-             f"{PVS_HOST}:/mnt/nfs/lumina-backup/"],
+             NFS_RSYNC_TARGET + "/"],
             capture_output=True, text=True, timeout=120
         )
         if result.returncode == 0:
@@ -176,13 +171,22 @@ def backup_sqlite(db_path: str, output_dir: str, name: str) -> dict:
 
 
 # ── Postgres backup ───────────────────────────────────────────────────────────
-def backup_postgres(db_name: str, ct_id: int, db_user: str, output_dir: str, db_pass: str = "") -> dict:
+def _remote_exec(target: str, command: str) -> str:
+    if not REMOTE_EXEC_TEMPLATE:
+        return ""
+    return REMOTE_EXEC_TEMPLATE.format(target=target, command=command)
+
+
+def backup_postgres(db_name: str, remote_target: str, db_user: str, output_dir: str, db_pass: str = "") -> dict:
     """
-    Dump Postgres DB from a container via SSH → pct exec → pg_dump.
+    Dump Postgres DB from a configured remote target via SSH.
     Uses TCP (-h 127.0.0.1) with PGPASSWORD to bypass peer auth.
     Streams through gzip into a local file.
     """
-    result = {"name": db_name, "ct_id": ct_id, "status": "error"}
+    result = {"name": db_name, "status": "error"}
+    if not (REMOTE_SSH_HOST and remote_target):
+        result["error"] = "remote access not configured"
+        return result
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     tmp_file = f"/tmp/pgdump_{db_name}_{ts}.sql.gz"
     dest_file = os.path.join(output_dir, f"{db_name}_{ts}.sql.gz")
@@ -193,10 +197,14 @@ def backup_postgres(db_name: str, ct_id: int, db_user: str, output_dir: str, db_
     else:
         # Fallback: try as postgres superuser via peer (local socket)
         pg_cmd = f"su -c 'pg_dump {db_name}' postgres"
-    ssh_cmd = f'ssh -o BatchMode=yes -o ConnectTimeout=10 {PVS_HOST} "pct exec {ct_id} -- bash -c \\"{pg_cmd}\\""'
+    remote_cmd = _remote_exec(remote_target, f'bash -c "{pg_cmd}"')
+    if not remote_cmd:
+        result["error"] = "REMOTE_EXEC_TEMPLATE not configured"
+        return result
+    ssh_cmd = f'ssh -o BatchMode=yes -o ConnectTimeout=10 {REMOTE_SSH_HOST} {json.dumps(remote_cmd)}'
     full_cmd = f'{ssh_cmd} | gzip > {tmp_file}'
 
-    log.info(f"Postgres backup: {db_name} from CT{ct_id} as {db_user}")
+    log.info(f"Postgres backup: {db_name} from configured target as {db_user}")
     try:
         proc = subprocess.run(
             full_cmd, shell=True, capture_output=True, text=True, timeout=300
@@ -227,17 +235,24 @@ def backup_postgres(db_name: str, ct_id: int, db_user: str, output_dir: str, db_
 
 def backup_plane_postgres(output_dir: str) -> dict:
     """
-    Backup Plane's Postgres from the Docker container on plane-host.
+    Backup Plane's Postgres from its configured remote target.
     docker exec plane-app-plane-db-1 pg_dump ...
     """
-    result = {"name": "plane_db", "ct_id": 315, "status": "error"}
+    result = {"name": "plane_db", "status": "error"}
+    if not (REMOTE_SSH_HOST and PLANE_REMOTE_TARGET):
+        result["error"] = "remote access not configured"
+        return result
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     tmp_file = f"/tmp/pgdump_plane_{ts}.sql.gz"
     dest_file = os.path.join(output_dir, f"plane_db_{ts}.sql.gz")
 
     # Plane Postgres password is 'plane' (from Docker env POSTGRES_PASSWORD)
     pg_cmd = "docker exec -e PGPASSWORD=plane plane-app-plane-db-1 pg_dump -U plane plane"
-    ssh_cmd = f'ssh -o BatchMode=yes -o ConnectTimeout=10 {PVS_HOST} "pct exec 315 -- {pg_cmd}"'
+    remote_cmd = _remote_exec(PLANE_REMOTE_TARGET, pg_cmd)
+    if not remote_cmd:
+        result["error"] = "REMOTE_EXEC_TEMPLATE not configured"
+        return result
+    ssh_cmd = f'ssh -o BatchMode=yes -o ConnectTimeout=10 {REMOTE_SSH_HOST} {json.dumps(remote_cmd)}'
     full_cmd = f'{ssh_cmd} | gzip > {tmp_file}'
 
     log.info("Postgres backup: plane_db from plane-host via Docker")
@@ -433,10 +448,11 @@ def run_daily():
         r = backup_sqlite(path, daily_dir, name)
         results.append(r)
 
-    # Postgres on postgres-host
+    # Postgres on configured remote database target
     for db in POSTGRES_DBS:
         db_pass = os.environ.get(db.get("pass_env", ""), "") if db.get("pass_env") else ""
-        r = backup_postgres(db["name"], db["ct_id"], db["user"], daily_dir, db_pass=db_pass)
+        remote_target = os.environ.get(db["target_env"], "")
+        r = backup_postgres(db["name"], remote_target, db["user"], daily_dir, db_pass=db_pass)
         results.append(r)
 
     # Plane Postgres (Docker on plane-host)

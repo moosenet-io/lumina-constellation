@@ -13,7 +13,7 @@
               format: number
     - System Health:
         icon: mdi-heart-pulse
-        description: "MooseNet cluster status"
+        description: "MooseNet service status"
         href: http://YOUR_FLEET_SERVER_IP/status/
         widget:
           type: customapi

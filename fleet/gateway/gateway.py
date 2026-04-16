@@ -115,7 +115,7 @@ def get_health(x_api_key: str = Header(default='')):
             ('Plane', 'http://YOUR_PLANE_IP/'),
             ('Gitea', 'http://YOUR_GITEA_IP:3000/api/v1/version'),
             ('Matrix', 'http://YOUR_MATRIX_IP:6167/_matrix/client/versions'),
-            ('VM901 Ollama', 'http://YOUR_GPU_HOST_IP:11434/api/version'),
+            ('local Ollama', 'http://YOUR_GPU_HOST_IP:11434/api/version'),
             ('SearXNG', 'http://YOUR_SEARXNG_IP:8088/search?q=test&format=json'),
         ]
         for name, url in checks:

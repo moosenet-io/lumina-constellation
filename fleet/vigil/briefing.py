@@ -60,8 +60,8 @@ PLANE_URL = "http://YOUR_PLANE_IP"
 PLANE_LM_PROJECT_ID = "4ef3f3ec-e7ef-4af3-b258-881565e629f9"
 
 # Service endpoints
-JELLYSEERR_URL = "http://YOUR_PVM_HOST_IP:5055"
-PORTAINER_URL = "http://YOUR_PVM_HOST_IP:9000"
+JELLYSEERR_URL = "http://YOUR_SERVICE_HOST:5055"
+PORTAINER_URL = "http://YOUR_SERVICE_HOST:9000"
 PROMETHEUS_URL = "http://YOUR_PROMETHEUS_IP:9090"
 
 # Dashboard
@@ -295,9 +295,9 @@ def gather_plex_health(portainer_token):
         return {"error": "No Portainer token"}
     import socket
     checks = {}
-    for name, host, port in [("plex", "YOUR_PVM_HOST_IP", 32400),
-                              ("jellyseerr", "YOUR_PVM_HOST_IP", 5055),
-                              ("tautulli", "YOUR_PVM_HOST_IP", 8181)]:
+    for name, host, port in [("plex", "YOUR_SERVICE_HOST", 32400),
+                              ("jellyseerr", "YOUR_SERVICE_HOST", 5055),
+                              ("tautulli", "YOUR_SERVICE_HOST", 8181)]:
         try:
             sock = socket.create_connection((host, port), timeout=5)
             sock.close()
@@ -432,9 +432,9 @@ def gather_calendar():
         events = []
         seen_uids = set()
         # All calendar IDs to query
-        peter_email = os.environ.get('GOOGLE_PETER_EMAIL', '<operator-personal-email>')
+        secondary_email = os.environ.get('GOOGLE_SECONDARY_EMAIL', '<operator-personal-email>')
         lumina_cal_id = os.environ.get('GOOGLE_LUMINA_CALENDAR_ID', '')
-        cal_ids = [email, peter_email]
+        cal_ids = [email, secondary_email]
         if lumina_cal_id:
             cal_ids.append(lumina_cal_id)
         queried = set()

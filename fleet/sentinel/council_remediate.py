@@ -112,8 +112,8 @@ Alert message: {alert_message}{health_ctx}
 
 System context:
 - This is a home automation Lumina Constellation system
-- Services run in LXC containers on Proxmox
-- Peter (non-technical) is the operator — he cannot SSH or run commands
+- Services run in isolated service containers on virtualization
+- the operator (non-technical) is the operator — he cannot SSH or run commands
 - Auto-remediation should only be used for clearly safe, reversible actions
 - Examples of safe auto-remediations: service restart, clearing a queue, temp file cleanup
 - Examples of UNSAFE auto-remediations: database operations, credential changes, network changes

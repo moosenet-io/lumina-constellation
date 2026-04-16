@@ -63,10 +63,10 @@ def register_honcho_tools(mcp):
         }
 
     @mcp.tool()
-    def honcho_search(query: str, user_id: str = 'peter', limit: int = 5) -> dict:
+    def honcho_search(query: str, user_id: str = 'operator', limit: int = 5) -> dict:
         """Semantic search across all sessions using Honcho's vector store.
         query: natural language query about the user or their history.
-        user_id: which user to search (default: peter).
+        user_id: which user to search (default: operator).
         limit: max results.
         Uses cross-session recall — finds relevant facts from any past conversation."""
         r = _honcho_request(
@@ -85,9 +85,9 @@ def register_honcho_tools(mcp):
         }
 
     @mcp.tool()
-    def honcho_profile(user_id: str = 'peter') -> dict:
+    def honcho_profile(user_id: str = 'operator') -> dict:
         """Get Honcho's derived user model/profile for a user.
-        user_id: which user (default: peter).
+        user_id: which user (default: operator).
         Returns conclusions the deriver has drawn from conversation patterns.
         This is different from Engram — Honcho reasons about behavioral patterns, not just facts."""
         r = _honcho_request(f'/v1/apps/{HONCHO_APP}/users/{user_id}')

@@ -48,6 +48,6 @@ channels:
   - type: http
     port: 3001
 
-container: CT316
+container: household-agent-host
 runtime: ironclaw
 auto_start: true

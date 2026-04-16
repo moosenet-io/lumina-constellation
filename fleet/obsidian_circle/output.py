@@ -6,7 +6,7 @@ Evaluates confidence thresholds to determine the recommended action.
 
 Confidence thresholds:
   >= 0.8  → auto_act           (council confident, proceed automatically)
-  0.5-0.8 → ask_operator       (uncertain, surface recommendation + ask Peter)
+  0.5-0.8 → ask_operator       (uncertain, surface recommendation + ask the operator)
   < 0.5   → surface_deliberation (low confidence, show full deliberation log)
 """
 
@@ -159,7 +159,7 @@ def action_label(action: str) -> str:
 
 def format_for_operator(result: dict) -> str:
     """
-    Format a council result as a plain-English message for Peter.
+    Format a council result as a plain-English message for the operator.
     Used in Matrix notifications and Soma alerts.
     """
     action = result.get('action', 'ask_operator')

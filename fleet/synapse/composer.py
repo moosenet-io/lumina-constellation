@@ -86,7 +86,7 @@ class SynapseComposer:
     def __init__(self, config: dict):
         self.config = config
         self.dry_run = config.get("dry_run", False)
-        self.operator_name = config.get("operator_name", "Peter")
+        self.operator_name = config.get("operator_name", "the operator")
 
     def compose_and_send(self, candidate: dict) -> str:
         """Compose a message for the candidate and send it. Returns the message."""

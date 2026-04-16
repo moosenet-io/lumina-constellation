@@ -177,7 +177,7 @@ if ! $DRY_RUN; then
         OLLAMA_HOST="http://host.docker.internal:11434"
     else
         HOST_IP=$(ip route show default 2>/dev/null | grep default | awk '{print $3}' | head -1)
-        OLLAMA_HOST="http://${HOST_IP:-172.17.0.1}:11434"
+        OLLAMA_HOST="http://${HOST_IP:-YOUR_PRIVATE_HOST_IP}:11434"
     fi
     sed -i.bak "s|OLLAMA_HOST=.*|OLLAMA_HOST=${OLLAMA_HOST}|" "$ENV_FILE" 2>/dev/null || \
     python3 -c "

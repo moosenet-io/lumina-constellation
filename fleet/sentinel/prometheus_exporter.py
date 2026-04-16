@@ -58,9 +58,9 @@ def generate_metrics() -> str:
         'litellm': ('litellm', 'litellm-host'),
         'postgres': ('postgres', 'postgres-host'),
         'matrix': ('matrix', 'matrix-host'),
-        'docker': ('docker_ct310', 'fleet-host'),
+        'docker': ('docker_fleet_host', 'fleet-host'),
         'plane': ('plane', 'plane-host'),
-        'ollama_gpu': ('ollama_gpu', 'VM901'),
+        'ollama_gpu': ('ollama_gpu', 'local GPU host'),
         'ollama_cpu': ('ollama_cpu', 'ollama-cpu-host'),
         'soma': ('soma', 'fleet-host'),
         'gitea': ('gitea', 'gitea-host'),
@@ -104,11 +104,11 @@ def generate_metrics() -> str:
     lines.extend(_metric_line('lumina_litellm_response_ms', {},
                               litellm_ms, 'LiteLLM /health response latency in ms'))
 
-    # VM901 GPU status
+    # local GPU status
     gpu_check = checks.get('ollama_gpu', {})
     gpu_up = 1 if gpu_check.get('status') == 'ok' else 0
     lines.extend(_metric_line('lumina_ollama_gpu_up', {},
-                              gpu_up, 'VM901 Ollama GPU availability (1=up, 0=down)'))
+                              gpu_up, 'local Ollama GPU availability (1=up, 0=down)'))
 
     # Overall status
     overall_map = {'ok': 0, 'warn': 1, 'critical': 2}

@@ -98,6 +98,13 @@ def _auth(x_soma_key: str = ""):
     if SOMA_KEY and x_soma_key != SOMA_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+def _remote_exec(target: str, command: str) -> str:
+    """Build a provider-neutral remote execution command from environment."""
+    template = os.environ.get("REMOTE_EXEC_TEMPLATE", "")
+    if not template:
+        return ""
+    return template.format(target=target, command=command)
+
 # ── Auth redirect middleware (SP.2) ──────────────────────────────────────────
 _PUBLIC_PATHS = {"/login", "/health", "/shared", "/static", "/setup", "/wizard", "/api/auth/setup"}
 
@@ -301,8 +308,11 @@ def recent_logs(service: str = "soma", lines: int = 100, x_soma_key: str = Heade
     _auth(x_soma_key)
     lines = min(max(1, lines), 500)  # clamp 1–500
 
-    _PVS_HOST = os.environ.get("PVS_SSH_HOST", os.environ.get("PVS_SSH_HOST", ""))
-    _PVM_HOST = os.environ.get("PVM_SSH_HOST", os.environ.get("PVM_SSH_HOST", ""))
+    _REMOTE_SSH_HOST = os.environ.get("REMOTE_SSH_HOST", "")
+    _TOOLING_SSH_HOST = os.environ.get("TOOLING_SSH_HOST", _REMOTE_SSH_HOST)
+    _IRONCLAW_TARGET = os.environ.get("IRONCLAW_REMOTE_TARGET", "")
+    _TERMINUS_TARGET = os.environ.get("TERMINUS_REMOTE_TARGET", "")
+    _LITELLM_TARGET = os.environ.get("LITELLM_REMOTE_TARGET", "")
 
     # Local services (Soma runs on fleet host)
     LOCAL_SERVICES = {"soma", "axon", "vigil", "sentinel-health", "sentinel-metrics",
@@ -316,29 +326,35 @@ def recent_logs(service: str = "soma", lines: int = 100, x_soma_key: str = Heade
             )
             log_lines = r.stdout.splitlines()
         elif service == "ironclaw":
+            if not (_REMOTE_SSH_HOST and _IRONCLAW_TARGET):
+                return {"ok": False, "service": service, "lines": [], "error": "remote access not configured"}
+            remote_cmd = _remote_exec(_IRONCLAW_TARGET, f"journalctl -u ironclaw -n {lines} --no-pager --output=short-iso 2>/dev/null")
+            if not remote_cmd:
+                return {"ok": False, "service": service, "lines": [], "error": "REMOTE_EXEC_TEMPLATE not configured"}
             r = subprocess.run(
-                [_PVS_HOST.replace("root@", "ssh root@").split()[0],
-                 f"pct exec 305 -- journalctl -u ironclaw -n {lines} --no-pager --output=short-iso 2>/dev/null"],
-                capture_output=True, text=True, timeout=12
-            )
-            # Simpler: use ssh directly
-            r = subprocess.run(
-                ["ssh", _PVS_HOST,
-                 f"pct exec 305 -- journalctl -u ironclaw -n {lines} --no-pager --output=short-iso 2>/dev/null"],
+                ["ssh", _REMOTE_SSH_HOST, remote_cmd],
                 capture_output=True, text=True, timeout=12
             )
             log_lines = r.stdout.splitlines()
         elif service == "ai-mcp":
+            if not (_TOOLING_SSH_HOST and _TERMINUS_TARGET):
+                return {"ok": False, "service": service, "lines": [], "error": "tooling remote access not configured"}
+            remote_cmd = _remote_exec(_TERMINUS_TARGET, f"journalctl -u ai-mcp -n {lines} --no-pager --output=short-iso 2>/dev/null")
+            if not remote_cmd:
+                return {"ok": False, "service": service, "lines": [], "error": "REMOTE_EXEC_TEMPLATE not configured"}
             r = subprocess.run(
-                ["ssh", _PVM_HOST,
-                 f"pct exec 214 -- journalctl -u ai-mcp -n {lines} --no-pager --output=short-iso 2>/dev/null"],
+                ["ssh", _TOOLING_SSH_HOST, remote_cmd],
                 capture_output=True, text=True, timeout=12
             )
             log_lines = r.stdout.splitlines()
         elif service == "litellm":
+            if not (_TOOLING_SSH_HOST and _LITELLM_TARGET):
+                return {"ok": False, "service": service, "lines": [], "error": "tooling remote access not configured"}
+            remote_cmd = _remote_exec(_LITELLM_TARGET, f"journalctl -u litellm -n {lines} --no-pager --output=short-iso 2>/dev/null")
+            if not remote_cmd:
+                return {"ok": False, "service": service, "lines": [], "error": "REMOTE_EXEC_TEMPLATE not configured"}
             r = subprocess.run(
-                ["ssh", _PVM_HOST,
-                 f"pct exec 215 -- journalctl -u litellm -n {lines} --no-pager --output=short-iso 2>/dev/null"],
+                ["ssh", _TOOLING_SSH_HOST, remote_cmd],
                 capture_output=True, text=True, timeout=12
             )
             log_lines = r.stdout.splitlines()
@@ -881,9 +897,13 @@ def _run_check(fn, timeout=3):
 
 
 def _check_ironclaw():
+    remote_host = os.environ.get("REMOTE_SSH_HOST", "")
+    ironclaw_target = os.environ.get("IRONCLAW_REMOTE_TARGET", "")
+    remote_cmd = _remote_exec(ironclaw_target, "/usr/local/bin/ironclaw --version 2>&1")
+    if not (remote_host and ironclaw_target and remote_cmd):
+        return {"value": None, "ok": False, "error": "remote access not configured"}
     r = subprocess.run(
-        ["ssh", os.environ.get("PVS_SSH_HOST", ""),
-         "pct exec 305 -- /usr/local/bin/ironclaw --version 2>&1"],
+        ["ssh", remote_host, remote_cmd],
         capture_output=True, text=True, timeout=6
     )
     ver = r.stdout.strip() or r.stderr.strip()
@@ -891,19 +911,28 @@ def _check_ironclaw():
 
 
 def _check_active_agents():
+    remote_host = os.environ.get("REMOTE_SSH_HOST", "")
+    fleet_target = os.environ.get("FLEET_REMOTE_TARGET", "")
+    if not (remote_host and fleet_target):
+        return {"value": {}, "ok": False, "error": "remote access not configured", "active_count": 0}
     agents = {}
+    axon_cmd = _remote_exec(fleet_target, "systemctl is-active axon.service 2>/dev/null")
+    sentinel_cmd = _remote_exec(fleet_target, "systemctl is-active sentinel-health.timer 2>/dev/null")
+    vigil_cmd = _remote_exec(fleet_target, "pgrep -f briefing.py 2>/dev/null")
+    if not (axon_cmd and sentinel_cmd and vigil_cmd):
+        return {"value": {}, "ok": False, "error": "REMOTE_EXEC_TEMPLATE not configured", "active_count": 0}
     r = subprocess.run(
-        ["ssh", os.environ.get("PVS_SSH_HOST", ""), "pct exec 310 -- systemctl is-active axon.service 2>/dev/null"],
+        ["ssh", remote_host, axon_cmd],
         capture_output=True, text=True, timeout=6
     )
     agents["axon"] = r.stdout.strip() == "active"
     r2 = subprocess.run(
-        ["ssh", os.environ.get("PVS_SSH_HOST", ""), "pct exec 310 -- systemctl is-active sentinel-health.timer 2>/dev/null"],
+        ["ssh", remote_host, sentinel_cmd],
         capture_output=True, text=True, timeout=6
     )
     agents["sentinel"] = r2.stdout.strip() == "active"
     r3 = subprocess.run(
-        ["ssh", os.environ.get("PVS_SSH_HOST", ""), "pct exec 310 -- pgrep -f briefing.py 2>/dev/null"],
+        ["ssh", remote_host, vigil_cmd],
         capture_output=True, text=True, timeout=6
     )
     agents["vigil"] = bool(r3.stdout.strip())
@@ -985,9 +1014,13 @@ def _check_litellm_models():
 
 
 def _check_matrix_bridge():
+    remote_host = os.environ.get("REMOTE_SSH_HOST", "")
+    matrix_target = os.environ.get("MATRIX_REMOTE_TARGET", "")
+    remote_cmd = _remote_exec(matrix_target, "systemctl is-active matrix-bridge.service 2>/dev/null")
+    if not (remote_host and matrix_target and remote_cmd):
+        return {"value": None, "ok": False, "error": "remote access not configured"}
     r = subprocess.run(
-        ["ssh", os.environ.get("PVS_SSH_HOST", ""),
-         "pct exec 306 -- systemctl is-active matrix-bridge.service 2>/dev/null"],
+        ["ssh", remote_host, remote_cmd],
         capture_output=True, text=True, timeout=6
     )
     active = r.stdout.strip() == "active"
@@ -996,14 +1029,20 @@ def _check_matrix_bridge():
 
 def _check_refractor_categories():
     """Count Refractor keyword categories from llm-proxy.py on the IronClaw host."""
-    pvs_host = os.environ.get("PVS_HOST", "")
+    remote_host = os.environ.get("REMOTE_SSH_HOST", "")
+    ironclaw_target = os.environ.get("IRONCLAW_REMOTE_TARGET", "")
+    remote_cmd = _remote_exec(
+        ironclaw_target,
+        "python3 -c \""
+        "import re; "
+        "src=open('/usr/local/bin/llm-proxy.py').read(); "
+        "cats=re.findall(r'\\\"([a-z_]+)\\\"\\s*:\\s*[\\[\\{]', src); "
+        "print(len(set(c for c in cats if len(c)>2)))\" 2>/dev/null",
+    )
+    if not (remote_host and ironclaw_target and remote_cmd):
+        return {"value": None, "ok": False, "error": "remote access not configured"}
     r = subprocess.run(
-        ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", pvs_host,
-         "pct exec 305 -- python3 -c \""
-         "import re; "
-         "src=open('/usr/local/bin/llm-proxy.py').read(); "
-         "cats=re.findall(r'\\\"([a-z_]+)\\\"\\s*:\\s*[\\[\\{]', src); "
-         "print(len(set(c for c in cats if len(c)>2)))\" 2>/dev/null"],
+        ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", remote_host, remote_cmd],
         capture_output=True, text=True, timeout=10
     )
     count_str = r.stdout.strip()
@@ -1244,7 +1283,7 @@ def list_sessions(page: int = 1, limit: int = 20, x_soma_key: str = Header(defau
     except Exception as e:
         return {"ok": False, "sessions": [], "total": 0,
                 "error": str(e)[:150],
-                "note": "Check PVS_SSH_HOST and IRONCLAW_CT env vars"}
+                "note": "Check remote access environment variables"}
 
 
 
@@ -1543,8 +1582,10 @@ def list_plugins(x_soma_key: str = Header(default="")):
     """List plugins from MCP hub /opt/ai-mcp/plugins/ via single batched SSH call."""
     _auth(x_soma_key)
     # First try main tools dir (not plugins subdir — tools live in /opt/ai-mcp/ directly)
-    _PVM_HOST = os.environ.get("PVM_SSH_HOST", os.environ.get("PVM_SSH_HOST", ""))
-    _TERMINUS_CT = os.environ.get("TERMINUS_CT", "214")
+    _TOOLING_SSH_HOST = os.environ.get("TOOLING_SSH_HOST", os.environ.get("REMOTE_SSH_HOST", ""))
+    _TERMINUS_TARGET = os.environ.get("TERMINUS_REMOTE_TARGET", "")
+    if not (_TOOLING_SSH_HOST and _TERMINUS_TARGET):
+        return {"ok": False, "count": 0, "plugins": [], "error": "tooling remote access not configured"}
     try:
         # Single batched command: list files + tool counts + server.py registrations
         batch_cmd = (
@@ -1565,9 +1606,11 @@ def list_plugins(x_soma_key: str = Header(default="")):
             "print(json.dumps(plugins))"
             "\" 2>/dev/null"
         )
+        remote_cmd = _remote_exec(_TERMINUS_TARGET, batch_cmd)
+        if not remote_cmd:
+            return {"ok": False, "count": 0, "plugins": [], "error": "REMOTE_EXEC_TEMPLATE not configured"}
         r = subprocess.run(
-            ["ssh", _PVM_HOST,
-             f"pct exec {_TERMINUS_CT} -- {batch_cmd}"],
+            ["ssh", _TOOLING_SSH_HOST, remote_cmd],
             capture_output=True, text=True, timeout=15
         )
         if r.returncode != 0 or not r.stdout.strip():
@@ -1590,7 +1633,7 @@ def list_plugins(x_soma_key: str = Header(default="")):
     except Exception as e:
         return {"ok": False, "count": 0, "plugins": [],
                 "error": str(e)[:200],
-                "hint": "Check PVM_SSH_HOST env var and SSH access to Terminus"}
+                "hint": "Check tooling remote access environment variables"}
 
 
 # ── Vector API endpoints (SP.V6) ──────────────────────────────────────────────

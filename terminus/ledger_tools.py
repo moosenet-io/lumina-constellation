@@ -9,13 +9,15 @@ from datetime import date, datetime
 # ============================================================
 
 LEDGER_HOST = 'root@YOUR_FLEET_SERVER_IP'
-ACTUAL_URL = os.environ.get('ACTUAL_API_URL', 'http://172.17.0.1:5007')
+ACTUAL_URL = os.environ.get('ACTUAL_API_URL', '')
 ACTUAL_KEY = os.environ.get('ACTUAL_HTTP_API_KEY', '')
 ACTUAL_BUDGET_ID = os.environ.get('ACTUAL_BUDGET_ID', '')
 
 
 def _actual(endpoint, method='GET', data=None, timeout=30):
     """Call actual-http-api on fleet-host via SSH. Returns parsed JSON."""
+    if not ACTUAL_URL:
+        return {'error': 'ACTUAL_API_URL not configured'}
     auth = f'-H "x-api-key: {ACTUAL_KEY}"' if ACTUAL_KEY else ''
     if ACTUAL_BUDGET_ID and not endpoint.startswith('/v1'):
         url = f'{ACTUAL_URL}/v1/budgets/{ACTUAL_BUDGET_ID}{endpoint}'

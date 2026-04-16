@@ -24,6 +24,6 @@
     - Portainer:
         - abbr: PO
           href: https://YOUR_PORTAINER_IP:9443
-    - Proxmox PVM:
+    - virtualization control host:
         - abbr: PV
-          href: https://YOUR_PVM_HOST_IP:8006
+          href: https://YOUR_SERVICE_HOST:8006

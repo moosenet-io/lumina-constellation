@@ -14,7 +14,7 @@ This guide covers migrating from the legacy ARCADE dev loop to Vector (the Lumin
 | Messaging | Stdout / Matrix | Stdout (standalone) or Nexus (integrated) |
 | Memory | Reflexa hooks | Engram MemoryStore |
 | MCP tools | `arcade_*` functions | `vector_*` functions |
-| GitHub repo | `LeMajesticMoose/arcade` | `moosenet-io/vector` |
+| GitHub repo | `moosenet-io/arcade` | `moosenet-io/vector` |
 
 ## Naming Updates
 
@@ -59,7 +59,7 @@ Axon automatically handles both formats via the action-merge fix.
 
 ## What Was Archived
 
-- `github.com/LeMajesticMoose/arcade` — archived (read-only, the operator action completed)
+- `github.com/moosenet-io/arcade` — archived (read-only, the operator action completed)
 - Old MCP tools named `arcade_*` — replaced by `vector_*` in `vector_tools.py`
 - Any `ARCADE` references in IronClaw LUMINA.md — replaced with `Vector`
 

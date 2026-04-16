@@ -57,10 +57,25 @@ def register_dura_tools(mcp):
     @mcp.tool()
     def dura_log_query(query: str = 'error', source: str = 'fleet-host', lines: int = 20) -> dict:
         """Search journald logs. source: ironclaw-host|fleet-host|postgres-host|terminus-host|litellm-host"""
-        ct = {'ironclaw-host':'305','fleet-host':'310','postgres-host':'300','terminus-host':'214','litellm-host':'215'}.get(source,'310')
-        cmd = f"ssh root@YOUR_PVS_HOST_IP 'pct exec {ct} -- journalctl -n 200 --no-pager 2>/dev/null | grep -i \"{query}\" | tail -{lines}'"
+        remote_host = os.environ.get('REMOTE_SSH_HOST', '')
+        template = os.environ.get('REMOTE_EXEC_TEMPLATE', '')
+        targets = {
+            'ironclaw-host': os.environ.get('IRONCLAW_REMOTE_TARGET', ''),
+            'fleet-host': os.environ.get('FLEET_REMOTE_TARGET', ''),
+            'postgres-host': os.environ.get('POSTGRES_REMOTE_TARGET', ''),
+            'terminus-host': os.environ.get('TERMINUS_REMOTE_TARGET', ''),
+            'litellm-host': os.environ.get('LITELLM_REMOTE_TARGET', ''),
+        }
+        target = targets.get(source, targets['fleet-host'])
+        if not (remote_host and target and template):
+            return {'error': 'remote access not configured'}
+        remote_cmd = template.format(
+            target=target,
+            command=f"journalctl -n 200 --no-pager 2>/dev/null | grep -i \"{query}\" | tail -{lines}",
+        )
+        cmd = ['ssh', remote_host, remote_cmd]
         try:
-            r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
             matches = [l for l in r.stdout.splitlines() if query.lower() in l.lower()]
             return {'source': source, 'query': query, 'match_count': len(matches), 'matches': matches[-lines:]}
         except Exception as e:

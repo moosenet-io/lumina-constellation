@@ -39,7 +39,7 @@ Lumina orchestrator (IronClaw, ironclaw-host)
 |------|-------------|-------------------|
 | **All-in-one** | Most people | One box, Docker Compose + native Ollama |
 | **Split inference** | Power users | GPU box + services box, same LAN |
-| **Distributed** | Homelab enthusiasts | Multi-node Proxmox/k8s cluster |
+| **Distributed** | Self-hosted operators | Multi-node virtualization/k8s cluster |
 
 All three modes use the same Docker Compose file. The only difference is whether `OLLAMA_HOST` points to localhost or a remote IP.
 

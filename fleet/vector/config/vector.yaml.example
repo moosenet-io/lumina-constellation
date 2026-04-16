@@ -28,23 +28,23 @@ standalone:
 
 # ── Integrated Mode ──────────────────────────────────────────────────────────
 # Full Lumina integration: work orders from Nexus, results to Plane, memory in Engram.
-# Requires Postgres lumina_inbox schema applied on CT300.
+# Requires Postgres lumina_inbox schema applied on postgres-host.
 # Requires INBOX_DB_USER and INBOX_DB_PASS set in environment.
 integrated:
   nexus:
-    db_host: YOUR_POSTGRES_IP     # CT300 IP (YOUR_POSTGRES_IP)
+    db_host: YOUR_POSTGRES_IP     # postgres-host IP (YOUR_POSTGRES_IP)
     db_name: lumina_inbox
     db_user_env: INBOX_DB_USER    # env var name (not the value)
     db_pass_env: INBOX_DB_PASS    # env var name (not the value)
     agent_id: vector              # how Vector identifies itself in inbox messages
     poll_interval: 30             # seconds between inbox checks
   plane:
-    api_url: http://YOUR_PLANE_IP  # CT315 IP (YOUR_PLANE_IP)
+    api_url: http://YOUR_PLANE_IP  # plane-host IP (YOUR_PLANE_IP)
     api_token_env: PLANE_TOKEN_LUMINA
     workspace: moosenet
     project_id: 507ff56c-772d-462e-a79c-2d93783968ff  # VEC project
   engram:
-    gitea_url: http://YOUR_GITEA_IP:3000  # CT223 IP (YOUR_GITEA_IP)
+    gitea_url: http://YOUR_GITEA_IP:3000  # gitea-host IP (YOUR_GITEA_IP)
     repo: moosenet/lumina-engram
     token_env: GITEA_TOKEN
     embed_url: http://YOUR_LITELLM_IP:4000/v1/embeddings

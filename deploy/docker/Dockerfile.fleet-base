@@ -1,7 +1,7 @@
 # Dockerfile.fleet-base — Lumina agent base image
 # INFRA-DOCKER-2
 #
-# Shared base for CT310 fleet services (soma, axon, vigil, sentinel, etc.)
+# Shared base for fleet-host fleet services (soma, axon, vigil, sentinel, etc.)
 # Build: docker build -f Dockerfile.fleet-base -t lumina-fleet-base:latest .
 # Push:  docker tag lumina-fleet-base:latest YOUR_REGISTRY/lumina-fleet-base:latest
 

@@ -5,16 +5,24 @@ All tools SSH to fleet-host and return results with SIMULATED label.
 """
 import subprocess
 import json
+import os
 
 # SAFETY BOUNDARY — NEVER CHANGE
 REAL_TRADING = False
 
 
-def _run_ct310(cmd: str, timeout: int = 60) -> str:
-    """Run a command on fleet-host via SSH to PVS then pct exec."""
-    full_cmd = f'ssh pvs "pct exec 310 -- bash -c \'set -a && source /opt/lumina-fleet/axon/.env && set +a && cd /opt/lumina-fleet/meridian && {cmd}\' 2>&1"'
+def _run_fleet(cmd: str, timeout: int = 60) -> str:
+    """Run a command on the configured fleet target via SSH."""
+    remote_host = os.environ.get("REMOTE_SSH_HOST", "")
+    fleet_target = os.environ.get("FLEET_REMOTE_TARGET", "")
+    template = os.environ.get("REMOTE_EXEC_TEMPLATE", "")
+    if not (remote_host and fleet_target and template):
+        return "ERROR: remote fleet access not configured"
+    command = f"bash -c 'set -a && source /opt/lumina-fleet/axon/.env && set +a && cd /opt/lumina-fleet/meridian && {cmd}' 2>&1"
+    remote_cmd = template.format(target=fleet_target, command=command)
+    full_cmd = ["ssh", remote_host, remote_cmd]
     try:
-        result = subprocess.run(full_cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+        result = subprocess.run(full_cmd, capture_output=True, text=True, timeout=timeout)
         output = result.stdout + result.stderr
         return output.strip() if output.strip() else '(no output)'
     except subprocess.TimeoutExpired:
@@ -34,7 +42,7 @@ def register_meridian_tools(mcp):
         This is a paper trading simulation — no real money involved.
         """
         assert REAL_TRADING == False, 'Safety check: real trading is disabled'
-        output = _run_ct310('python3 meridian.py status')
+        output = _run_fleet('python3 meridian.py status')
         try:
             # Parse the JSON after "SIMULATED PORTFOLIO:" line
             lines = output.splitlines()
@@ -56,7 +64,7 @@ def register_meridian_tools(mcp):
         SIMULATED ONLY — output is educational, not financial advice.
         """
         assert REAL_TRADING == False, 'Safety check: real trading is disabled'
-        output = _run_ct310('python3 meridian.py analyze', timeout=90)
+        output = _run_fleet('python3 meridian.py analyze', timeout=90)
         return {
             'analysis': output,
             '_note': 'SIMULATED — not financial advice. Paper trading only.'
@@ -71,7 +79,7 @@ def register_meridian_tools(mcp):
         SIMULATED ONLY.
         """
         assert REAL_TRADING == False, 'Safety check: real trading is disabled'
-        output = _run_ct310('python3 meridian.py report')
+        output = _run_fleet('python3 meridian.py report')
         return {
             'status': 'generated' if 'Report at:' in output else 'error',
             'url': 'http://YOUR_FLEET_SERVER_IP/trading/',
@@ -90,7 +98,7 @@ def register_meridian_tools(mcp):
         sym_list = [s.strip() for s in symbols.split(',')]
         sym_json = json.dumps(sym_list)
         cmd = f"python3 -c \"import market_data; print('CRYPTO:', market_data.get_crypto_prices({sym_json})); print('FG:', market_data.get_fear_greed()); print('SPY:', market_data.get_stock_quote('SPY'))\""
-        output = _run_ct310(cmd, timeout=30)
+        output = _run_fleet(cmd, timeout=30)
         return {
             'output': output,
             'symbols_requested': sym_list,
@@ -109,7 +117,7 @@ def register_meridian_tools(mcp):
         if balance < 100 or balance > 1000000:
             return {'status': 'rejected', 'reason': 'Balance must be between $100 and $1,000,000', '_note': 'SIMULATED'}
         cmd = f'python3 meridian.py reset --balance {balance}'
-        output = _run_ct310(cmd)
+        output = _run_fleet(cmd)
         return {
             'status': 'reset',
             'starting_balance': balance,

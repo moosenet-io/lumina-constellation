@@ -133,9 +133,9 @@ scp terminus/server.py root@YOUR_TERMINUS_IP:/opt/ai-mcp/server.py
 ssh root@YOUR_TERMINUS_IP "systemctl restart ai-mcp"
 ```
 
-Or from <dev-host> via PVM:
+Or from <dev-host> via control host:
 ```bash
-ssh root@YOUR_PVM_HOST_IP "pct exec 214 -- systemctl restart ai-mcp"
+ssh root@YOUR_SERVICE_HOST "$REMOTE_EXEC_TEMPLATE systemctl restart ai-mcp"
 ```
 
 ## Step 6: Test

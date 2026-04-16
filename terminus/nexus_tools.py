@@ -13,7 +13,7 @@ from datetime import datetime
 # ============================================================
 
 # Core system agents + partner agent names (Lumiere family and 'partner' generic).
-# Add new partner names here during CT onboarding ceremony.
+# Add new partner names here during partner onboarding ceremony.
 VALID_AGENTS = {'lumina', 'axon', 'vigil', 'sentinel', 'vector', 'seer', 'wizard', 'lumiere', 'lumos', 'lima', 'lumen', 'lux', 'partner'}
 VALID_TYPES = {'work_order', 'status', 'escalation', 'result', 'heartbeat', 'notification'}
 VALID_PRIORITIES = {'critical', 'urgent', 'normal', 'low'}

@@ -277,7 +277,7 @@ def register_spectra_tools(mcp):
         reason: str,
         consumer_key: str = DEFAULT_CONSUMER_KEY,
     ) -> dict:
-        """Trigger HITL pipeline — notify Peter via Synapse/Matrix that human intervention needed.
+        """Trigger HITL pipeline — notify the operator via Synapse/Matrix that human intervention needed.
         Use when encountering: login forms, CAPTCHAs, 2FA, ambiguous decisions.
         Args:
             session_id: Active session ID needing help
@@ -317,7 +317,7 @@ def register_spectra_tools(mcp):
         url: str,
         consumer_key: str = DEFAULT_CONSUMER_KEY,
     ) -> dict:
-        """Screenshot a LAN-internal service (Soma, Prometheus, Proxmox).
+        """Screenshot a LAN-internal service (Soma, Prometheus, virtualization).
         Uses spectra-internal container (LAN-only, no internet, URL allowlist).
         Args:
             url: Internal URL (must be in allowlist: Soma :8082, Prometheus :9090, etc.)

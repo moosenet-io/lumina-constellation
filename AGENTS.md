@@ -52,7 +52,7 @@ git push gitea main
 You run on the dev host (`/home/coder/lumina-constellation`). SSH access:
 
 ```bash
-ssh pvs               # PVS host → pct exec 310/305/300/315 for fleet containers
+ssh <remote-host>     # optional deployment host for remote targets
 ssh terminus          # terminus-host — MCP hub (/opt/ai-mcp/)
 ssh gitea             # gitea-host — Gitea
 ```
@@ -63,10 +63,10 @@ Terminus (terminus-host) path: `/opt/ai-mcp/`
 ## Coding Standards
 
 **Python:**
-- No hardcoded IPs or `CT###` container IDs in code — use env vars or role names
+- No hardcoded IPs or private infrastructure identifiers in code — use env vars or role names
 - `os.environ.get('VAR_NAME', '')` not `os.environ['VAR_NAME']`
-- File deploys: write locally → `scp` to pvs → `pct push CTN /tmp/file /dest/`
-- Never heredocs through `pct exec` for files with complex content
+- File deploys: write locally → `scp` to a configured deployment host, then deploy with the site-specific backend`
+- Never heredocs through remote deployment commands for files with complex content
 
 **HTML / Soma templates:**
 - Every template must include: `<link rel="stylesheet" href="/shared/constellation.css">`
@@ -76,7 +76,7 @@ Terminus (terminus-host) path: `/opt/ai-mcp/`
 
 **Git hygiene:**
 - Commit messages: imperative, describe what changed and why
-- No secrets, IPs, or `CT###` references in committed files
+- No secrets, IPs, or private infrastructure references in committed files
 - If the pre-commit hook blocks: fix the issue, don't use `--no-verify` unless it's documented CIDR ranges in infrastructure config
 
 ## Inference De-bloat Rule

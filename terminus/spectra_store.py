@@ -25,6 +25,15 @@ SPECTRA_NAMESPACE = "spectra"
 SPECTRA_FEEDBACK_NS = "spectra-feedback"
 SPECTRA_DIFF_NS = "spectra-diff"
 SPECTRA_SNAPSHOT_NS = "spectra-snapshot"
+REMOTE_SSH_HOST = os.environ.get("REMOTE_SSH_HOST", "")
+FLEET_REMOTE_TARGET = os.environ.get("FLEET_REMOTE_TARGET", "")
+REMOTE_EXEC_TEMPLATE = os.environ.get("REMOTE_EXEC_TEMPLATE", "")
+
+
+def _remote_exec(command: str) -> str:
+    if not REMOTE_EXEC_TEMPLATE:
+        return ""
+    return REMOTE_EXEC_TEMPLATE.format(target=FLEET_REMOTE_TARGET, command=command)
 
 
 def _engram_store(text: str, metadata: dict, namespace: str = SPECTRA_NAMESPACE) -> Optional[str]:
@@ -32,6 +41,8 @@ def _engram_store(text: str, metadata: dict, namespace: str = SPECTRA_NAMESPACE)
     Store content to Engram via engram.py CLI on fleet host.
     Returns fact_id or None on failure.
     """
+    if not (REMOTE_SSH_HOST and FLEET_REMOTE_TARGET):
+        return None
     try:
         payload = json.dumps({
             "text": text,
@@ -39,9 +50,11 @@ def _engram_store(text: str, metadata: dict, namespace: str = SPECTRA_NAMESPACE)
             "metadata": metadata,
         })
         # Call engram_store via SSH to fleet host
+        remote_cmd = _remote_exec("python3 /opt/lumina-fleet/engram/engram.py store")
+        if not remote_cmd:
+            return None
         result = subprocess.run(
-            ["ssh", "-o", "ConnectTimeout=5", "pvs",
-             "pct exec 310 -- python3 /opt/lumina-fleet/engram/engram.py store"],
+            ["ssh", "-o", "ConnectTimeout=5", REMOTE_SSH_HOST, remote_cmd],
             input=payload.encode(),
             capture_output=True,
             timeout=15,
@@ -56,11 +69,15 @@ def _engram_store(text: str, metadata: dict, namespace: str = SPECTRA_NAMESPACE)
 
 def _engram_query(query: str, source: str = SPECTRA_NAMESPACE, limit: int = 10) -> list:
     """Query Engram for spectra-sourced content."""
+    if not (REMOTE_SSH_HOST and FLEET_REMOTE_TARGET):
+        return []
     try:
         payload = json.dumps({"query": query, "source": source, "limit": limit})
+        remote_cmd = _remote_exec("python3 /opt/lumina-fleet/engram/engram.py query")
+        if not remote_cmd:
+            return []
         result = subprocess.run(
-            ["ssh", "-o", "ConnectTimeout=5", "pvs",
-             "pct exec 310 -- python3 /opt/lumina-fleet/engram/engram.py query"],
+            ["ssh", "-o", "ConnectTimeout=5", REMOTE_SSH_HOST, remote_cmd],
             input=payload.encode(),
             capture_output=True,
             timeout=15,

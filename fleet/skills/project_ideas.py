@@ -130,7 +130,7 @@ def _generate_via_ollama(signals: list[str], topics: list[str], issues: list[str
     if not context:
         return []
 
-    prompt = f"""You are Lumina, an AI assistant for a homelab + AI enthusiast (Peter).
+    prompt = f"""You are Lumina, an AI assistant for a homelab + AI enthusiast (the operator).
 
 Based on the signals below, generate 3-5 ranked project ideas. Each idea should be:
 - Actionable and specific (not vague)
@@ -183,7 +183,7 @@ def _generate_fallback_ideas() -> list[dict]:
         {
             "rank": 1,
             "title": "Ollama model health monitor",
-            "description": "Automate checks for Ollama availability on VM901/ollama-cpu-host. Alert via Synapse when models go offline.",
+            "description": "Automate checks for Ollama availability on local GPU host/ollama-cpu-host. Alert via Synapse when models go offline.",
             "effort": "small",
             "category": "infrastructure",
         },

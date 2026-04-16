@@ -2,7 +2,7 @@
 name: code-review
 description: Semi-formal code review using AST analysis, blast radius calculation, and multi-model council
 version: 1.0
-author: LeMajesticMoose
+author: moosenet-io
 license: MIT
 agent: cortex
 container: <fleet-host>

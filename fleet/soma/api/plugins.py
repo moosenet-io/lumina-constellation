@@ -82,9 +82,10 @@ def _local_plugins() -> list[dict[str, Any]]:
 
 
 def _terminus_plugins() -> list[dict[str, Any]]:
-    pvm_host = os.environ.get("PVM_SSH_HOST", "")
-    terminus_ct = os.environ.get("TERMINUS_CT", "")
-    if not pvm_host or not terminus_ct:
+    control_host = os.environ.get("TOOLING_SSH_HOST", os.environ.get("REMOTE_SSH_HOST", ""))
+    terminus_target = os.environ.get("TERMINUS_REMOTE_TARGET", "")
+    remote_template = os.environ.get("REMOTE_EXEC_TEMPLATE", "")
+    if not control_host or not terminus_target:
         return []
 
     remote_code = """
@@ -113,9 +114,12 @@ for filename in files:
 print(json.dumps(items))
 """
     command = f"python3 -c {shlex.quote(remote_code)}"
+    if not remote_template:
+        return []
+    remote_cmd = remote_template.format(target=terminus_target, command=command)
     try:
         result = subprocess.run(
-            ["ssh", pvm_host, f"pct exec {terminus_ct} -- {command}"],
+            ["ssh", control_host, remote_cmd],
             capture_output=True,
             text=True,
             timeout=15,

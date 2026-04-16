@@ -41,7 +41,7 @@ GPU machine (NVIDIA or AMD discrete GPU)
 └── Ollama (native)
 ```
 
-**Best for:** Existing homelab setup. Run services on a low-power box, models on your gaming PC.
+**Best for:** Existing self-hosted setup. Run services on a low-power box, models on your gaming PC.
 
 **Setup:**
 1. On the GPU box: install Ollama, run `OLLAMA_ORIGINS="*" ollama serve`
@@ -49,13 +49,13 @@ GPU machine (NVIDIA or AMD discrete GPU)
 
 ## Mode 3: Distributed homelab
 
-Multiple nodes via Proxmox or k8s. Each service runs in its own container or VM.
+Multiple nodes via virtualization or k8s. Each service runs in its own container or VM.
 
 ```
-Proxmox cluster (3 nodes)
-├── PVM node: Terminus, Postgres, dev control
-├── PVS node: IronClaw/Lumina, Fleet services, Matrix
-└── PVE node: Ollama (VM901, dedicated GPU)
+distributed self-hosted deployment
+├── control-plane node: Terminus, Postgres, dev control
+├── service node: IronClaw/Lumina, Fleet services, Matrix
+└── compute node: Ollama (local GPU host, dedicated GPU)
 ```
 
 **Best for:** Power users who want to match MooseNet's actual setup. Maximum isolation and flexibility.

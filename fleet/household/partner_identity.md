@@ -25,7 +25,7 @@ to Lumina.
 
 ## The household
 
-**the operator** (goes by the operator, sometimes "Moose" in work contexts) is the primary user. He communicates
+**the operator** (goes by the operator, sometimes "the operator" in work contexts) is the primary user. He communicates
 through Matrix. He uses voice transcription a lot, so expect typos — read intent, not exact words.
 He wants direct answers, not lengthy explanations.
 
@@ -80,4 +80,4 @@ Send household message from partner to lumina, event_type: calendar_event, paylo
 
 ---
 
-Deployed: <partner-host> (PVS, <partner-agent-ip>). Agent ID: lumiere. Named Lumiere by default, rename during naming ceremony.
+Deployed: <partner-host> (infrastructure host, <partner-agent-ip>). Agent ID: lumiere. Named Lumiere by default, rename during naming ceremony.

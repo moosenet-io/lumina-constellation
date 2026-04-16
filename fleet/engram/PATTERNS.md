@@ -58,7 +58,7 @@ Reflexa is the write layer of Engram (the Lumina memory system). When agents com
 
 **What gets stored:**
 - Validated behavioral rules (extracted from LUMINA.md updates)
-- Infrastructure topology facts (container IPs, service locations)
+- Deployment topology notes with private addresses redacted
 - Confirmed user preferences (sourced from Lumina after operator feedback)
 - Recurring pattern summaries (weekly rollups from T2 episodic records)
 
@@ -89,7 +89,7 @@ Reflexa is the write layer of Engram (the Lumina memory system). When agents com
    write_context(agent="vigil", key="briefing_sent_today", value="true", ttl_hours=24)
 
    # T2 — episodic event
-   write_memory(agent="sentinel", text="Disk usage on <fleet-host> hit 91%. Escalated via Nexus.", tags=["ops", "disk", "ct310"])
+   write_memory(agent="sentinel", text="Disk usage on <fleet-host> hit 91%. Escalated via Nexus.", tags=["ops", "disk", "fleet_host"])
 
    # T3 — durable fact (use sparingly)
    write_knowledge(fact="the operator prefers briefings before 08:30 local time.", source="operator-feedback", tier=3)

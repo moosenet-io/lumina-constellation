@@ -1,6 +1,6 @@
 # Vector
 
-> Autonomous dev loops for Lumina Constellation. Successor to [ARCADE](https://github.com/LeMajesticMoose/arcade) (archived).
+> Autonomous dev loops for Lumina Constellation. Successor to [ARCADE](https://github.com/moosenet-io/arcade) (archived).
 
 ## What it does
 
@@ -133,8 +133,8 @@ See `config/vector.yaml.example` for the full annotated reference.
 
 ## Lineage
 
-Vector is the direct successor to ARCADE (`github.com/LeMajesticMoose/arcade`, archived April 2025). The core loop architecture, masterarcade.sh runner, and Gitea-based project queue format are carried forward; the codebase has been consolidated into `lumina-fleet/vector/` and the agent name updated throughout.
+Vector is the direct successor to ARCADE (`github.com/moosenet-io/arcade`, archived April 2025). The core loop architecture, masterarcade.sh runner, and Gitea-based project queue format are carried forward; the codebase has been consolidated into `lumina-fleet/vector/` and the agent name updated throughout.
 
 Behavioral correction concepts (the Calx trigger system) are adapted from `getcalx/oss` (archived). The T1/T2/T3 tier model and skill-evolution promotion logic originate there.
 
-The public ARCADE repository (`github.com/LeMajesticMoose/arcade`) is archived and should not be used for new work. All active development continues here.
+The public ARCADE repository (`github.com/moosenet-io/arcade`) is archived and should not be used for new work. All active development continues here.

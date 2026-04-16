@@ -230,7 +230,7 @@
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <h3 style="margin:0;">&#x1F9E0; Synapse</h3>
-    <span class="health-dot {% if sy_enabled and not sy_muted %}healthy{% elif sy_muted %}degraded{% else %}dead{% endif %}"></span>
+    <span class="health-dot {% if sy_enabled and not sy_muted %}healthy{% elif sy_muted %}degraded{% else %}degraded{% endif %}"></span>
   </div>
   <div style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
     {% if sy_enabled %}

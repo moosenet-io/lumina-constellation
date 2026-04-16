@@ -67,7 +67,7 @@ These are defined in `terminus/vigil_tools.py`.
 
 - **Runs on:** <fleet-host> (`<fleet-server-ip>`) at `/opt/lumina-fleet/vigil/`
 - **Dependencies:** Python 3.11+, `requests`, `caldav`, `imaplib` (stdlib), `jinja2`
-- **Connections:** NewsAPI, GNews, TomTom, Google CalDAV, Google IMAP, weather API, Grocy (CT self-hosted), Actual Budget (CT self-hosted); output via Nexus → Lumina → Matrix
+- **Connections:** NewsAPI, GNews, TomTom, Google CalDAV, Google IMAP, weather API, Grocy (self-hosted), Actual Budget (self-hosted); output via Nexus → Lumina → Matrix
 
 ## Configuration
 

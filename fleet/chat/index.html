@@ -181,8 +181,8 @@
 </div>
 
 <script>
-const GATEWAY = 'http://YOUR_IRONCLAW_IP:3001/v1/chat/completions';
-const TOKEN = 'YOUR_IRONCLAW_GATEWAY_TOKEN';
+const GATEWAY = window.LUMINA_CHAT_GATEWAY || '';
+const TOKEN = window.LUMINA_CHAT_TOKEN || '';
 
 let history = [];
 let busy = false;

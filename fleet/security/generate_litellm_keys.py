@@ -33,8 +33,8 @@ LITELLM_MASTER_KEY = os.environ.get("LITELLM_MASTER_KEY", "")
 CONSUMERS = [
     {
         "id": "MY.1",
-        "alias": "MY.1-peter-operator",
-        "description": "Peter (operator) — unlimited budget, subscription tokens",
+        "alias": "MY.1-operator-operator",
+        "description": "the operator (operator) — unlimited budget, subscription tokens",
         "budget": None,          # unlimited
         "budget_duration": "1d",
         "rpm_limit": 60,

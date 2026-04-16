@@ -58,7 +58,7 @@ GITEA_MEMORY_REPO = "lumina-memory-repo"
 GITEA_BRANCH = "main"
 
 PROMETHEUS_URL = "http://YOUR_PROMETHEUS_IP:9090"
-JELLYSEERR_URL = "http://YOUR_PVM_HOST_IP:5055"
+JELLYSEERR_URL = os.environ.get("JELLYSEERR_URL", "")
 OLLAMA_GPU_URL = "http://YOUR_GPU_HOST_IP:11434"
 OLLAMA_CPU_URL = "http://YOUR_CPU_OLLAMA_IP:11434"
 TOMTOM_BASE = "https://api.tomtom.com/routing/1/calculateRoute"
@@ -269,8 +269,8 @@ def op_vm901_watchdog(secrets):
         checks["cpu_ollama"] = {"status": "down", "error": cpu_data.get("error", "?")}
     gpu_ok = checks["gpu_ollama"]["status"] == "healthy"
     status = "healthy" if gpu_ok else "degraded"
-    report = f"# VM901 Watchdog — {now.strftime('%Y-%m-%d %H:%M PT')}\n\n**Status:** {status}\n\n"
-    report += f"## GPU Ollama (VM901)\n- {'✅ Models: ' + ', '.join(checks['gpu_ollama']['models']) if gpu_ok else '❌ ' + checks['gpu_ollama'].get('error', '?')}\n"
+    report = f"# Local GPU Watchdog — {now.strftime('%Y-%m-%d %H:%M PT')}\n\n**Status:** {status}\n\n"
+    report += f"## GPU Ollama\n- {'✅ Models: ' + ', '.join(checks['gpu_ollama']['models']) if gpu_ok else '❌ ' + checks['gpu_ollama'].get('error', '?')}\n"
     report += f"\n## CPU Ollama (ollama-cpu-host)\n- {'✅ Models: ' + ', '.join(checks['cpu_ollama']['models']) if checks['cpu_ollama']['status'] == 'healthy' else '❌ ' + checks['cpu_ollama'].get('error', '?')}\n"
     report += f"\n## Node Health\n"
     for name, info in targets.items():

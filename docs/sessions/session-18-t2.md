@@ -15,12 +15,12 @@ Soma visual feedback loop engine. Navigates all 11 Soma admin pages via the
 sends them to Lumina Fast (Qwen local) for UX analysis, and stores results in Engram
 and `/data/spectra/feedback/`.
 
-**Run it on CT310:**
+**Run it on fleet-host:**
 ```bash
 cd /opt/spectra
-export SPECTRA_INTERNAL_URL=http://192.168.0.120:8085
-export LITELLM_URL=http://192.168.0.215:4000
-export LITELLM_MASTER_KEY=sk-Twhg4AdqhSdseMxuhwi_EA
+export SPECTRA_INTERNAL_URL=http://YOUR_PRIVATE_HOST_IP:8085
+export LITELLM_URL=http://YOUR_PRIVATE_HOST_IP:4000
+export LITELLM_MASTER_KEY=YOUR_LITELLM_MASTER_KEY
 export SOMA_JWT_SECRET=soma-moosenet-2026
 export FLEET_DIR=/opt/lumina-fleet
 python3 spectra_soma_feedback.py
@@ -63,14 +63,14 @@ Soma templates previously loaded htmx from `https://unpkg.com/htmx.org@1.9.10`.
 dropped, leaving `document.readyState = "loading"` indefinitely, blocking screenshots.
 
 **Fix:** Downloaded htmx 1.9.10 to `/opt/lumina-fleet/shared/htmx.min.js` (served by
-Apache at `http://192.168.0.120/shared/`). Updated 4 templates:
+Apache at `/shared/`). Updated 4 templates:
 
 ```html
 <!-- before -->
 <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-..." crossorigin="anonymous"></script>
 
 <!-- after -->
-<script src="http://192.168.0.120/shared/htmx.min.js"></script>
+<script src="/shared/htmx.min.js"></script>
 ```
 
 Files changed: `base.html`, `skills.html`, `wizard.html`, `wiki.html`
@@ -135,7 +135,7 @@ fleet/soma/templates/logs.html           (log level color coding)
 
 ---
 
-## Artifacts on CT310
+## Artifacts on fleet-host
 
 | Path | Contents |
 |------|----------|
@@ -144,4 +144,4 @@ fleet/soma/templates/logs.html           (log level color coding)
 | `/data/spectra/feedback/{page}.png` | Before screenshots (11 pages) |
 | `/data/spectra/feedback/{page}_after.png` | After screenshots (status, security, logs) |
 | `/opt/lumina-fleet/shared/htmx.min.js` | Vendored htmx 1.9.10 |
-| `/home/coder/soma-feedback-report.md` | Full report (CT212) |
+| `/home/coder/soma-feedback-report.md` | Full report (dev-host) |

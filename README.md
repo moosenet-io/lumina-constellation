@@ -94,7 +94,7 @@ The installer detects your hardware (Strix Halo, Apple Silicon, or discrete GPU)
 | **Starter** | Any machine + cloud API | ~$1/day | Full system, cloud inference |
 | **Local 64GB** | Strix Halo / M4 Pro | **$0/day** | 35B workhorse + 9B fast + 4B embeddings |
 | **Local 128GB** | Framework Desktop / M4 Max | **$0/day** | 122B reasoning + 35B daily + 27B code + 9B fast |
-| **Homelab** | Multi-node cluster | **$0/day** | Everything, distributed |
+| **Self-hosted** | Distributed deployment | **$0/day** | Everything, distributed |
 
 Cloud is the fallback, not the default. 64GB+ of unified memory = zero marginal cost.
 

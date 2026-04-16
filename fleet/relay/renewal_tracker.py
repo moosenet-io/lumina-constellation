@@ -33,7 +33,7 @@ def _get_conn() -> sqlite3.Connection:
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             doc_type    TEXT    NOT NULL,
             expiry_date TEXT    NOT NULL,
-            owner       TEXT    NOT NULL DEFAULT 'peter',
+            owner       TEXT    NOT NULL DEFAULT 'operator',
             notes       TEXT    NOT NULL DEFAULT '',
             created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
             updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
@@ -50,7 +50,7 @@ def _get_conn() -> sqlite3.Connection:
 # Core functions
 # ============================================================
 
-def store_renewal(doc_type: str, expiry_date: str, owner: str = "peter", notes: str = "") -> dict:
+def store_renewal(doc_type: str, expiry_date: str, owner: str = "operator", notes: str = "") -> dict:
     """
     Store or update a document renewal record.
     expiry_date must be in YYYY-MM-DD format.
@@ -139,7 +139,7 @@ def get_overdue_renewals() -> list:
     return results
 
 
-def delete_renewal(doc_type: str, owner: str = "peter") -> dict:
+def delete_renewal(doc_type: str, owner: str = "operator") -> dict:
     """Delete a renewal record by doc_type + owner."""
     conn = _get_conn()
     cur = conn.execute(
@@ -189,13 +189,13 @@ def main():
     p_add = sub.add_parser("add", help="Add or update a renewal record")
     p_add.add_argument("--type", dest="doc_type", required=True, help="Document type")
     p_add.add_argument("--expiry", required=True, help="Expiry date (YYYY-MM-DD)")
-    p_add.add_argument("--owner", default="peter", help="Owner (default: peter)")
+    p_add.add_argument("--owner", default="operator", help="Owner (default: operator)")
     p_add.add_argument("--notes", default="", help="Optional notes")
 
     # delete
     p_del = sub.add_parser("delete", help="Delete a renewal record")
     p_del.add_argument("--type", dest="doc_type", required=True, help="Document type")
-    p_del.add_argument("--owner", default="peter")
+    p_del.add_argument("--owner", default="operator")
 
     args = parser.parse_args()
 

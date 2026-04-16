@@ -2,14 +2,16 @@ import subprocess, json, os
 
 # ============================================================
 # Hearth Tools — Kitchen Management via Grocy
-# terminus-host SSHes to fleet-host, calls Grocy at 172.17.0.1:9283
+# terminus-host SSHes to fleet-host, calls Grocy via GROCY_URL.
 # ============================================================
 
 HEARTH_HOST = 'root@YOUR_FLEET_SERVER_IP'
-GROCY_URL = os.environ.get('GROCY_URL', 'http://172.17.0.1:9283')
+GROCY_URL = os.environ.get('GROCY_URL', '')
 GROCY_KEY = os.environ.get('GROCY_API_KEY', '')
 
 def _grocy(endpoint, method='GET', data=None, timeout=30):
+    if not GROCY_URL:
+        return {'error': 'GROCY_URL not configured'}
     auth = f'-H "GROCY-API-KEY: {GROCY_KEY}"' if GROCY_KEY else ''
     if data:
         d_str = json.dumps(data).replace("'", '"')

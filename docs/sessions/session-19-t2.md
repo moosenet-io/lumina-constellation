@@ -27,7 +27,7 @@
 
 | Widget | Size | Data source | Status |
 |--------|------|-------------|--------|
-| Activity Monitor | wide (3-col) | Prometheus CPU/RAM sparklines for CT305/CT310/CT214/CT300 | Live (Prometheus 192.168.0.222:9090) |
+| Activity Monitor | wide (3-col) | Prometheus CPU/RAM sparklines for ironclaw-host/fleet-host/terminus-host/postgres-host | Live (Prometheus YOUR_PRIVATE_HOST_IP:9090) |
 | Request Volume | 2-col | Prometheus LiteLLM rate metric | Graceful empty if metric absent |
 | Engram Growth | 1-col | `/api/status` → services.engram.fact_count | Live |
 | Spend Tracker | 2-col | `/api/cost` → today + per_agent | Live (Myelin data) |

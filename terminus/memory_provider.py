@@ -7,7 +7,7 @@ Usage:
     from memory_provider import get_provider
     provider = get_provider()  # returns configured provider
     provider.store('key', 'value', namespace='agents/lumina')
-    results = provider.query('what is the operator's job', namespace='agents/peter')
+    results = provider.query('what is the operator's job', namespace='agents/operator')
 """
 import os
 from abc import ABC, abstractmethod
@@ -22,7 +22,7 @@ class MemoryProvider(ABC):
     @abstractmethod
     def store(self, key: str, value: str, namespace: str = '', layer: str = 'kb') -> bool:
         """Store a fact/memory.
-        key: hierarchical key (e.g. 'agents/peter/profile/identity')
+        key: hierarchical key (e.g. 'agents/operator/profile/identity')
         value: content to store
         namespace: optional grouping (provider-specific)
         layer: storage tier ('kb', 'episodic', 'working')
@@ -41,7 +41,7 @@ class MemoryProvider(ABC):
         """Return all available namespaces/keys."""
 
     @abstractmethod
-    def get_user_profile(self, user_id: str = 'peter') -> dict:
+    def get_user_profile(self, user_id: str = 'operator') -> dict:
         """Get structured user profile for a given user.
         Returns dict with profile fields from stored memories."""
 
@@ -86,7 +86,7 @@ class EngramProvider(MemoryProvider):
         except Exception:
             return []
 
-    def get_user_profile(self, user_id: str = 'peter') -> dict:
+    def get_user_profile(self, user_id: str = 'operator') -> dict:
         try:
             results = self.query(f'{user_id} profile identity role', limit=10)
             profile = {}
@@ -166,7 +166,7 @@ class HonchoProvider(MemoryProvider):
     def list_namespaces(self) -> list[str]:
         return self._fallback.list_namespaces()
 
-    def get_user_profile(self, user_id: str = 'peter') -> dict:
+    def get_user_profile(self, user_id: str = 'operator') -> dict:
         if not self._available():
             return self._fallback.get_user_profile(user_id)
         try:

@@ -1,6 +1,6 @@
 # Sentinel — Infrastructure Health Monitor
 
-Sentinel monitors the MooseNet Proxmox cluster and all running services. It runs on a 5-minute timer and sends alerts only when something is wrong — no LLM cost for healthy checks.
+Sentinel monitors the configured service deployment and all running services. It runs on a 5-minute timer and sends alerts only when something is wrong — no LLM cost for healthy checks.
 
 **Deploys to:** <fleet-host> (<fleet-server-ip>) at `/opt/lumina-fleet/sentinel/`
 **Trigger:** systemd timer — every 5 minutes
@@ -37,7 +37,7 @@ The design principle: **silent when healthy, loud when broken**. Sentinel should
 | Disk usage | <dev-host>, <terminus-host>, <ironclaw-host>, <fleet-host>, <plane-host> | >85% |
 | Memory | Per-container memory usage | >90% |
 | Service ping | Key services: Matrix, Gitea, Plane, LiteLLM | HTTP 200 within 5s |
-| Container status | All Proxmox containers via Prometheus | Running state |
+| Container status | All configured runtime targets via Prometheus | Running state |
 | Prometheus | Prometheus scrape freshness | Last scrape >10 min |
 | IronClaw | API health endpoint on <ironclaw-host> | HTTP 200 |
 

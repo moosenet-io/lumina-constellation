@@ -13,7 +13,7 @@
 # Ollama runs OUTSIDE Docker (native GPU access on unified memory systems).
 # Set OLLAMA_HOST in .env:
 #   Linux (Docker Desktop):  http://host.docker.internal:11434
-#   Linux (Docker native):   http://172.17.0.1:11434  (or your host LAN IP)
+#   Linux (Docker native):   http://YOUR_PRIVATE_HOST_IP:11434  (or your host LAN IP)
 #   Remote box:              http://your-gpu-box-ip:11434
 
 x-lumina-base: &lumina-base

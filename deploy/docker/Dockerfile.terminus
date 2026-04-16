@@ -1,5 +1,5 @@
 # Dockerfile.terminus — Lumina Terminus (MCP hub) container
-# INFRA-DOCKER-5 (CT214 → Docker)
+# INFRA-DOCKER-5 (terminus-host → Docker)
 #
 # Build: docker build -f Dockerfile.terminus -t lumina-terminus:latest .
 # Run:   docker run -p 8080:8080 --env-file .env lumina-terminus:latest
@@ -40,7 +40,7 @@ WORKDIR /opt/ai-mcp
 
 # Copy MCP server files (from moosenet/lumina-terminus repo, not this one)
 # Populate via: docker run --rm -v ./terminus:/out lumina-terminus-builder
-# or via ansible-playbook lumina-ct214-deploy.yml
+# or via ansible-playbook lumina-terminus_host-deploy.yml
 
 EXPOSE 8080
 

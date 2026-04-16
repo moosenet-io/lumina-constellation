@@ -17,7 +17,7 @@ DEBOUNCE_MINUTES = 30
 # Alert thresholds
 RULES = [
     ('axon_db',    'critical', 'CRITICAL: Axon DB connection failed — work queue processing stopped'),
-    ('ollama_gpu', 'critical', 'CRITICAL: VM901 GPU offline — inference fallback active (higher cost)'),
+    ('ollama_gpu', 'critical', 'CRITICAL: local GPU offline — inference fallback active (higher cost)'),
     ('llm_cost',   'critical', 'CRITICAL: LLM daily cost circuit-break threshold hit — killing non-essential processes'),
     ('llm_cost',   'warn',     'WARN: LLM daily cost approaching $2/day threshold'),
     ('ironclaw',   'critical', 'CRITICAL: IronClaw (Lumina) is down — no agent responses'),

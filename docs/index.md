@@ -1,6 +1,6 @@
 # Lumina Constellation
 
-A 19-module AI operating system for personal homelab operators. Runs on Proxmox, coordinates via Matrix, uses Claude and local Qwen for inference.
+A 19-module AI operating system for personal self-hosted operators. Runs on Docker or Kubernetes, coordinates via Matrix, uses Claude and local Qwen for inference.
 
 ## Quick start
 

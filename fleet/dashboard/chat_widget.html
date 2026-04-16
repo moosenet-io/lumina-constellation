@@ -249,8 +249,8 @@
 </div>
 
 <script>
-const GATEWAY = 'http://YOUR_FLEET_SERVER_IP:8080';
-const API_KEY = 'lumina-gateway-dev';
+const GATEWAY = window.LUMINA_GATEWAY_URL || '';
+const GATEWAY_AUTH = window.LUMINA_GATEWAY_KEY || '';
 
 // Generate or restore session ID
 let sessionId = sessionStorage.getItem('lumina_session');
@@ -352,7 +352,7 @@ async function sendMessage() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': API_KEY
+        'X-API-Key': GATEWAY_AUTH
       },
       body: JSON.stringify({ message: text, session_id: sessionId }),
       signal: AbortSignal.timeout(15000)

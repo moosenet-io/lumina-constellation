@@ -1,21 +1,21 @@
 ---
-# lumina-ct214-deploy.yml — Deploy Lumina Terminus (MCP hub) to CT214
+# lumina-terminus_host-deploy.yml — Deploy Lumina Terminus (MCP hub) to terminus-host
 # INFRA-ANSIBLE-2
 #
 # Usage:
-#   ansible-playbook lumina-ct214-deploy.yml -i hosts.ini
-#   ansible-playbook lumina-ct214-deploy.yml -i hosts.ini --tags mcp
-#   ansible-playbook lumina-ct214-deploy.yml -i hosts.ini --check
+#   ansible-playbook lumina-terminus_host-deploy.yml -i hosts.ini
+#   ansible-playbook lumina-terminus_host-deploy.yml -i hosts.ini --tags mcp
+#   ansible-playbook lumina-terminus_host-deploy.yml -i hosts.ini --check
 #
 # Prerequisites:
-#   - CT214 running Debian/Ubuntu
+#   - terminus-host running Debian/Ubuntu
 #   - SSH access as root
 #   - Gitea accessible at http://YOUR_GITEA_HOST_IP:3000
 #   - /opt/ai-mcp/.env populated with secrets (not in this playbook)
-#   - socat or ironclaw stdio bridge on CT305 configured separately
+#   - socat or ironclaw stdio bridge on ironclaw-host configured separately
 
-- name: Deploy Lumina Terminus (MCP hub) to CT214
-  hosts: ct214
+- name: Deploy Lumina Terminus (MCP hub) to terminus-host
+  hosts: terminus_host
   become: true
   vars:
     mcp_dir: /opt/ai-mcp
@@ -210,7 +210,7 @@
           # INBOX_DB_HOST=
           # INBOX_DB_USER=
           # INBOX_DB_PASS=
-          # PVS_HOST=
+          # REMOTE_SSH_HOST=
           # OLLAMA_URL=
         mode: '0600'
         force: false  # don't overwrite existing

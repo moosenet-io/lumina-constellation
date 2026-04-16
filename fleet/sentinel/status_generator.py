@@ -98,11 +98,11 @@ def collect_statuses():
         return r, m
     services.append(check_service('Gitea (gitea-host)', check_gitea))
 
-    # VM901 GPU (Ollama)
+    # local GPU (Ollama)
     def check_vm901():
         r, m = _http_check('http://YOUR_GPU_HOST_IP:11434/api/version', timeout=3)
         return r, m
-    services.append(check_service('VM901 GPU (Ollama)', check_vm901))
+    services.append(check_service('local GPU (Ollama)', check_vm901))
 
     # Axon (fleet-host self-check)
     def check_axon():

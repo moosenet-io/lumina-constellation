@@ -4,7 +4,7 @@ Lumina Constellation is built around three principles: personality-first, infere
 
 ## Container Layout
 
-The system runs across three Proxmox nodes with dedicated containers:
+The system runs across three virtualization nodes with dedicated containers:
 
 | Container | Role | Key Services |
 |-----------|------|-------------|

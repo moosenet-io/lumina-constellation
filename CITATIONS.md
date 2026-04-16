@@ -54,7 +54,7 @@
 
 | Project | Role | Source |
 |---------|------|--------|
-| **Proxmox VE** | Hypervisor for MooseNet homelab (3-node cluster) | [proxmox.com](https://proxmox.com) |
+| **virtualization platform** | Hypervisor for self-hosted deployment | [virtualization.com](https://virtualization.com) |
 | **Gitea** | Self-hosted Git — source of truth for all code | [go-gitea/gitea](https://github.com/go-gitea/gitea) |
 | **Infisical** | Secrets management — runtime fetch, Ansible-based rotation | [Infisical/infisical](https://github.com/Infisical/infisical) |
 | **Prometheus** | Metrics collection for Sentinel monitoring | [prometheus/prometheus](https://github.com/prometheus/prometheus) |
@@ -73,7 +73,7 @@
 
 ## Built with
 
-This project was built by [@LeMajesticMoose](https://github.com/LeMajesticMoose), a non-developer with no coding background, directing AI through voice transcription and agentic development loops.
+This project was built by [@moosenet-io](https://github.com/moosenet-io), a non-developer with no coding background, directing AI through voice transcription and agentic development loops.
 
 **Claude** ([Anthropic](https://anthropic.com)) served as co-developer — specifications, implementation, autonomous build sessions (up to 18 hours each), and infrastructure debugging via Claude Code.
 

@@ -1,5 +1,5 @@
 # Soma Admin Panel — Docker Compose Fragment
-# Note: Soma currently runs as a systemd service on CT310.
+# Note: Soma currently runs as a systemd service on fleet-host.
 # This fragment shows how to run it containerized (e.g., for docker compose --profile standard).
 # To use: merge into fleet/docker/docker-compose.yml and add to Caddyfile /soma* route.
 

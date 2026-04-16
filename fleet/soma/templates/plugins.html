@@ -29,9 +29,9 @@ async function loadPlugins() {
           <span style="width:8px;height:8px;border-radius:50%;background:#d29922;display:inline-block;flex-shrink:0;"></span>
           <strong style="font-size:0.875rem;">Terminus unreachable</strong>
         </div>
-        <p style="color:var(--text-secondary);font-size:0.85rem;margin:0 0 0.5rem;">Cannot load plugins — SSH connection to CT214 failed.</p>
+        <p style="color:var(--text-secondary);font-size:0.85rem;margin:0 0 0.5rem;">Cannot load plugins — SSH connection to terminus-host failed.</p>
         <code style="font-size:0.75rem;color:var(--text-tertiary);display:block;">${escHtml(data.error.slice(0,120))}</code>
-        <div style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-tertiary);">Check <code>PVM_SSH_HOST</code> env var and SSH access to Terminus (CT214).</div>
+        <div style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-tertiary);">Check <code>TOOLING_SSH_HOST</code> env var and SSH access to Terminus (terminus-host).</div>
       </div>`;
       return;
     }

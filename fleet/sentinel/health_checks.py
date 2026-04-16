@@ -3,7 +3,7 @@
 health_checks.py — Comprehensive Lumina Constellation health monitoring.
 Overhaul after two production incidents (Apr 13, 2026):
 1. Axon DB password reset → undetected 24h outage
-2. VM901 GPU offline → LiteLLM → openrouter-auto → $30/day runaway
+2. Accelerator host offline → LiteLLM fallback → runaway spend
 """
 import os, sys, json, subprocess, urllib.request, urllib.error, time
 from datetime import datetime, timezone
@@ -30,7 +30,14 @@ GITEA_TOKEN   = os.environ.get('GITEA_TOKEN', '')
 PLANE_TOKEN   = os.environ.get('PLANE_API_TOKEN', '')
 TOMTOM_KEY    = os.environ.get('TOMTOM_API_KEY', '')
 NEWS_API_KEY  = os.environ.get('NEWS_API_KEY', '')
-PVS_HOST      = os.environ.get('PVS_HOST', 'root@YOUR_PVS_HOST_IP')
+REMOTE_SSH_HOST = os.environ.get('REMOTE_SSH_HOST', '')
+REMOTE_EXEC_TEMPLATE = os.environ.get('REMOTE_EXEC_TEMPLATE', '')
+REMOTE_TARGETS = {
+    'fleet': os.environ.get('FLEET_REMOTE_TARGET', ''),
+    'ironclaw': os.environ.get('IRONCLAW_REMOTE_TARGET', ''),
+    'terminus': os.environ.get('TERMINUS_REMOTE_TARGET', ''),
+    'matrix': os.environ.get('MATRIX_REMOTE_TARGET', ''),
+}
 
 OUTPUT_DIR = Path('/opt/lumina-fleet/sentinel/output')
 HEALTH_JSON = OUTPUT_DIR / 'health.json'
@@ -46,11 +53,22 @@ def _http(url, headers=None, timeout=CHECK_TIMEOUT):
     except Exception as e:
         return False, str(e)[:60]
 
-def _pct(ct, cmd, timeout=CHECK_TIMEOUT):
+def _remote_exec(target, cmd):
+    if not REMOTE_EXEC_TEMPLATE:
+        return ''
+    return REMOTE_EXEC_TEMPLATE.format(target=target, command=cmd)
+
+
+def _remote_check(target, cmd, timeout=CHECK_TIMEOUT):
+    if not (REMOTE_SSH_HOST and target):
+        return -1, 'remote access not configured'
+    remote_cmd = _remote_exec(target, cmd)
+    if not remote_cmd:
+        return -1, 'REMOTE_EXEC_TEMPLATE not configured'
     try:
         result = subprocess.run(
             ['ssh', '-o', f'ConnectTimeout={timeout}', '-o', 'StrictHostKeyChecking=no',
-             PVS_HOST, f'pct exec {ct} -- {cmd}'],
+             REMOTE_SSH_HOST, remote_cmd],
             capture_output=True, text=True, timeout=timeout + 3)
         return result.returncode, (result.stdout + result.stderr).strip()[:200]
     except Exception as e:
@@ -74,15 +92,15 @@ def _nexus_alert(service, status, message, priority='urgent'):
 
 def check_axon_db():
     """PRIORITY: Would have caught the Apr 12 24h Axon outage."""
-    rc, out = _pct('310', 'systemctl is-active axon.service')
+    rc, out = _remote_check(REMOTE_TARGETS['fleet'], 'systemctl is-active axon.service')
     if rc != 0 or 'active' not in out:
         return {'status': 'critical', 'value': 0, 'message': f'Axon not running: {out[:40]}'}
-    rc2, out2 = _pct('310', "journalctl -u axon.service --since=-10min --no-pager 2>&1 | grep -c 'poll\\|DB' || echo 0")
+    rc2, out2 = _remote_check(REMOTE_TARGETS['fleet'], "journalctl -u axon.service --since=-10min --no-pager 2>&1 | grep -c 'poll\\|DB' || echo 0")
     recent = int(out2.strip()) if out2.strip().isdigit() else 0
     db_cmd = (f'python3 -c "import psycopg2; psycopg2.connect(host=\\"{INBOX_DB_HOST}\\",'
               f'dbname=\\"lumina_inbox\\",user=\\"lumina_inbox_user\\",'
               f'password=\\"{INBOX_DB_PASS}\\",connect_timeout=3).close(); print(\\"ok\\")"')
-    rc3, out3 = _pct('310', db_cmd, timeout=8)
+    rc3, out3 = _remote_check(REMOTE_TARGETS['fleet'], db_cmd, timeout=8)
     if rc3 != 0 or 'ok' not in out3:
         return {'status': 'critical', 'value': 0, 'message': f'Axon DB FAILED: {out3[:80]}'}
     if recent == 0:
@@ -93,8 +111,8 @@ def check_ollama_gpu():
     """PRIORITY: Would have prevented the Apr 13 $30 LLM runaway."""
     ok, msg = _http('http://YOUR_GPU_HOST_IP:11434/api/version', timeout=5)
     if ok:
-        return {'status': 'ok', 'value': 1, 'message': f'VM901 GPU online'}
-    return {'status': 'critical', 'value': 0, 'message': f'VM901 OFFLINE ({msg}). Fallback to claude-sonnet now active.'}
+        return {'status': 'ok', 'value': 1, 'message': f'local GPU online'}
+    return {'status': 'critical', 'value': 0, 'message': f'Local GPU OFFLINE ({msg}). Fallback to claude-sonnet now active.'}
 
 def check_llm_cost():
     """OpenRouter daily spend. WARN $2, CRITICAL $10."""
@@ -116,15 +134,15 @@ def check_llm_cost():
 # ── Infrastructure ─────────────────────────────────────────────────────────────
 
 def check_ironclaw():
-    rc, out = _pct('305', '/usr/local/bin/ironclaw --version', timeout=8)
+    rc, out = _remote_check(REMOTE_TARGETS['ironclaw'], '/usr/local/bin/ironclaw --version', timeout=8)
     if rc == 0:
         return {'status': 'ok', 'value': 1, 'message': out.strip()[:40]}
-    rc2, _ = _pct('305', 'pgrep -f ironclaw')
+    rc2, _ = _remote_check(REMOTE_TARGETS['ironclaw'], 'pgrep -f ironclaw')
     return ({'status': 'ok', 'value': 1, 'message': 'process running'} if rc2 == 0
             else {'status': 'critical', 'value': 0, 'message': 'IronClaw down'})
 
 def check_terminus():
-    rc, out = _pct('214', 'systemctl is-active ai-mcp.service')
+    rc, out = _remote_check(REMOTE_TARGETS['terminus'], 'systemctl is-active ai-mcp.service')
     return ({'status': 'ok', 'value': 1, 'message': 'ai-mcp active'} if rc == 0 and 'active' in out
             else {'status': 'critical', 'value': 0, 'message': f'Terminus down: {out[:60]}'})
 
@@ -152,9 +170,9 @@ def check_postgres():
         return {'status': 'critical', 'value': -1, 'message': f'Postgres down: {str(e)[:60]}'}
 
 def check_matrix():
-    rc, out = _pct('306', 'systemctl is-active matrix-bridge.service')
+    rc, out = _remote_check(REMOTE_TARGETS['matrix'], 'systemctl is-active matrix-bridge.service')
     bridge = rc == 0 and 'active' in out
-    rc2, out2 = _pct('306', 'docker ps --filter name=tuwunel --format "{{.Status}}"')
+    rc2, out2 = _remote_check(REMOTE_TARGETS['matrix'], 'docker ps --filter name=tuwunel --format "{{.Status}}"')
     tuwunel = rc2 == 0 and 'Up' in out2
     if bridge and tuwunel:
         return {'status': 'ok', 'value': 1, 'message': 'bridge+tuwunel running'}
@@ -162,7 +180,7 @@ def check_matrix():
     return {'status': 'critical', 'value': 0, 'message': ', '.join(issues)}
 
 def check_docker():
-    rc, out = _pct('310', 'docker ps --format "{{.Names}}:{{.Status}}"')
+    rc, out = _remote_check(REMOTE_TARGETS['fleet'], 'docker ps --format "{{.Names}}:{{.Status}}"')
     if rc != 0:
         return {'status': 'critical', 'value': 0, 'message': 'Docker inaccessible'}
     expected = ['caddy', 'actual-budget', 'grocy', 'lubelogger']
@@ -187,7 +205,7 @@ def check_ollama_cpu():
 # ── Agents ─────────────────────────────────────────────────────────────────────
 
 def check_sentinel():
-    rc, _ = _pct('310', 'systemctl is-active sentinel-health.timer')
+    rc, _ = _remote_check(REMOTE_TARGETS['fleet'], 'systemctl is-active sentinel-health.timer')
     return ({'status': 'ok', 'value': 1, 'message': 'timer active'} if rc == 0
             else {'status': 'critical', 'value': 0, 'message': 'Sentinel timer NOT running!'})
 
@@ -201,7 +219,7 @@ def check_soma():
 # ── Data ───────────────────────────────────────────────────────────────────────
 
 def check_engram():
-    rc, out = _pct('310',
+    rc, out = _remote_check(REMOTE_TARGETS['fleet'],
         "python3 -c \"import sqlite3; print(sqlite3.connect('/opt/lumina-fleet/engram/knowledge_base.db').execute('SELECT count(*) FROM knowledge_base').fetchone()[0])\"",
         timeout=8)
     if rc == 0 and out.strip().isdigit():
@@ -253,7 +271,7 @@ def check_newsapi():
 CHECKS = {
     # INCIDENT checks — must run every cycle
     'axon_db':    (check_axon_db,    'critical', 'Axon DB (incident check)'),
-    'ollama_gpu': (check_ollama_gpu, 'critical', 'VM901 GPU (runaway check)'),
+    'ollama_gpu': (check_ollama_gpu, 'critical', 'local GPU (runaway check)'),
     'llm_cost':   (check_llm_cost,   'critical', 'LLM daily cost'),
     # Infrastructure
     'ironclaw':   (check_ironclaw,   'critical', 'IronClaw ironclaw-host'),

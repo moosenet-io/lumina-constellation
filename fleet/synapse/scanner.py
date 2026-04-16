@@ -62,7 +62,7 @@ def _pulse_since_seconds(marker_name: str) -> float | None:
 # ---------------------------------------------------------------------------
 
 _DEFAULT_INTERESTS = [
-    "AI", "ML", "machine learning", "LLM", "homelab", "proxmox",
+    "AI", "ML", "machine learning", "LLM", "homelab", "virtualization",
     "drone", "FPV", "hockey", "NHL", "leafs", "canucks",
     "budget", "finance", "qwen", "ollama",
 ]

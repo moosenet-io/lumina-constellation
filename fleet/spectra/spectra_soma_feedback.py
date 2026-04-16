@@ -5,14 +5,14 @@ Navigates each Soma admin page via spectra-internal, takes accessibility snapsho
 and screenshots, sends them to the local Qwen LLM for UX analysis, stores results
 in Engram and JSON files in /data/spectra/feedback/.
 
-Usage (on CT310):
+Usage (on the fleet host):
     python3 spectra_soma_feedback.py [--page STATUS]
 
 Environment:
-    SPECTRA_INTERNAL_URL  http://192.168.0.120:8085
-    LITELLM_URL           http://192.168.0.215:4000
+    SPECTRA_INTERNAL_URL  http://YOUR_SPECTRA_HOST:8085
+    LITELLM_URL           http://YOUR_LITELLM_HOST:4000
     LITELLM_MASTER_KEY    (from env)
-    SOMA_JWT_SECRET       soma-moosenet-2026
+    SOMA_JWT_SECRET       (from env)
     ENGRAM_DB_PATH        /opt/lumina-fleet/engram/engram.db
 """
 
@@ -30,12 +30,12 @@ from pathlib import Path
 
 
 # ── Config ────────────────────────────────────────────────────────────────────
-SPECTRA_URL   = os.environ.get("SPECTRA_INTERNAL_URL", "http://192.168.0.120:8085")
-LITELLM_URL   = os.environ.get("LITELLM_URL", "http://192.168.0.215:4000")
+SPECTRA_URL   = os.environ.get("SPECTRA_INTERNAL_URL", "")
+LITELLM_URL   = os.environ.get("LITELLM_URL", "")
 LITELLM_KEY   = os.environ.get("LITELLM_MASTER_KEY", "")
-SOMA_BASE     = os.environ.get("SOMA_URL", "http://192.168.0.120:8082")
+SOMA_BASE     = os.environ.get("SOMA_URL", "")
 SOMA_JWT_KEY  = os.environ.get("SOMA_JWT_SECRET",
-                os.environ.get("SOMA_SECRET_KEY", "soma-moosenet-2026"))
+                os.environ.get("SOMA_SECRET_KEY", ""))
 CONSUMER_KEY  = "MY.1"
 OUTPUT_DIR    = Path(os.environ.get("SPECTRA_DATA", "/data/spectra")) / "feedback"
 FLEET_DIR     = Path(os.environ.get("FLEET_DIR", "/opt/lumina-fleet"))

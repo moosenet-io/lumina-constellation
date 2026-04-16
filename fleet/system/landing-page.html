@@ -83,7 +83,7 @@ footer{padding:3rem 0;text-align:center;color:var(--muted);font-size:0.8rem;bord
 
 <div class="hero">
 <h1>Lumina</h1>
-<p class="sub">An autonomous AI agent system for life operations. Built on a 3-node Proxmox homelab. Orchestrated by a single lead agent. Powered by local + cloud inference. Designed for one person to manage everything.</p>
+<p class="sub">An autonomous AI agent system for life operations. Built for a private self-hosted runtime. Orchestrated by a single lead agent. Powered by local + cloud inference. Designed for one person to manage everything.</p>
 <div class="stats">
 <div class="stat"><div class="num">22</div><div class="label">Modules</div></div>
 <div class="stat"><div class="num">14</div><div class="label">Plane projects</div></div>
@@ -107,39 +107,38 @@ footer{padding:3rem 0;text-align:center;color:var(--muted);font-size:0.8rem;bord
 <section style="background:var(--bg2)">
 <div class="container">
 <h2>Infrastructure</h2>
-<p class="section-sub">Three Proxmox nodes. 20+ containers. One cluster.</p>
+<p class="section-sub">Private self-hosted runtime with isolated services, monitored agents, and a deployment-neutral control plane.</p>
 
 <div class="diagram-wrap">
-<h3>Proxmox cluster — PVS (services + agents)</h3>
+<h3>service architecture</h3>
 <table class="infra-table">
-<tr><th>Container</th><th>IP</th><th>Name</th><th>Role</th><th>Status</th></tr>
-<tr><td><span class="ct">CT305</span></td><td><span class="ip">.217</span></td><td>Lumina</td><td>Lead orchestrator (IronClaw v0.19.0)</td><td><span class="badge badge-shipped">shipped</span></td></tr>
-<tr><td><span class="ct">CT310</span></td><td><span class="ip">.120</span></td><td>Fleet</td><td>Axon, Vigil, Sentinel, Seer, Wizard, Vector, Meridian</td><td><span class="badge badge-live">live</span></td></tr>
-<tr><td><span class="ct">CT300</span></td><td><span class="ip">.224</span></td><td>Postgres</td><td>Nexus inbox backend (lumina_inbox database)</td><td><span class="badge badge-shipped">shipped</span></td></tr>
-<tr><td><span class="ct">CT315</span></td><td><span class="ip">.232</span></td><td>Plane CE</td><td>Project management (14 projects, 672+ items)</td><td><span class="badge badge-shipped">shipped</span></td></tr>
-<tr><td><span class="ct">CT306</span></td><td><span class="ip">.208</span></td><td>Matrix</td><td>Tuwunel + bridge bot (the operator's chat interface)</td><td><span class="badge badge-shipped">shipped</span></td></tr>
+<tr><th>Layer</th><th>Role</th><th>Status</th></tr>
+<tr><td><span class="ct">orchestration</span></td><td>Lumina runtime, agent routing, and operator dashboard</td><td><span class="badge badge-live">live</span></td></tr>
+<tr><td><span class="ct">fleet services</span></td><td>Axon, Vigil, Sentinel, Seer, Wizard, Vector, Meridian</td><td><span class="badge badge-live">live</span></td></tr>
+<tr><td><span class="ct">data services</span></td><td>Nexus inbox, Engram memory, metrics, and project state</td><td><span class="badge badge-shipped">shipped</span></td></tr>
+<tr><td><span class="ct">messaging</span></td><td>Private chat bridge and notification routing</td><td><span class="badge badge-shipped">shipped</span></td></tr>
 </table>
 </div>
 
 <div class="grid-2">
 <div class="diagram-wrap">
-<h3>PVM (control plane)</h3>
+<h3>control plane</h3>
 <table class="infra-table">
-<tr><th>CT</th><th>Name</th><th>Role</th></tr>
-<tr><td><span class="ct">CT214</span></td><td>Terminus</td><td>MCP hub (120+ tools, 20+ modules)</td></tr>
-<tr><td><span class="ct">CT215</span></td><td>LiteLLM</td><td>Inference proxy (24 models)</td></tr>
-<tr><td><span class="ct">CT223</span></td><td>Gitea</td><td>Git repos (7 lumina-* repos)</td></tr>
-<tr><td><span class="ct">CT212</span></td><td>Dev</td><td>Code-server + Claude Code</td></tr>
-<tr><td><span class="ct">CT221</span></td><td>Infisical</td><td>Secrets management</td></tr>
-<tr><td><span class="ct">CT207</span></td><td>NPM</td><td>Nginx Proxy Manager</td></tr>
+<tr><th>Service</th><th>Role</th></tr>
+<tr><td><span class="ct">Terminus</span></td><td>MCP hub (120+ tools, 20+ modules)</td></tr>
+<tr><td><span class="ct">LiteLLM</span></td><td>Inference proxy and routing policy</td></tr>
+<tr><td><span class="ct">Gitea</span></td><td>Private source control</td></tr>
+<tr><td><span class="ct">Infisical</span></td><td>Secrets management</td></tr>
+<tr><td><span class="ct">Gateway</span></td><td>Private ingress and routing</td></tr>
 </table>
 </div>
 <div class="diagram-wrap">
-<h3>PVE (inference)</h3>
+<h3>inference layer</h3>
 <table class="infra-table">
-<tr><th>ID</th><th>Name</th><th>Role</th></tr>
-<tr><td><span class="ct">VM901</span></td><td>Ollama GPU</td><td>RTX 3050 8GB — Qwen 2.5:7b</td></tr>
-<tr><td><span class="ct">CT110</span></td><td>Ollama CPU</td><td>nomic-embed-text (embeddings)</td></tr>
+<tr><th>Capability</th><th>Role</th></tr>
+<tr><td><span class="ct">Local models</span></td><td>Fast zero-cost inference for routine work</td></tr>
+<tr><td><span class="ct">Hosted models</span></td><td>Escalation path for high-complexity reasoning</td></tr>
+<tr><td><span class="ct">Embeddings</span></td><td>Memory indexing and semantic search</td></tr>
 </table>
 </div>
 </div>
@@ -198,7 +197,7 @@ footer{padding:3rem 0;text-align:center;color:var(--muted);font-size:0.8rem;bord
 </div>
 <div class="card">
 <h3>Tier 2 — local Qwen</h3>
-<p>Qwen 2.5:7b on VM901 GPU via LiteLLM. $0 inference. Used for parsing, label naming, description writing, per-source summarization in Seer, Vigil formatting.</p>
+<p>Qwen 2.5:7b on local GPU via LiteLLM. $0 inference. Used for parsing, label naming, description writing, per-source summarization in Seer, Vigil formatting.</p>
 </div>
 <div class="card">
 <h3>Tier 1 — cloud</h3>
@@ -236,11 +235,11 @@ footer{padding:3rem 0;text-align:center;color:var(--muted);font-size:0.8rem;bord
 
 <div class="card"><h3 style="color:var(--coral)">Meridian</h3><div class="card-sub">Experimental <span class="badge badge-ready">spec'd</span></div><p>Paper trading sandbox. Crypto + stocks. Autonomous/advisory/manual modes. Reasoning journal. Benchmark tracking.</p></div>
 <div class="card"><h3 style="color:var(--blue)">Dashboard</h3><div class="card-sub">Frontend <span class="badge badge-live">gateway live</span></div><p>API gateway live at :8080 (8 endpoints). Homepage frontend Docker pending. Chat widget pending. <a href="http://YOUR_FLEET_SERVER_IP:8080/" style="color:var(--teal)">→ API</a></p></div>
-<div class="card"><h3 style="color:var(--coral)">Household</h3><div class="card-sub">Multi-agent <span class="badge badge-future">future</span></div><p>Partner agent on dedicated CT. Shared Nexus channel. Private + household data isolation. Naming ceremony.</p></div>
+<div class="card"><h3 style="color:var(--coral)">Household</h3><div class="card-sub">Multi-agent <span class="badge badge-future">future</span></div><p>Partner agent on dedicated runtime target. Shared Nexus channel. Private + household data isolation. Naming ceremony.</p></div>
 
-<div class="card"><h3 style="color:var(--muted)">Google Workspace</h3><div class="card-sub">Integration <span class="badge badge-blocked">peter</span></div><p>Calendar + email via dedicated lumina@moosenet.online account. Read-only calendar, managed inbox.</p></div>
+<div class="card"><h3 style="color:var(--muted)">Google Workspace</h3><div class="card-sub">Integration <span class="badge badge-blocked">operator</span></div><p>Calendar + email via dedicated lumina@moosenet.online account. Read-only calendar, managed inbox.</p></div>
 <div class="card"><h3 style="color:var(--muted)">Commute</h3><div class="card-sub">Productivity <span class="badge badge-live">live</span></div><p>TomTom traffic intelligence. Proactive Matrix alerts when commute exceeds baseline by 25%+.</p></div>
-<div class="card"><h3 style="color:var(--teal)">Terminus</h3><div class="card-sub">Core infrastructure <span class="badge badge-shipped">shipped</span></div><p>MCP tool hub on CT214. 120+ tools across 20+ modules. SSH stdio transport. Version-controlled in Gitea.</p></div>
+<div class="card"><h3 style="color:var(--teal)">Terminus</h3><div class="card-sub">Core infrastructure <span class="badge badge-shipped">shipped</span></div><p>MCP tool hub on terminus-host. 120+ tools across 20+ modules. SSH stdio transport. Version-controlled in Gitea.</p></div>
 </div>
 </div>
 </section>
@@ -253,12 +252,12 @@ footer{padding:3rem 0;text-align:center;color:var(--muted);font-size:0.8rem;bord
 <table class="infra-table">
 <tr><th>Repository</th><th>Contents</th><th>Deploys to</th><th>Files</th></tr>
 <tr><td><span class="ct">moosenet/lumina</span></td><td>Project docs, specs, architecture, diagrams</td><td>Reference only</td><td>29</td></tr>
-<tr><td><span class="ct">moosenet/lumina-terminus</span></td><td>All MCP tool modules + server.py</td><td>CT214 /opt/ai-mcp/</td><td>28</td></tr>
-<tr><td><span class="ct">moosenet/lumina-fleet</span></td><td>All agent processes (axon, vigil, sentinel, seer, wizard, vector)</td><td>CT310 /opt/lumina-fleet/</td><td>—</td></tr>
+<tr><td><span class="ct">moosenet/lumina-terminus</span></td><td>All MCP tool modules + server.py</td><td>terminus-host /opt/ai-mcp/</td><td>28</td></tr>
+<tr><td><span class="ct">moosenet/lumina-fleet</span></td><td>All agent processes (axon, vigil, sentinel, seer, wizard, vector)</td><td>fleet-host /opt/lumina-fleet/</td><td>—</td></tr>
 <tr><td><span class="ct">moosenet/lumina-engram</span></td><td>Knowledge base, journals, behavioral patterns</td><td>Gitea only (data)</td><td>—</td></tr>
-<tr><td><span class="ct">moosenet/lumina-vector</span></td><td>Vector dev loop source (dual-mode)</td><td>CT310 + public GitHub</td><td>—</td></tr>
-<tr><td><span class="ct">moosenet/lumina-vigil</span></td><td>Briefing config + templates</td><td>CT310</td><td>—</td></tr>
-<tr><td><span class="ct">moosenet/lumina-sentinel</span></td><td>Health check configs + logs</td><td>CT310</td><td>—</td></tr>
+<tr><td><span class="ct">moosenet/lumina-vector</span></td><td>Vector dev loop source (dual-mode)</td><td>fleet-host + public GitHub</td><td>—</td></tr>
+<tr><td><span class="ct">moosenet/lumina-vigil</span></td><td>Briefing config + templates</td><td>fleet-host</td><td>—</td></tr>
+<tr><td><span class="ct">moosenet/lumina-sentinel</span></td><td>Health check configs + logs</td><td>fleet-host</td><td>—</td></tr>
 </table>
 </div>
 </section>
@@ -311,7 +310,7 @@ correlation_id, ttl_hours, timestamp
 <p class="section-sub">From a design brief to a 21-module platform in one session.</p>
 
 <div class="timeline">
-<div class="tl-item"><h4>Sessions 1-8: foundation</h4><div class="tl-date">March 2026</div><p>IronClaw deployed on CT305. Signal channel (later Matrix). MCP hub on CT214 with 61 tools. Identity files. Routines. Smart Proxy. Cost optimization from $5/day to $0.50/day. Agent Briefly and Agent Ops built on CT310.</p></div>
+<div class="tl-item"><h4>Sessions 1-8: foundation</h4><div class="tl-date">March 2026</div><p>IronClaw deployed on ironclaw-host. Signal channel (later Matrix). MCP hub on terminus-host with 61 tools. Identity files. Routines. Smart Proxy. Cost optimization from $5/day to $0.50/day. Agent Briefly and Agent Ops built on fleet-host.</p></div>
 
 <div class="tl-item"><h4>Session 9: the big build</h4><div class="tl-date">April 5, 2026</div><p>Nexus inbox shipped. Axon work queue shipped. Full naming schema approved. 7 Gitea repos renamed/created. 14 Plane projects with 672+ work items. Seer research engine built. Mr. Wizard phases 1-3 live. Vigil dashboard, Sentinel status page, Engram, commute intelligence built. 29 documentation files across all repos. 8 spec documents produced covering 21 total modules.</p></div>
 
@@ -342,8 +341,8 @@ correlation_id, ttl_hours, timestamp
 
 <footer>
 <div class="container">
-<p>Lumina &middot; MooseNet &middot; Built by LeMajesticMoose with Claude &middot; MIT License &middot; 2026</p>
-<p style="margin-top:0.5rem;font-size:0.7rem">21 modules &middot; 14 Plane projects &middot; 672+ work items &middot; 7 Gitea repos &middot; 3 Proxmox nodes &middot; ~$1.55/day max operating cost</p>
+<p>Lumina &middot; MooseNet &middot; Built with Claude &middot; MIT License &middot; 2026</p>
+<p style="margin-top:0.5rem;font-size:0.7rem">21 modules &middot; 14 Plane projects &middot; 672+ work items &middot; 7 Gitea repos &middot; private self-hosted runtime &middot; ~$1.55/day max operating cost</p>
 </div>
 </footer>
 
@@ -361,17 +360,17 @@ correlation_id, ttl_hours, timestamp
 the operator (Matrix/phone)
     │
     ▼ voice / text
-LUMINA (CT305) — IronClaw v0.19.0 + Claude Sonnet + Refractor (14 categories)
+LUMINA (ironclaw-host) — IronClaw v0.19.0 + Claude Sonnet + Refractor (14 categories)
     │                         │
     │ MCP tools (SSH stdio)   │ Nexus send/receive
     ▼                         ▼
-TERMINUS (CT214)         NEXUS (CT300 Postgres)
+TERMINUS (terminus-host)         NEXUS (postgres-host Postgres)
 120+ tools               inbox_messages table
 FastMCP server           5 tools: send/check/read/ack/history
     │                         │
-    │ SSH to CT310            │ work_orders
+    │ SSH to fleet-host            │ work_orders
     ▼                         ▼
-FLEET (CT310 — all agents)
+FLEET (fleet-host — all agents)
 ├── Axon      polls Nexus every 60s, executes Plane/Gitea bulk ops
 ├── Vigil     briefings at 6:45AM + 3:50PM weekdays
 ├── Sentinel  health checks + /status/ HTML page
@@ -397,7 +396,7 @@ http://YOUR_FLEET_SERVER_IP/
 <section>
 <div class="container">
 <h2>Terminus — MCP tool hub</h2>
-<p class="section-sub">CT214 runs the FastMCP server. Lumina connects via SSH stdio. All 120+ tools live here as Python modules.</p>
+<p class="section-sub">terminus-host runs the FastMCP server. Lumina connects via SSH stdio. All 120+ tools live here as Python modules.</p>
 
 <div class="grid-2">
 <div>
@@ -423,7 +422,7 @@ http://YOUR_FLEET_SERVER_IP/
 <div>
 <div class="card" style="margin-bottom:1rem">
 <h3>Refractor — smart proxy</h3>
-<p style="margin-bottom:0.75rem">Runs on CT305. Filters all 120+ tools to 17-28 relevant tools per turn using keyword categories. 80-88% token reduction on tool definitions.</p>
+<p style="margin-bottom:0.75rem">Runs on ironclaw-host. Filters all 120+ tools to 17-28 relevant tools per turn using keyword categories. 80-88% token reduction on tool definitions.</p>
 <p class="mono" style="font-size:0.75rem;color:var(--muted);line-height:2">
 git · monitoring · media · dev · news · infra<br>
 routines · briefing · discovery · jobs · plane<br>
@@ -449,12 +448,12 @@ crucible · hearth · ledger · relay · meridian · dashboard
 <section style="background:var(--bg2)">
 <div class="container">
 <h2>Fleet agents — what each one does</h2>
-<p class="section-sub">All agents run on CT310. They communicate via Nexus and publish HTML via Apache.</p>
+<p class="section-sub">All agents run on fleet-host. They communicate via Nexus and publish HTML via Apache.</p>
 
 <div class="grid-2">
 <div class="card">
 <h3 style="color:var(--teal)">Axon — Work Queue Manager</h3>
-<p class="card-sub">systemd service · polls Nexus every 60s · direct psycopg2 to CT300</p>
+<p class="card-sub">systemd service · polls Nexus every 60s · direct psycopg2 to postgres-host</p>
 <p>Receives <span class="mono">work_order</span> messages from Lumina via Nexus. Decomposes into atomic API calls. Executes bulk Plane operations (create issues, labels, states) or Gitea operations (create repos, push files). Creates tracking issues in The Plexus. Returns results via Nexus. Queries Engram for prior context before acting.</p>
 </div>
 <div class="card">
@@ -465,7 +464,7 @@ crucible · hearth · ledger · relay · meridian · dashboard
 <div class="card">
 <h3 style="color:var(--blue)">Sentinel — Ops Monitoring</h3>
 <p class="card-sub">10 health operations · HTML status page · auto-refreshes every 5 min</p>
-<p>Runs health checks across all services (Prometheus, Plex, Gitea, VM901, Ollama). Generates <span class="mono">/status/</span> HTML with green/amber/red per service. Auto-updates after <span class="mono">system-snapshot</span>, <span class="mono">self-health</span>, <span class="mono">plex-health</span> operations. Checks 12 services.</p>
+<p>Runs health checks across all services (Prometheus, Plex, Gitea, local GPU host, Ollama). Generates <span class="mono">/status/</span> HTML with green/amber/red per service. Auto-updates after <span class="mono">system-snapshot</span>, <span class="mono">self-health</span>, <span class="mono">plex-health</span> operations. Checks 12 services.</p>
 </div>
 <div class="card">
 <h3 style="color:var(--pink)">Seer — Research Engine</h3>
@@ -480,7 +479,7 @@ crucible · hearth · ledger · relay · meridian · dashboard
 <div class="card">
 <h3 style="color:var(--accent)">Engram — Semantic Memory</h3>
 <p class="card-sub">sqlite-vec · nomic-embed-text · 1536-dim · 3 layers</p>
-<p>Three memory layers: <strong>knowledge_base</strong> (infrastructure facts, decisions), <strong>patterns</strong> (conventions, naming rules), <strong>activity_journal</strong> (timestamped agent actions). Embedding via LiteLLM → nomic-embed-text on Ollama (VM901). Text search fallback when embedding fails.</p>
+<p>Three memory layers: <strong>knowledge_base</strong> (infrastructure facts, decisions), <strong>patterns</strong> (conventions, naming rules), <strong>activity_journal</strong> (timestamped agent actions). Embedding via LiteLLM → nomic-embed-text on Ollama (local GPU host). Text search fallback when embedding fails.</p>
 </div>
 </div>
 </div>
@@ -568,7 +567,7 @@ crucible · hearth · ledger · relay · meridian · dashboard
 <section>
 <div class="container">
 <h2>Repositories — documentation index</h2>
-<p class="section-sub">Every repo has README, ONBOARDING, HELP, HOWTO, and LICENSE. MIT licensed. Co-authored by LeMajesticMoose and Claude Code.</p>
+<p class="section-sub">Every repo has README, ONBOARDING, HELP, HOWTO, and LICENSE. MIT licensed. Co-authored with Claude Code.</p>
 
 <div class="grid-3">
 <div class="card">
@@ -578,18 +577,18 @@ crucible · hearth · ledger · relay · meridian · dashboard
 </div>
 <div class="card">
 <h3><a href="http://git.moosenet.online/moosenet/lumina-terminus" style="color:var(--accent);text-decoration:none">lumina-terminus</a></h3>
-<p class="card-sub">Deploys to CT214 /opt/ai-mcp/</p>
+<p class="card-sub">Deploys to terminus-host /opt/ai-mcp/</p>
 <p>All MCP tool modules + server.py. 28 files. Add a new module by writing a Python file with a register_*_tools(mcp) function and importing it in server.py.</p>
 </div>
 <div class="card">
 <h3><a href="http://git.moosenet.online/moosenet/lumina-fleet" style="color:var(--accent);text-decoration:none">lumina-fleet</a></h3>
-<p class="card-sub">Deploys to CT310 /opt/lumina-fleet/</p>
+<p class="card-sub">Deploys to fleet-host /opt/lumina-fleet/</p>
 <p>All agent processes: axon, vigil, sentinel, seer, wizard, engram, vector. Each subdirectory is a self-contained agent with its own Python code and config.</p>
 </div>
 <div class="card">
 <h3><a href="http://git.moosenet.online/moosenet/lumina-engram" style="color:var(--accent);text-decoration:none">lumina-engram</a></h3>
-<p class="card-sub">Data only · CT310 DB not committed</p>
-<p>LUMINA.md identity file, PATTERNS.md conventions, wizard consultation archive, Seer research reports, CT310 audit logs. The sqlite-vec database (engram.db) is runtime — not committed.</p>
+<p class="card-sub">Data only · fleet-host DB not committed</p>
+<p>LUMINA.md identity file, PATTERNS.md conventions, wizard consultation archive, Seer research reports, fleet-host audit logs. The sqlite-vec database (engram.db) is runtime — not committed.</p>
 </div>
 <div class="card">
 <h3><a href="http://git.moosenet.online/moosenet/lumina-vector" style="color:var(--accent);text-decoration:none">lumina-vector</a></h3>
@@ -626,16 +625,16 @@ crucible · hearth · ledger · relay · meridian · dashboard
 </div>
 <div class="card">
 <h3 style="color:var(--amber)">⛔ Waiting on the operator</h3>
-<p>Google account → M1 Workspace · Docker CT → Actual Budget + LubeLogger · Grocy API key → Hearth · Alpha Vantage + Finnhub keys → Meridian · Homepage CT → Dashboard · GitHub repos → Vector public</p>
+<p>Google account → M1 Workspace · self-hosted runtime → Actual Budget + LubeLogger · Grocy API key → Hearth · Alpha Vantage + Finnhub keys → Meridian · Homepage runtime → Dashboard · GitHub repos → Vector public</p>
 </div>
 </div>
 
 <div class="card" style="margin-top:1.5rem">
 <h3>Attribution</h3>
-<p style="margin-top:0.5rem;color:var(--muted)"><strong style="color:var(--text)">LeMajesticMoose</strong> ("Moose") — System architecture, product requirements, operations, and design direction. MooseNet homelab operator. All systems run on private infrastructure at moosenet.online.</p>
+<p style="margin-top:0.5rem;color:var(--muted)"><strong style="color:var(--text)">Peter Boose</strong> — Author, system architecture, product requirements, operations, and design direction.</p>
 <p style="margin-top:0.75rem;color:var(--muted)"><strong style="color:var(--text)">Claude Code</strong> (Anthropic claude-sonnet-4-6) — Implementation, code generation, system integration, and documentation. Built autonomously across 9+ sessions under the operator's direction, 2026.</p>
 <p style="margin-top:0.75rem;font-style:italic;color:var(--accent)">"Python handles execution. LLMs handle judgment only." — Lumina Architecture Principles</p>
-<p style="margin-top:0.75rem;font-size:0.8rem;color:var(--muted)">MIT License · Copyright © 2026 LeMajesticMoose and Claude Code (Anthropic)</p>
+<p style="margin-top:0.75rem;font-size:0.8rem;color:var(--muted)">MIT License · Copyright © 2026 MooseNet contributors and Claude Code (Anthropic)</p>
 </div>
 </div>
 </section>

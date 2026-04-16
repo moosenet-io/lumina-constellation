@@ -222,7 +222,7 @@ def generate_agent_yaml_doc() -> str:
         '  - type: http',
         '    port: 3001',
         '',
-        'container: ironclaw-host       # Where this agent runs (CT number)',
+        'container: ironclaw-host       # Where this agent runs (deployment target)',
         'runtime: ironclaw      # ironclaw | subprocess | systemd',
         'auto_start: true       # Start automatically on container boot',
         '',

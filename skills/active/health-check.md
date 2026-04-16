@@ -2,7 +2,7 @@
 name: health-check
 description: Check infrastructure health across all MooseNet containers and services
 version: 1.0
-author: LeMajesticMoose
+author: moosenet-io
 license: MIT
 agent: sentinel
 container: <fleet-host>
@@ -16,7 +16,7 @@ Check the health of all MooseNet containers and services. Alert only on failure 
 
 ## Procedure
 
-1. Check CT services: IronClaw (<ironclaw-host>), Terminus MCP (<terminus-host>), Matrix bridge (<matrix-host>), Postgres (<postgres-host>)
+1. Check remote services: IronClaw (<ironclaw-host>), Terminus MCP (<terminus-host>), Matrix bridge (<matrix-host>), Postgres (<postgres-host>)
 2. Check Docker services on <fleet-host>: Caddy, Actual Budget, Grocy, LubeLogger
 3. Check Prometheus targets (up metric) via prometheus_query
 4. Compute health score: (healthy/total) × 100

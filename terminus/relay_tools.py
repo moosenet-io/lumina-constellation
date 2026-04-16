@@ -7,9 +7,11 @@ import subprocess, json, os
 # ============================================================
 
 RELAY_HOST = 'root@YOUR_FLEET_SERVER_IP'
-LUBELOGGER_URL = os.environ.get('LUBELOGGER_URL', 'http://172.17.0.1:5000')
+LUBELOGGER_URL = os.environ.get('LUBELOGGER_URL', '')
 
 def _lubelogger(endpoint, method='GET', data=None, timeout=30):
+    if not LUBELOGGER_URL:
+        return {'error': 'LUBELOGGER_URL not configured'}
     if data:
         d_str = json.dumps(data).replace("'", '"')
         cmd = f"curl -s -X {method} -H 'Content-Type: application/json' -d '{d_str}' {LUBELOGGER_URL}{endpoint}"

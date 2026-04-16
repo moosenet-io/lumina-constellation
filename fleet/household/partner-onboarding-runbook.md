@@ -4,25 +4,25 @@ Step-by-step guide for deploying a second IronClaw instance on MooseNet as a hou
 
 ## Prerequisites
 
-- Proxmox cluster with available PVS capacity
+- private runtime environment with available capacity
 - Infisical access for secret management
 - Matrix account (existing or new) for the partner agent
 - the operator has approved the deployment and chosen a name
 
 ## Phase 1: Infrastructure Setup
 
-### 1.1 Create new LXC on PVS
+### 1.1 Create new service container on infrastructure host
 
 ```bash
-# On PVS host (<pvs-host-ip>)
-# Allocate new CT (e.g. <partner-host>)
-pct create 316 /var/lib/vz/template/cache/debian-12-standard.tar.zst \
+# On infrastructure host (<deployment-host>)
+# Allocate a new private runtime target (for example, <partner-host>)
+remote create 316 /var/lib/vz/template/cache/debian-12-standard.tar.zst \
   --hostname partner-agent \
   --cores 2 --memory 2048 \
   --storage local-lvm --rootfs 20 \
   --net0 name=eth0,bridge=vmbr0,ip=dhcp \
   --onboot 1
-pct start 316
+remote start $HOUSEHOLD_AGENT_CT
 ```
 
 ### 1.2 Install IronClaw
@@ -96,7 +96,7 @@ python3 /opt/lumina-fleet/nexus/household_routing.py
 ### 3.3 Verify Nexus access
 
 Partner agent needs read/write to inbox_messages table in <postgres-host> Postgres.
-Add credentials to partner CT's environment (use Infisical).
+Add credentials to partner runtime environment (use Infisical).
 
 ## Phase 4: Terminus Tool Scoping
 
@@ -120,7 +120,7 @@ No changes to server.py needed — LUMINA_AGENT_ID handles this automatically.
 
 To remove the partner agent:
 1. Stop IronClaw service on <partner-host>
-2. Remove <partner-host> from Proxmox
+2. Remove <partner-host> from virtualization
 3. Update `HOUSEHOLD_AGENTS` in household_config.py
 4. Archive any partner Engram data
 

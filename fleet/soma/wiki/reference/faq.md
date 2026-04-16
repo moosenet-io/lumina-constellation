@@ -36,7 +36,7 @@ Add a new agent: create one `.agent.yaml` file in `agents/`, start the container
 
 ### Can I run this on a single machine?
 
-Yes. The Docker Compose `minimal` profile runs everything on one host. The Proxmox cluster layout in CLAUDE.md is for a production multi-node deployment.
+Yes. The Docker Compose `minimal` profile runs everything on one host. The site-specific distributed layout in CLAUDE.md is for a production distributed deployment.
 
 ### Do I need a GPU?
 
@@ -127,7 +127,7 @@ Because Lumina's sub-agents (Vigil, Sentinel, Axon) are Python processes, not Ir
 
 ### Nexus messages aren't being delivered
 
-1. Check Postgres is running on <postgres-host>: `ssh root@YOUR_PVS_HOST_IP "pct exec 300 -- systemctl status postgresql"`
+1. Check Postgres is running on <postgres-host>: `ssh root@YOUR_REMOTE_HOST "$REMOTE_EXEC_TEMPLATE systemctl status postgresql"`
 2. Check Nexus env vars: `INBOX_DB_HOST`, `INBOX_DB_USER`, `INBOX_DB_PASS`
 3. Test with a direct psql query on <postgres-host>
 

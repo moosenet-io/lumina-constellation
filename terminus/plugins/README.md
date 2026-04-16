@@ -66,6 +66,6 @@ The plugin loader was introduced in session 10 to allow new tool modules to be a
 ## Development
 
 1. Write your plugin locally
-2. `scp plugin.py root@<pvm-host-ip>:/tmp/plugin.py`
-3. `ssh root@<pvm-host-ip> "pct push 214 /tmp/plugin.py /opt/ai-mcp/plugins/plugin.py"`
-4. `ssh root@<pvm-host-ip> "pct exec 214 -- systemctl restart mcp-server"`
+2. `scp plugin.py root@<deployment-host>:/tmp/plugin.py`
+3. `ssh root@<deployment-host> "site-specific deploy command /tmp/plugin.py /opt/ai-mcp/plugins/plugin.py"`
+4. `ssh root@<deployment-host> "$REMOTE_EXEC_TEMPLATE systemctl restart mcp-server"`

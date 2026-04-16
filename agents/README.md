@@ -61,7 +61,7 @@ inference_budget_daily: 0.05        # Max daily spend in USD for this agent
 | `role` | Yes | One-line description of what this agent does. |
 | `model` | Yes | Preferred model route. Format: `provider/model`. |
 | `model_fallback` | No | Fallback if preferred model is unavailable. |
-| `container` | Yes | CT number where this agent runs. |
+| `container` | Yes | role name or deployment target where this agent runs. |
 | `deploy_path` | Yes | Absolute path on the container. |
 | `service` | No | systemd service name, if the agent runs as a daemon. |
 | `tools` | Yes | List of MCP tool categories this agent needs. Informs Refractor. |

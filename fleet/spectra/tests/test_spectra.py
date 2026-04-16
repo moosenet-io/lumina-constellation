@@ -203,7 +203,7 @@ class TestBA4AccessControl:
         assert data.get("count", 0) > 0, f"No audit entries found: {data}"
 
     def test_operator_key_unlimited(self):
-        """Peter's key (MY.1) should never hit budget limit (429=budget; 429=max-sessions is OK)."""
+        """the operator's key (MY.1) should never hit budget limit (429=budget; 429=max-sessions is OK)."""
         import time
         for _ in range(3):
             status, data = _post("/navigate", {"url": "https://example.com", "consumer_key": "MY.1"})

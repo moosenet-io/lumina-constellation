@@ -85,7 +85,7 @@ def _load_config(config_path: Path = None, dry_run: bool = False) -> dict:
         "quiet_hours_end": 7,
         "channel": "matrix",
         "strength": "moderate",
-        "operator_name": "Peter",
+        "operator_name": "the operator",
         "topic_block": [],
         "topic_boost": [],
         "interests": [],

@@ -14,7 +14,15 @@ import os
 import subprocess
 from datetime import datetime, timezone, timedelta
 
-PVS_HOST = os.environ.get("PVS_SSH_HOST", os.environ.get("PVS_HOST", ""))
+REMOTE_SSH_HOST = os.environ.get("REMOTE_SSH_HOST", "")
+IRONCLAW_REMOTE_TARGET = os.environ.get("IRONCLAW_REMOTE_TARGET", "")
+REMOTE_EXEC_TEMPLATE = os.environ.get("REMOTE_EXEC_TEMPLATE", "")
+
+
+def _remote_exec(target: str, command: str) -> str:
+    if not REMOTE_EXEC_TEMPLATE:
+        return ""
+    return REMOTE_EXEC_TEMPLATE.format(target=target, command=command)
 
 _AGENTS_QUERY = """
 SELECT
@@ -34,7 +42,7 @@ ORDER BY last_session_activity DESC NULLS LAST
 
 
 def _run_query(query: str) -> list:
-    if not PVS_HOST:
+    if not (REMOTE_SSH_HOST and IRONCLAW_REMOTE_TARGET):
         return []
     script = (
         "import sqlite3,json; "
@@ -45,9 +53,14 @@ def _run_query(query: str) -> list:
         "conn.close()"
     )
     try:
+        remote_cmd = _remote_exec(
+            IRONCLAW_REMOTE_TARGET,
+            f"python3 -c {json.dumps(script)} 2>/dev/null",
+        )
+        if not remote_cmd:
+            return []
         r = subprocess.run(
-            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", PVS_HOST,
-             f"pct exec 305 -- python3 -c {json.dumps(script)} 2>/dev/null"],
+            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", REMOTE_SSH_HOST, remote_cmd],
             capture_output=True, text=True, timeout=12
         )
         if r.returncode == 0 and r.stdout.strip():

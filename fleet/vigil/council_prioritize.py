@@ -113,7 +113,7 @@ Active alerts and context:
 {alerts_str}
 {ctx_extra}
 
-Peter's situation: He's about to start his {briefing_type} and needs the most important information first. He reads quickly and gets overwhelmed by long briefings.
+the operator's situation: He's about to start his {briefing_type} and needs the most important information first. He reads quickly and gets overwhelmed by long briefings.
 
 Recommend:
 1. Which sections to prioritize (first 4-5)

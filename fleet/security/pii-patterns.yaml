@@ -8,11 +8,11 @@ patterns:
   # operator_email: 'your.internal@|your.personal@'
   # operator_phone: '555[0-9]{7}'
 
-  # Proxmox container refs (internal hostnames)
-  container_refs: 'CT[0-9]{3}'
+  # virtualization container refs (internal hostnames)
+  container_refs: 'C[Tt][0-9]{3}'
 
-  # Proxmox node refs
-  node_refs: '\b(PVS|PVM|PVE)\b'
+  # virtualization node refs
+  node_refs: '\b(infrastructure host|control host|compute host)\b'
 
   # Internal domain patterns — customize to your domain
   # internal_domains: 'yourdomain\.local|yourdomain\.online'

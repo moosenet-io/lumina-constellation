@@ -1,20 +1,20 @@
 ---
-# lumina-ct310-deploy.yml — Deploy Lumina Fleet to CT310 (arcade-reflexa)
+# lumina-fleet_host-deploy.yml — Deploy Lumina Fleet to fleet-host (arcade-reflexa)
 # INFRA-ANSIBLE-1
 #
 # Usage:
-#   ansible-playbook lumina-ct310-deploy.yml -i hosts.ini
-#   ansible-playbook lumina-ct310-deploy.yml -i hosts.ini --tags services
-#   ansible-playbook lumina-ct310-deploy.yml -i hosts.ini --check
+#   ansible-playbook lumina-fleet_host-deploy.yml -i hosts.ini
+#   ansible-playbook lumina-fleet_host-deploy.yml -i hosts.ini --tags services
+#   ansible-playbook lumina-fleet_host-deploy.yml -i hosts.ini --check
 #
 # Prerequisites:
-#   - CT310 running Debian/Ubuntu
+#   - fleet-host running Debian/Ubuntu
 #   - SSH access as root (or sudo user)
 #   - Gitea accessible at git.moosenet.online
 #   - /opt/lumina-fleet/axon/.env populated with secrets (not in this playbook)
 
-- name: Deploy Lumina Fleet to CT310
-  hosts: ct310
+- name: Deploy Lumina Fleet to fleet-host
+  hosts: fleet_host
   become: true
   vars:
     fleet_dir: /opt/lumina-fleet

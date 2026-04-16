@@ -86,7 +86,7 @@ def register_engram_tools(mcp):
     @mcp.tool()
     def engram_store(key: str, content: str, layer: str = 'kb', tags: str = '') -> dict:
         """Store a fact, decision, or learning in Engram memory.
-        key: unique identifier (e.g. 'infra/ct310', 'decision/auth-approach').
+        key: unique identifier (e.g. 'infra/fleet_host', 'decision/auth-approach').
         content: the information to store (markdown OK).
         layer: kb (knowledge base) or patterns (conventions/rules).
         tags: comma-separated tags for filtering.
@@ -154,7 +154,7 @@ def register_engram_tools(mcp):
     @mcp.tool()
     def engram_update(key: str, new_content: str, reason: str = '') -> dict:
         """Update an existing Engram memory entry. Preserves the old version.
-        key: exact key of the fact to update (e.g. 'agents/peter/profile/location')
+        key: exact key of the fact to update (e.g. 'agents/operator/profile/location')
         new_content: the new content to replace the existing entry
         reason: why this fact is being updated (logged to journal)
         Returns: {updated: true/false, key, old_content_preview}
@@ -226,7 +226,7 @@ def register_engram_tools(mcp):
     @mcp.tool()
     def engram_summarize(namespace: str, max_facts: int = 20) -> dict:
         """Summarize all facts in a namespace using a local model.
-        namespace: Engram namespace to summarize (e.g. 'agents/peter/profile')
+        namespace: Engram namespace to summarize (e.g. 'agents/operator/profile')
         max_facts: max facts to include in summary (default 20)
         Returns: {summary, fact_count, stored_key} -- summary is stored as a new fact.
         Uses local Qwen model via LiteLLM ($0 cost)."""

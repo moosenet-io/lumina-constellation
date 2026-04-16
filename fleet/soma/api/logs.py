@@ -13,7 +13,7 @@ Sources:
   - terminus-host: ai-mcp
   - ironclaw-host: ironclaw (service events only, not conversation logs)
 
-Access: SSH via PVS_SSH_HOST env var → pct exec CTN --
+Access: SSH via REMOTE_SSH_HOST and REMOTE_EXEC_TEMPLATE.
 """
 
 import os
@@ -23,7 +23,14 @@ import time
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-PVS_HOST = os.environ.get("PVS_SSH_HOST", os.environ.get("PVS_HOST", ""))
+REMOTE_SSH_HOST = os.environ.get("REMOTE_SSH_HOST", "")
+REMOTE_EXEC_TEMPLATE = os.environ.get("REMOTE_EXEC_TEMPLATE", "")
+
+
+def _remote_exec(target: str, command: str) -> str:
+    if not REMOTE_EXEC_TEMPLATE:
+        return ""
+    return REMOTE_EXEC_TEMPLATE.format(target=target, command=command)
 
 PRIORITY_MAP = {
     "0": "emergency", "1": "alert", "2": "critical",
@@ -40,17 +47,17 @@ LEVEL_PRIORITY = {
 # Services to collect per source — only system-event services, never agent chat
 SOURCES = {
     "fleet": {
-        "ct": "310",
+        "target": os.environ.get("FLEET_REMOTE_TARGET", ""),
         "services": ["soma", "axon", "vigil", "sentinel-health", "sentinel-metrics",
                      "spectra", "synapse-scan", "inbox-monitor", "skill-evolution",
                      "secret-rotation-check"],
     },
     "terminus": {
-        "ct": "214",
+        "target": os.environ.get("TERMINUS_REMOTE_TARGET", ""),
         "services": ["ai-mcp"],
     },
     "ironclaw": {
-        "ct": "305",
+        "target": os.environ.get("IRONCLAW_REMOTE_TARGET", ""),
         # IronClaw service events only — conversation logs excluded by MESSAGE filter
         "services": ["ironclaw"],
     },
@@ -69,9 +76,9 @@ def _is_system_event(message: str) -> bool:
     return not any(p in msg_lower for p in _CONTENT_PATTERNS)
 
 
-def _fetch_logs(ct: str, services: list, since_iso: str, limit: int) -> list:
-    """Fetch journalctl logs from a container via SSH."""
-    if not PVS_HOST:
+def _fetch_logs(target: str, services: list, since_iso: str, limit: int) -> list:
+    """Fetch journalctl logs from a remote target via SSH."""
+    if not (REMOTE_SSH_HOST and target):
         return []
 
     # Build journalctl command with service filters
@@ -83,9 +90,11 @@ def _fetch_logs(ct: str, services: list, since_iso: str, limit: int) -> list:
     )
 
     try:
+        remote_cmd = _remote_exec(target, cmd)
+        if not remote_cmd:
+            return []
         result = subprocess.run(
-            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", PVS_HOST,
-             f"pct exec {ct} -- {cmd}"],
+            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", REMOTE_SSH_HOST, remote_cmd],
             capture_output=True, text=True, timeout=15
         )
         lines = []
@@ -171,7 +180,7 @@ def get_logs(
     for src_name in query_sources:
         src_cfg = SOURCES[src_name]
         entries = _fetch_logs(
-            ct=src_cfg["ct"],
+            target=src_cfg["target"],
             services=src_cfg["services"],
             since_iso=since_iso,
             limit=limit,

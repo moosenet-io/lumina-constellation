@@ -32,7 +32,7 @@ loader = AgentLoader()
 print(loader.get('myagent').display_name)  # My Agent
 ```
 
-## 3. Deploy container (if new CT)
+## 3. Deploy runtime target (if needed)
 
 Follow the [partner agent onboarding runbook](../household/partner-onboarding-runbook.md).
 
