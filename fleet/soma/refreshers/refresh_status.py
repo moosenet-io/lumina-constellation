@@ -61,17 +61,32 @@ def refresh_status() -> dict:
     services = {}
     overall_ok = True
 
-    # IronClaw
+    # IronClaw — /api/health returns {"status":"healthy","channel":"gateway"}
+    # Also probe /v1/models for model count (LiteLLM-compatible endpoint on the gateway)
     ic_ok, ic_data, ic_ms = _probe_http(
         f'{ironclaw_url}/api/health',
         headers={'Authorization': f'Bearer {ironclaw_token}'} if ironclaw_token else {}
     )
+    ic_gateway_status = ic_data.get('status', '') if ic_ok else ''
+    ic_channel = ic_data.get('channel', '') if ic_ok else ''
+    # Probe models endpoint for model count (degraded = gateway up but no models)
+    ic_models_ok, ic_models_data, _ = _probe_http(
+        f'{ironclaw_url}/v1/models',
+        headers={'Authorization': f'Bearer {ironclaw_token}'} if ironclaw_token else {}
+    ) if ic_ok else (False, {}, 0)
+    ic_model_count = len(ic_models_data.get('data', [])) if ic_models_ok else None
+    ic_display = (
+        f"{ic_model_count} models · {ic_ms}ms" if ic_model_count
+        else ("LLM proxy unreachable" if ic_ok else "IronClaw offline")
+    )
     services['ironclaw'] = {
         'name': 'IronClaw', 'ok': ic_ok,
         'latency_ms': ic_ms,
-        'version': ic_data.get('version', '?') if ic_ok else None,
-        'tool_count': ic_data.get('tool_count', ic_data.get('tools', '?')) if ic_ok else None,
-        'error': ic_data.get('error') if not ic_ok else None,
+        'channel': ic_channel,
+        'gateway_status': ic_gateway_status,
+        'model_count': ic_model_count,
+        'display': ic_display,
+        'error': ic_data.get('error') if not ic_ok else (None if ic_models_ok else 'LLM proxy unreachable'),
     }
     if not ic_ok:
         overall_ok = False

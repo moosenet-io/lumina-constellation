@@ -1018,7 +1018,7 @@ async def get_status():
         for future in as_completed(futures, timeout=8):
             name = futures[future]
             try:
-                checks[name] = future.result(timeout=0.1)
+                checks[name] = future.result(timeout=5.0)  # SSH-based checks need up to 10s
             except Exception as e:
                 checks[name] = {"value": None, "ok": False, "error": str(e)[:60]}
 
@@ -2766,4 +2766,3 @@ if __name__ == "__main__":
     port = int(os.environ.get("SOMA_PORT", 8082))
     print(f"[soma] Starting on port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
-

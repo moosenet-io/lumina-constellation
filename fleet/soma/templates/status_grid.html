@@ -13,7 +13,7 @@
   {% set _ag   = status['services'].get('agents',    {}) %}
   {% set _rf   = status['services'].get('refractor', {}) %}
   {# Map new fields to template vars #}
-  {% set ic_ok = _ic.get('ok', False) %}  {% set ic_val = _ic.get('version') or _ic.get('tool_count') %}
+  {% set ic_ok = _ic.get('ok', False) %}  {% set ic_val = _ic.get('display') or _ic.get('version') or _ic.get('tool_count') %}
   {% set ic_err = _ic.get('error') %}     {% set ic_ms = _ic.get('latency_ms') %}
   {% set ll_ok = _ll.get('ok', False) %}  {% set ll_val = _ll.get('model_count') %}
   {% set ll_err = _ll.get('error') %}     {% set ll_ms = _ll.get('latency_ms') %}
@@ -242,7 +242,7 @@
       <div style="margin-top:0.25rem;">{{ sy_sent }} / {{ sy_max }} messages today</div>
     {% else %}
       <span style="color:var(--text-tertiary);">Disabled</span>
-      <div style="margin-top:0.25rem;"><a href="/synapse" style="color:var(--accent);font-size:0.8rem;">Configure &#x2192;</a></div>
+      <div style="margin-top:0.25rem;"><a href="/config#synapse" style="color:var(--accent);font-size:0.8rem;">Enable in Config &#x2192;</a></div>
     {% endif %}
   </div>
 </div>
