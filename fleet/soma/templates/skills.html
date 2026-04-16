@@ -1,53 +1,101 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Skills — Soma</title>
-<link rel="stylesheet" href="/shared/constellation.css">
-<script src="/shared/htmx.min.js"></script>
-</head>
-<body style="padding:1.5rem;">
-<div style="max-width:960px;margin:0 auto;">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-    <h1 style="font-size:1.5rem;font-weight:700;">🎯 Skills</h1>
-    <a href="/status" style="color:var(--text-secondary);text-decoration:none;font-size:0.875rem;">← Dashboard</a>
-  </div>
+{% extends "base.html" %}
+{% block title %}Skills{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+  <h1 style="font-size:1.5rem;font-weight:700;margin:0;">&#x1F3AF; Skills</h1>
+  <button class="btn-secondary" onclick="loadCurrentTab()" style="font-size:0.85rem;">&#x21BA; Refresh</button>
+</div>
 
-  <!-- Tab bar -->
-  <div style="display:flex;gap:0;border-bottom:1px solid var(--border-color);margin-bottom:1.5rem;">
-    <button onclick="showTab('active')" id="tab-active" style="padding:0.75rem 1.25rem;border:none;background:none;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--text-primary);font-weight:600;">Active</button>
-    <button onclick="showTab('proposed')" id="tab-proposed" style="padding:0.75rem 1.25rem;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-secondary);">Proposed</button>
-  </div>
+<div style="display:flex;gap:0;border-bottom:1px solid var(--border-color);margin-bottom:1.5rem;">
+  <button onclick="showTab('active')" id="tab-active"
+    style="padding:0.75rem 1.25rem;border:none;background:none;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--text-primary);font-weight:600;">
+    Active
+  </button>
+  <button onclick="showTab('proposed')" id="tab-proposed"
+    style="padding:0.75rem 1.25rem;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-secondary);">
+    Proposed
+  </button>
+</div>
 
-  <!-- Active skills -->
-  <div id="tab-active-content"
-    hx-get="/api/skills?status=active"
-    hx-trigger="load"
-    hx-swap="innerHTML">
-    <div style="color:var(--text-secondary);text-align:center;padding:2rem;">Loading active skills...</div>
-  </div>
+<div id="tab-active-content">
+  <div style="color:var(--text-secondary);text-align:center;padding:2rem;">Loading active skills...</div>
+</div>
 
-  <!-- Proposed skills -->
-  <div id="tab-proposed-content" style="display:none;"
-    hx-get="/api/skills?status=proposed"
-    hx-trigger="revealed"
-    hx-swap="innerHTML">
-    <div style="color:var(--text-secondary);text-align:center;padding:2rem;">Loading proposed skills...</div>
-  </div>
+<div id="tab-proposed-content" style="display:none;">
+  <div style="color:var(--text-secondary);text-align:center;padding:2rem;">Loading proposed skills...</div>
 </div>
 
 <script>
-function showTab(name) {
-  ['active','proposed'].forEach(t => {
-    document.getElementById('tab-'+t+'-content').style.display = t===name ? 'block' : 'none';
-    const btn = document.getElementById('tab-'+t);
-    btn.style.borderBottomColor = t===name ? 'var(--accent)' : 'transparent';
-    btn.style.color = t===name ? 'var(--text-primary)' : 'var(--text-secondary)';
-    btn.style.fontWeight = t===name ? '600' : 'normal';
-    if (t===name) htmx.trigger(document.getElementById('tab-'+t+'-content'), 'revealed');
-  });
+let currentTab = 'active';
+let loadedTabs = {};
+
+function escHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
+
+function showTab(name) {
+  currentTab = name;
+  ['active','proposed'].forEach(t => {
+    const content = document.getElementById('tab-' + t + '-content');
+    const btn = document.getElementById('tab-' + t);
+    content.style.display = t === name ? 'block' : 'none';
+    btn.style.borderBottomColor = t === name ? 'var(--accent)' : 'transparent';
+    btn.style.color = t === name ? 'var(--text-primary)' : 'var(--text-secondary)';
+    btn.style.fontWeight = t === name ? '600' : 'normal';
+  });
+  if (!loadedTabs[name]) loadSkills(name);
+}
+
+function loadCurrentTab() {
+  loadSkills(currentTab, true);
+}
+
+async function loadSkills(kind, force) {
+  const target = document.getElementById('tab-' + kind + '-content');
+  target.innerHTML = `<div style="color:var(--text-secondary);text-align:center;padding:2rem;">Loading ${kind} skills...</div>`;
+  try {
+    const response = await fetch(`/api/skills/${kind}`);
+    const data = await response.json();
+    const skills = data.skills || [];
+    loadedTabs[kind] = true;
+    renderSkills(target, skills, kind, data.note || '');
+  } catch (err) {
+    target.innerHTML = `<div class="card" style="color:var(--color-error);">Failed to load skills: ${escHtml(err.message)}</div>`;
+  }
+}
+
+function renderSkills(target, skills, kind, note) {
+  if (!skills.length) {
+    target.innerHTML = `<div class="card" style="padding:2rem;text-align:center;color:var(--text-tertiary);">No ${kind} skills configured yet.${note ? '<br><span style="font-size:0.8rem;">' + escHtml(note) + '</span>' : ''}</div>`;
+    return;
+  }
+
+  target.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;">${
+    skills.map(skill => {
+      const statusClass = skill.status === 'active' ? 'badge-success' : 'badge-secondary';
+      const source = skill.source || 'local';
+      const version = skill.version ? `v${escHtml(skill.version)}` : 'unversioned';
+      return `<div class="card" style="padding:1rem;">
+        <div style="display:flex;justify-content:space-between;gap:0.75rem;align-items:start;margin-bottom:0.5rem;">
+          <strong style="font-size:0.95rem;">${escHtml(skill.name)}</strong>
+          <span class="${statusClass}" style="font-size:0.75rem;padding:0.15rem 0.45rem;border-radius:4px;">${escHtml(skill.status || kind)}</span>
+        </div>
+        <div style="color:var(--text-secondary);font-size:0.85rem;line-height:1.45;">${escHtml(skill.description || 'No description provided.')}</div>
+        <div style="margin-top:0.75rem;color:var(--text-tertiary);font-size:0.75rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+          <span>${escHtml(source)}</span>
+          <span>${version}</span>
+          ${skill.proposed_at ? `<span>${escHtml(skill.proposed_at)}</span>` : ''}
+        </div>
+        ${skill.rationale ? `<div style="margin-top:0.75rem;color:var(--text-secondary);font-size:0.8rem;">${escHtml(skill.rationale)}</div>` : ''}
+      </div>`;
+    }).join('')
+  }</div>`;
+}
+
+loadSkills('active');
 </script>
-</body>
-</html>
+{% endblock %}
