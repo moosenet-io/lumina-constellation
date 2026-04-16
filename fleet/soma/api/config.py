@@ -2,6 +2,7 @@
 # See Doc 31 Part B.
 
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -52,6 +53,45 @@ def _safe_section(value: Any) -> Any:
     if isinstance(value, dict):
         return {k: _safe_value(k, v) for k, v in value.items()}
     return value if value is not None else {}
+
+
+def _secret_refs_from_env() -> list[dict[str, Any]]:
+    names = set()
+    for env_path in [FLEET_DIR / ".env", REPO_FLEET_DIR / ".env"]:
+        if not env_path.exists():
+            continue
+        try:
+            lines = env_path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except Exception:
+            continue
+        for line in lines:
+            if "=" not in line or line.lstrip().startswith("#"):
+                continue
+            name = line.split("=", 1)[0].strip()
+            if re.search(r"(TOKEN|SECRET|PASSWORD|PASS|API_KEY|KEY)$", name):
+                names.add(name)
+    return [{"name": name, "source": "env", "age_days": None} for name in sorted(names)]
+
+
+def _secret_refs_from_registry() -> list[dict[str, Any]]:
+    refs = []
+    for path in [FLEET_DIR / "security" / "secrets_registry.yaml", REPO_FLEET_DIR / "security" / "secrets_registry.yaml"]:
+        if not path.exists():
+            continue
+        data = _load_yaml(path)
+        for item in data.get("secrets", []) if isinstance(data, dict) else []:
+            if isinstance(item, dict) and item.get("name"):
+                refs.append(
+                    {
+                        "name": item["name"],
+                        "source": item.get("infisical_project", "infisical"),
+                        "age_days": None,
+                        "method": item.get("method", "manual"),
+                    }
+                )
+        if refs:
+            break
+    return refs
 
 
 @router.get("/general")
@@ -106,4 +146,41 @@ async def get_channels_config():
         "matrix": _safe_section(channels.get("matrix", {})),
         "email": _safe_section(channels.get("email", {})),
         "webhook": _safe_section(channels.get("webhook", {})),
+    }
+
+
+@router.get("/secrets")
+async def get_secrets_config():
+    cfg = load_config()
+    refs: dict[str, dict[str, Any]] = {}
+    secret_refs = cfg.get("secrets", {}) if isinstance(cfg.get("secrets", {}), dict) else {}
+    for name, ref in secret_refs.items():
+        source = ref.get("source", "infisical") if isinstance(ref, dict) else "infisical"
+        refs[name] = {"name": name, "source": source, "age_days": None}
+    for item in _secret_refs_from_registry() + _secret_refs_from_env():
+        refs.setdefault(item["name"], item)
+    return sorted(refs.values(), key=lambda row: row["name"].lower())
+
+
+@router.get("/synapse")
+async def get_synapse_config():
+    cfg = load_config()
+    synapse = cfg.get("synapse", {}) if isinstance(cfg.get("synapse", {}), dict) else {}
+    return {
+        "enabled": bool(synapse.get("enabled", False)),
+        "routing_rules": synapse.get("rules", synapse.get("routing_rules", [])),
+        "channels": synapse.get("channels", []),
+        "strength": synapse.get("strength", "gentle"),
+        "max_messages_per_day": synapse.get("max_messages_per_day"),
+    }
+
+
+@router.get("/security")
+async def get_security_config():
+    cfg = load_config()
+    security = cfg.get("security", {}) if isinstance(cfg.get("security", {}), dict) else {}
+    return {
+        "auth": _safe_section(security.get("auth", {})),
+        "rate_limits": _safe_section(security.get("rate_limits", {})),
+        "pii_gate": _safe_section(security.get("pii_gate", {})),
     }

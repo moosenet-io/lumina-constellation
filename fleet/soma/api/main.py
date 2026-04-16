@@ -265,6 +265,35 @@ def list_log_services(x_soma_key: str = Header(default="")):
         {"name": "litellm",  "label": "LiteLLM (proxy)",       "location": "remote-litellm"},
     ]}
 
+@app.get("/api/logs/recent")
+def logs_recent(
+    source: str = "all",
+    level: str = "all",
+    since_minutes: int = 60,
+    limit: int = 500,
+    x_soma_key: str = Header(default=""),
+):
+    """Multi-source log aggregator — system events only, never content. (BS.7)
+
+    PRIVACY: System events only. Never logs conversation content, prompts, or
+    model responses. See logs.py for privacy filtering details. Doc 31 Part B.
+
+    Args:
+        source: all | fleet | terminus | ironclaw
+        level: all | error | warn | info | debug
+        since_minutes: look back N minutes (max 1440 = 24h)
+        limit: max entries (max 2000)
+    """
+    _auth(x_soma_key)
+    try:
+        _sys.path.insert(0, str(Path(__file__).parent))
+        from logs import get_logs
+        return get_logs(source=source, level=level,
+                        since_minutes=since_minutes, limit=limit)
+    except Exception as e:
+        return {"ok": False, "entries": [], "total": 0, "error": str(e)[:200]}
+
+
 @app.get("/api/logs")
 def recent_logs(service: str = "soma", lines: int = 100, x_soma_key: str = Header(default="")):
     """Fetch log lines for a given service. Local services read via journalctl.
@@ -1198,45 +1227,41 @@ def logs_page(request: Request):
 
 @app.get("/api/sessions")
 def list_sessions(page: int = 1, limit: int = 20, x_soma_key: str = Header(default="")):
-    """List conversation sessions from IronClaw on the agent host."""
+    """List IronClaw conversation sessions — META ONLY, never content. (BS.5)
+
+    PRIVACY: Returns timestamps, duration, message count, token usage, cost.
+    NEVER returns session content, prompts, or model responses. Doc 31 Part B.
+    """
     _auth(x_soma_key)
-    limit = min(limit, 100)
+    limit = min(max(1, limit), 200)
     offset = (page - 1) * limit
-    _PVS_HOST = os.environ.get("PVS_SSH_HOST", os.environ.get("PVS_SSH_HOST", ""))
-    _IC_CT = os.environ.get("IRONCLAW_CT", "305")
     try:
-        # Query IronClaw SQLite DB on the agent host via SSH
-        query = (
-            f"python3 -c \""
-            f"import sqlite3,json,os; "
-            f"db=[p for p in ['/root/.ironclaw/ironclaw.db','/opt/ironclaw/ironclaw.db'] if os.path.exists(p)]; "
-            f"conn=sqlite3.connect(db[0]) if db else None; "
-            f"rows=[]; total=0; "
-            f"[rows.extend(conn.execute('SELECT id,channel,created_at,message_count FROM sessions ORDER BY created_at DESC LIMIT {limit} OFFSET {offset}').fetchall()) or setattr(conn,'_ok',True) for _ in [1]] if conn else None; "
-            f"[total:=conn.execute('SELECT COUNT(*) FROM sessions').fetchone()[0] for _ in [1]] if conn else None; "
-            f"print(json.dumps({{'sessions':[dict(zip(['id','channel','created_at','message_count'],r)) for r in rows],'total':total,'db':db[0] if db else None}})) if conn else print(json.dumps({{'sessions':[],'total':0,'db':None,'note':'ironclaw.db not found'}}))"
-            f"\" 2>/dev/null"
-        )
-        r = subprocess.run(
-            ["ssh", _PVS_HOST, f"pct exec {_IC_CT} -- {query}"],
-            capture_output=True, text=True, timeout=12
-        )
-        if r.returncode == 0 and r.stdout.strip():
-            data = json.loads(r.stdout.strip())
-            return {
-                "ok": True,
-                "sessions": data.get("sessions", []),
-                "total": data.get("total", 0),
-                "page": page,
-                "limit": limit,
-                "note": data.get("note"),
-            }
-        return {"ok": True, "sessions": [], "total": 0,
-                "note": "Session history unavailable — IronClaw DB not accessible via SSH"}
+        _sys.path.insert(0, str(Path(__file__).parent))
+        from sessions import get_sessions
+        result = get_sessions(limit=limit, offset=offset)
+        result["page"] = page
+        return result
     except Exception as e:
         return {"ok": False, "sessions": [], "total": 0,
                 "error": str(e)[:150],
                 "note": "Check PVS_SSH_HOST and IRONCLAW_CT env vars"}
+
+
+
+@app.get("/api/agents")
+def list_agents(x_soma_key: str = Header(default="")):
+    """List agents/users — meta only, never content. (BS.9)
+
+    PRIVACY: Returns activity meta (name, status, session count, last active).
+    NEVER returns conversation content. Doc 31 Part B.
+    """
+    _auth(x_soma_key)
+    try:
+        _sys.path.insert(0, str(Path(__file__).parent))
+        from agents import get_agents
+        return get_agents()
+    except Exception as e:
+        return {"ok": False, "agents": [], "total": 0, "error": str(e)[:200]}
 
 @app.get("/api/sessions/search")
 def search_sessions(q: str = "", x_soma_key: str = Header(default="")):
