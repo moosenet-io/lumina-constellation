@@ -1,87 +1,104 @@
-# Lumina Constellation — Identity Configuration
-# Internal codenames never change. Display names are yours.
-# Edit this file to rename any component.
-# Reload: systemctl restart any agent service that uses naming.py
-
-constellation:
-  name: "MooseNet"
-  tagline: "Home operations, automated"
-
-lead_agent:
-  internal: lumina
-  display_name: "Lumina"
-  personality: warm
-  emoji: "✨"
-
 agents:
-  - internal: lumiere
-    display_name: "Lumière"
-    personality: warm
-    emoji: "💕"
-
-systems:
-  nexus:
-    display_name: "Nexus"
-    description: "Message routing"
-  engram:
-    display_name: "Engram"
-    description: "Knowledge + memory"
-  terminus:
-    display_name: "Terminus"
-    description: "Tool gateway"
-  refractor:
-    display_name: "Refractor"
-    description: "Smart proxy"
-  plexus:
-    display_name: "The Plexus"
-    description: "Work queue"
-  obsidian_circle:
-    display_name: "The Obsidian Circle"
-    description: "Deep reasoning council"
-
+- display_name: Lumière
+  emoji: 💕
+  internal: lumiere
+  personality: warm
+constellation:
+  name: MooseNet
+  tagline: Home operations, automated
+lead_agent:
+  display_name: Lumina
+  emoji: ✨
+  internal: lumina
+  personality: warm
 modules:
-  vigil:
-    display_name: "Vigil"
-    description: "Daily briefings"
-  sentinel:
-    display_name: "Sentinel"
-    description: "System health"
-  seer:
-    display_name: "Seer"
-    description: "Deep research"
-  wizard:
-    display_name: "Mr. Wizard"
-    description: "Complex reasoning"
-  vector:
-    display_name: "Vector"
-    description: "Dev automation"
   axon:
-    display_name: "Axon"
-    description: "Task execution"
-  odyssey:
-    display_name: "Odyssey"
-    description: "Trip planning"
-  vitals:
-    display_name: "Vitals"
-    description: "Health tracking"
-  hearth:
-    display_name: "Hearth"
-    description: "Kitchen management"
-  ledger:
-    display_name: "Ledger"
-    description: "Personal finance"
-  relay:
-    display_name: "Relay"
-    description: "Vehicle maintenance"
-  meridian:
-    display_name: "Meridian"
-    description: "Trading sandbox"
-  dashboard:
-    display_name: "Dashboard"
-    description: "Visual frontend"
+    description: Task execution
+    display_name: Axon
+  cortex:
+    description: Code intelligence and structural analysis — blast radius, AST graphs,
+      audit
+    display_name: Cortex
+    emoji: 🧠
+    location: CT310 /opt/lumina-fleet/cortex/
+    mcp_tools: CT214 cortex_tools.py
+    module_number: 15
   crucible:
-    display_name: "Crucible"
-    description: "Learning & skills"
+    description: Learning & skills
+    display_name: Crucible
+  dashboard:
+    description: Visual frontend
+    display_name: Dashboard
   gateway:
-    display_name: "Gateway"
-    description: "API aggregator"
+    description: API aggregator
+    display_name: Gateway
+  hearth:
+    enabled: true
+  ledger:
+    description: Personal finance
+    display_name: Ledger
+  meridian:
+    description: Trading sandbox
+    display_name: Meridian
+  myelin:
+    description: Token governance and cost intelligence — tracks spend, alerts on
+      limits
+    display_name: Myelin
+    emoji: 💡
+    location: CT310 /opt/lumina-fleet/myelin/
+    mcp_tools: CT214 myelin_tools.py
+    module_number: 16
+  odyssey:
+    description: Trip planning
+    display_name: Odyssey
+  relay:
+    description: Vehicle maintenance
+    display_name: Relay
+  seer:
+    enabled: true
+  sentinel:
+    description: System health
+    display_name: Sentinel
+  vector:
+    description: Dev automation
+    display_name: Vector
+  vigil:
+    description: Daily briefings
+    display_name: Vigil
+  vitals:
+    enabled: true
+  wizard:
+    description: Complex reasoning
+    display_name: Mr. Wizard
+settings:
+  chat_platform: matrix
+synapse:
+  agent_toggles: {}
+  enabled: true
+  max_messages_per_day: 3
+  quiet_hours:
+    end: 08:00
+    start: '22:00'
+  strength: moderate
+  topic_blocklist: []
+  topic_boosts: []
+systems:
+  engram:
+    description: Knowledge + memory
+    display_name: Engram
+  nexus:
+    description: Message routing
+    display_name: Nexus
+  obsidian_circle:
+    description: Deep reasoning council
+    display_name: The Obsidian Circle
+  plexus:
+    description: Work queue
+    display_name: The Plexus
+  refractor:
+    description: Smart proxy
+    display_name: Refractor
+  terminus:
+    description: Tool gateway
+    display_name: Terminus
+timezone: America/Los_Angeles
