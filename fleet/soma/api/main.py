@@ -54,12 +54,15 @@ FLEET_DIR = Path("/opt/lumina-fleet")
 CONSTELLATION_YAML = FLEET_DIR / "constellation.yaml"
 
 try:
+    from . import plugins as plugins_api
     from . import skills as skills_api
     from . import timers as timers_api
 except ImportError:
+    import plugins as plugins_api
     import skills as skills_api
     import timers as timers_api
 
+app.include_router(plugins_api.router)
 app.include_router(skills_api.router)
 app.include_router(timers_api.router)
 
