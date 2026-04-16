@@ -45,6 +45,7 @@ from soma_tools import register_soma_tools
 from dura_tools import register_dura_tools
 from skills_tools import register_skills_tools
 from council_tools import register_council_tools
+from model_advisor_tools import register_model_advisor_tools
 
 # Multi-claw: agent identity from Terminus environment
 # Each IronClaw instance sets LUMINA_AGENT_ID in its stdio.sh wrapper
@@ -107,6 +108,7 @@ register_soma_tools(mcp)
 register_dura_tools(mcp)
 register_skills_tools(mcp)
 register_council_tools(mcp)
+register_model_advisor_tools(mcp)
 
 # Plugin architecture -- auto-discover tools from plugins/ directory
 from plugin_loader import discover as _discover_plugins

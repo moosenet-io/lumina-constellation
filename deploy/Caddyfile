@@ -1,0 +1,27 @@
+# Lumina Constellation — Caddyfile
+# Reverse proxy for all Lumina services
+# Set CADDY_DOMAIN in .env (default: localhost)
+
+{env.CADDY_DOMAIN} {
+
+  # Soma dashboard (main UI)
+  handle /api/* {
+    reverse_proxy lumina-soma:8082
+  }
+  handle /ws/* {
+    reverse_proxy lumina-soma:8082
+  }
+  handle {
+    reverse_proxy lumina-soma:8082
+  }
+}
+
+# MCP / Terminus (internal access)
+:8083 {
+  reverse_proxy lumina-terminus:8000
+}
+
+# LiteLLM API (internal access — do not expose publicly)
+:4000 {
+  reverse_proxy lumina-litellm:4000
+}

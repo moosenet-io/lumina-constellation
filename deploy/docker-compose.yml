@@ -1,0 +1,402 @@
+# Lumina Constellation — Docker Compose Master File
+# Doc 17 v2 · DT.9
+#
+# Usage:
+#   docker compose up -d                    # Start all core services
+#   docker compose --profile gpu up -d      # With Ollama GPU sidecar
+#   docker compose --profile matrix up -d  # With Conduit Matrix server
+#
+# Before starting:
+#   cp .env.example .env && edit .env
+#   Set OLLAMA_HOST to your Ollama instance (local or remote)
+#
+# Ollama runs OUTSIDE Docker (native GPU access on unified memory systems).
+# Set OLLAMA_HOST in .env:
+#   Linux (Docker Desktop):  http://host.docker.internal:11434
+#   Linux (Docker native):   http://172.17.0.1:11434  (or your host LAN IP)
+#   Remote box:              http://your-gpu-box-ip:11434
+
+x-lumina-base: &lumina-base
+  restart: unless-stopped
+  networks:
+    - lumina-net
+  env_file:
+    - .env
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-lumina-db-dep: &lumina-db-dep
+  depends_on:
+    lumina-postgres:
+      condition: service_healthy
+
+services:
+
+  # ── Postgres (shared DB for Nexus inbox, LiteLLM keys, etc.) ─────────────────
+  lumina-postgres:
+    <<: *lumina-base
+    image: postgres:16-alpine
+    container_name: lumina-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lumina}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      POSTGRES_DB: ${POSTGRES_DB:-lumina}
+      POSTGRES_MULTIPLE_DATABASES: "litellm,lumina_inbox,ironclaw"
+    volumes:
+      - lumina-postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lumina}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── LiteLLM Proxy (model routing + virtual keys) ───────────────────────────────
+  lumina-litellm:
+    <<: [*lumina-base, *lumina-db-dep]
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: lumina-litellm
+    command: ["--config", "/config/litellm_config.yaml", "--host", "0.0.0.0", "--port", "4000"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lumina}:${POSTGRES_PASSWORD}@lumina-postgres:5432/litellm
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?LITELLM_MASTER_KEY required}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - lumina-config:/config:ro
+    ports:
+      - "${LITELLM_PORT:-4000}:4000"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── Terminus (MCP tool hub) ────────────────────────────────────────────────────
+  lumina-terminus:
+    <<: [*lumina-base, *lumina-db-dep]
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.terminus
+    container_name: lumina-terminus
+    environment:
+      LITELLM_URL: http://lumina-litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-}
+      GITEA_URL: ${GITEA_URL:-}
+      GITEA_TOKEN: ${GITEA_TOKEN:-}
+      PLANE_BASE_URL: ${PLANE_BASE_URL:-}
+      PLANE_TOKEN_LUMINA: ${PLANE_TOKEN_LUMINA:-}
+      INBOX_DB_HOST: lumina-postgres
+      INBOX_DB_USER: ${POSTGRES_USER:-lumina}
+      INBOX_DB_PASS: ${POSTGRES_PASSWORD}
+      SPECTRA_URL: http://lumina-spectra:8084
+      FLEET_DIR: /opt/lumina-fleet
+    volumes:
+      - ../terminus:/opt/ai-mcp:ro
+      - ../fleet:/opt/lumina-fleet:ro
+      - lumina-config:/config:ro
+    ports:
+      - "${TERMINUS_PORT:-8083}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── Fleet (all agent services via APScheduler) ─────────────────────────────────
+  lumina-fleet:
+    <<: [*lumina-base, *lumina-db-dep]
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.fleet-base
+    container_name: lumina-fleet
+    command: ["python3", "scheduler.py"]
+    environment:
+      LITELLM_URL: http://lumina-litellm:4000
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      INBOX_DB_HOST: lumina-postgres
+      INBOX_DB_USER: ${POSTGRES_USER:-lumina}
+      INBOX_DB_PASS: ${POSTGRES_PASSWORD}
+      SPECTRA_URL: http://lumina-spectra:8084
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      LUMINA_TIMEZONE: ${LUMINA_TIMEZONE:-America/Los_Angeles}
+      FLEET_DIR: /opt/lumina-fleet
+      GITEA_URL: ${GITEA_URL:-}
+      PLANE_BASE_URL: ${PLANE_BASE_URL:-}
+      PLANE_TOKEN_LUMINA: ${PLANE_TOKEN_LUMINA:-}
+      TOMTOM_API_KEY: ${TOMTOM_API_KEY:-}
+      NEWSAPI_KEY: ${NEWSAPI_KEY:-}
+    volumes:
+      - ../fleet:/opt/lumina-fleet:ro
+      - lumina-data:/data
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import os; open('/data/.scheduler-alive').close()"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ── Soma (admin dashboard) ─────────────────────────────────────────────────────
+  lumina-soma:
+    <<: [*lumina-base, *lumina-db-dep]
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.soma
+    container_name: lumina-soma
+    environment:
+      SOMA_SECRET_KEY: ${SOMA_SECRET_KEY:?SOMA_SECRET_KEY required}
+      SOMA_JWT_SECRET: ${SOMA_JWT_SECRET:?SOMA_JWT_SECRET required}
+      LITELLM_URL: http://lumina-litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      INBOX_DB_HOST: lumina-postgres
+      INBOX_DB_USER: ${POSTGRES_USER:-lumina}
+      INBOX_DB_PASS: ${POSTGRES_PASSWORD}
+      SPECTRA_URL: http://lumina-spectra:8084
+      IRONCLAW_URL: ${IRONCLAW_URL:-}
+      IRONCLAW_GATEWAY_TOKEN: ${IRONCLAW_GATEWAY_TOKEN:-}
+      FLEET_DIR: /opt/lumina-fleet
+    volumes:
+      - ../fleet:/opt/lumina-fleet:ro
+      - lumina-data:/data
+    ports:
+      - "${SOMA_PORT:-8082}:8082"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── Spectra (browser agent) ────────────────────────────────────────────────────
+  lumina-spectra:
+    build:
+      context: ../fleet/spectra
+      dockerfile: Dockerfile
+    container_name: lumina-spectra
+    restart: unless-stopped
+    networks:
+      - lumina-net
+      - spectra-net
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+      - NET_RAW
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    read_only: true
+    mem_limit: 2g
+    cpus: 2.0
+    pids_limit: 200
+    tmpfs:
+      - /tmp:size=1g,mode=1777
+      - /dev/shm:size=512m
+    environment:
+      DISPLAY: ":99"
+      SPECTRA_DATA: /data/spectra
+      SPECTRA_CONFIG: /app/spectra_config.yaml
+      SPECTRA_OPERATOR_KEY: ${SPECTRA_OPERATOR_KEY:-spectra-operator-dev}
+    volumes:
+      - lumina-spectra-data:/data/spectra
+      - lumina-spectra-certs:/certs
+      - ../fleet/spectra/spectra_config.yaml:/app/spectra_config.yaml:ro
+      - ../fleet/spectra/spectra_service.py:/app/spectra_service.py:ro
+      - ../fleet/spectra/spectra_worker.py:/app/spectra_worker.py:ro
+      - ../fleet/spectra/spectra_sanitizer.py:/app/spectra_sanitizer.py:ro
+    ports:
+      - "${SPECTRA_PORT:-8084}:8084"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 45s
+      retries: 3
+
+  # ── Spectra noVNC (Live View — internal only) ──────────────────────────────────
+  lumina-spectra-novnc:
+    image: theasp/novnc:latest
+    container_name: lumina-spectra-novnc
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - spectra-net
+    environment:
+      VNC_SERVER: lumina-spectra:5900
+      DISPLAY_WIDTH: 1280
+      DISPLAY_HEIGHT: 800
+      RUN_XTERM: "no"
+    depends_on:
+      - lumina-spectra
+    expose:
+      - "8080"
+
+  # ── Spectra Internal (LAN-only browser) ───────────────────────────────────────
+  lumina-spectra-internal:
+    build:
+      context: ../fleet/spectra
+      dockerfile: Dockerfile
+    container_name: lumina-spectra-internal
+    restart: unless-stopped
+    networks:
+      - spectra-internal-net
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+      - NET_RAW
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    read_only: true
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 100
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+      - /dev/shm:size=256m
+    environment:
+      DISPLAY: ":99"
+      SPECTRA_DATA: /data/spectra
+      SPECTRA_CONFIG: /app/spectra_config.yaml
+      SPECTRA_INTERNAL_MODE: "true"
+      SPECTRA_OPERATOR_KEY: ${SPECTRA_OPERATOR_KEY:-spectra-operator-dev}
+    volumes:
+      - lumina-spectra-data:/data/spectra
+      - lumina-spectra-certs:/certs
+      - ../fleet/spectra/spectra_config.yaml:/app/spectra_config.yaml:ro
+      - ../fleet/spectra/spectra_service.py:/app/spectra_service.py:ro
+      - ../fleet/spectra/spectra_worker.py:/app/spectra_worker.py:ro
+      - ../fleet/spectra/spectra_sanitizer.py:/app/spectra_sanitizer.py:ro
+    ports:
+      - "${SPECTRA_INTERNAL_PORT:-8085}:8084"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 45s
+      retries: 3
+
+  # ── Caddy (reverse proxy + automatic TLS) ─────────────────────────────────────
+  lumina-caddy:
+    <<: *lumina-base
+    image: caddy:2-alpine
+    container_name: lumina-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - lumina-caddy-data:/data
+      - lumina-caddy-config:/config
+    environment:
+      CADDY_DOMAIN: ${CADDY_DOMAIN:-localhost}
+    depends_on:
+      - lumina-soma
+      - lumina-terminus
+    healthcheck:
+      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  # ── Conduit / Matrix (optional — profile: matrix) ─────────────────────────────
+  lumina-conduit:
+    <<: *lumina-base
+    image: matrixconduit/matrix-conduit:latest
+    container_name: lumina-conduit
+    profiles:
+      - matrix
+    environment:
+      CONDUIT_SERVER_NAME: ${MATRIX_SERVER_NAME:-lumina.local}
+      CONDUIT_DATABASE_PATH: /data/conduit.db
+      CONDUIT_ALLOW_REGISTRATION: "false"
+      CONDUIT_ALLOW_FEDERATION: "false"
+      CONDUIT_MAX_REQUEST_SIZE: "20000000"
+    volumes:
+      - lumina-conduit-data:/data
+    ports:
+      - "${MATRIX_PORT:-6167}:6167"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:6167/_matrix/client/versions"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  # ── Ollama sidecar (optional — profile: gpu) ───────────────────────────────────
+  # Note: For unified memory (Strix Halo, Apple Silicon), run Ollama natively
+  # (better GPU access). Only use this sidecar for discrete GPU setups.
+  lumina-ollama:
+    image: ollama/ollama:latest
+    container_name: lumina-ollama
+    profiles:
+      - gpu
+    restart: unless-stopped
+    networks:
+      - lumina-net
+    volumes:
+      - lumina-ollama-models:/root/.ollama
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ── Networks ───────────────────────────────────────────────────────────────────
+networks:
+  lumina-net:
+    name: lumina-net
+    driver: bridge
+  spectra-net:
+    name: spectra-net
+    driver: bridge
+  spectra-internal-net:
+    name: spectra-internal-net
+    driver: bridge
+    internal: true  # no outbound internet from LAN browser
+
+# ── Volumes ────────────────────────────────────────────────────────────────────
+volumes:
+  lumina-postgres-data:
+  lumina-data:
+  lumina-config:
+  lumina-caddy-data:
+  lumina-caddy-config:
+  lumina-spectra-data:
+  lumina-spectra-certs:
+  lumina-conduit-data:
+  lumina-ollama-models:

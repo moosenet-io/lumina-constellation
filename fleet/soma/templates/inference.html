@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Model Advisor — Inference Setup{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+  <h1 style="font-size:1.5rem;font-weight:700;">⚡ Model Advisor</h1>
+  <span class="badge badge-info">Inference Configuration</span>
+</div>
+
+<!-- Hardware Detection Card -->
+<div class="card" style="margin-bottom:1.5rem;">
+  <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Detected Hardware</h2>
+  <div id="hardware-info" hx-get="/api/setup/hardware" hx-trigger="load" hx-swap="innerHTML">
+    <div style="color:var(--text-secondary);">Detecting hardware...</div>
+  </div>
+</div>
+
+<!-- Recommended Fleet -->
+<div class="card" style="margin-bottom:1.5rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <h2 style="font-size:1rem;font-weight:700;">Recommended Model Fleet</h2>
+    <button class="btn-secondary" style="font-size:0.8rem;padding:0.3rem 0.8rem;"
+            onclick="document.getElementById('custom-vram').style.display='block'">
+      Custom VRAM
+    </button>
+  </div>
+
+  <div id="custom-vram" style="display:none;margin-bottom:1rem;">
+    <label style="font-size:0.85rem;color:var(--text-secondary);">VRAM / Unified Memory (GB)</label>
+    <div style="display:flex;gap:0.5rem;margin-top:0.25rem;">
+      <input type="number" id="custom-vram-input" value="64" min="4" max="256"
+             style="width:80px;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);">
+      <button class="btn-primary" style="font-size:0.8rem;padding:0.3rem 0.8rem;"
+              hx-post="/api/setup/recommend"
+              hx-vals='js:{"vram_gb": document.getElementById("custom-vram-input").value}'
+              hx-target="#fleet-recommendation" hx-swap="innerHTML">
+        Recalculate
+      </button>
+    </div>
+  </div>
+
+  <div id="fleet-recommendation" hx-get="/api/setup/recommend" hx-trigger="load" hx-swap="innerHTML">
+    <div style="color:var(--text-secondary);">Loading recommendations...</div>
+  </div>
+</div>
+
+<!-- Ollama Connection -->
+<div class="card" style="margin-bottom:1.5rem;">
+  <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Ollama Connection</h2>
+  <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+    <input type="text" id="ollama-host" value="http://localhost:11434" placeholder="Ollama URL"
+           style="flex:1;min-width:200px;padding:0.5rem 0.75rem;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);">
+    <button class="btn-primary"
+            hx-post="/api/setup/test-ollama"
+            hx-vals='js:{"host": document.getElementById("ollama-host").value}'
+            hx-target="#ollama-status" hx-swap="innerHTML">
+      Test Connection
+    </button>
+  </div>
+  <div id="ollama-status" style="margin-top:0.75rem;"></div>
+</div>
+
+<!-- VRAM Usage Visualization -->
+<div class="card">
+  <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">VRAM Usage</h2>
+  <div id="vram-chart" hx-get="/api/setup/vram-chart" hx-trigger="load" hx-swap="innerHTML">
+    <div style="color:var(--text-secondary);">Loading VRAM breakdown...</div>
+  </div>
+</div>
+
+<script>
+// HTMX response handlers for hardware info
+document.body.addEventListener('htmx:afterSwap', function(e) {
+  if (e.detail.target.id === 'hardware-info') {
+    try {
+      const d = JSON.parse(e.detail.xhr.response);
+      const hw = d.hardware || d;
+      e.detail.target.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;">
+          <div class="stat-card">
+            <div style="font-size:0.75rem;color:var(--text-secondary);">PLATFORM</div>
+            <div style="font-weight:600;">${hw.platform || '?'}</div>
+          </div>
+          <div class="stat-card">
+            <div style="font-size:0.75rem;color:var(--text-secondary);">CHIP</div>
+            <div style="font-weight:600;">${(hw.chip_model || '?').slice(0,30)}</div>
+          </div>
+          <div class="stat-card">
+            <div style="font-size:0.75rem;color:var(--text-secondary);">RAM</div>
+            <div style="font-weight:600;">${hw.total_ram_gb || '?'} GB</div>
+          </div>
+          <div class="stat-card">
+            <div style="font-size:0.75rem;color:var(--text-secondary);">EST. VRAM</div>
+            <div style="font-weight:600;">${hw.estimated_vram_gb || 0} GB</div>
+          </div>
+          <div class="stat-card">
+            <div style="font-size:0.75rem;color:var(--text-secondary);">PRESET</div>
+            <div style="font-weight:600;color:var(--accent);">${hw.fleet_preset || '?'}</div>
+          </div>
+        </div>`;
+    } catch(err) {
+      e.detail.target.innerHTML = '<div style="color:var(--text-secondary)">Could not detect hardware</div>';
+    }
+  }
+
+  if (e.detail.target.id === 'fleet-recommendation') {
+    try {
+      const d = JSON.parse(e.detail.xhr.response);
+      if (!d.ok || !d.models) return;
+      const rows = d.models.map(m => `
+        <div style="display:flex;justify-content:space-between;align-items:center;
+             padding:0.6rem 0;border-bottom:1px solid var(--border);">
+          <div>
+            <span style="font-weight:500;">${m.name}</span>
+            <span style="margin-left:0.5rem;font-size:0.8rem;color:var(--text-secondary);">${m.description || ''}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <span class="badge ${m.role === 'reasoning' ? 'badge-warning' : m.role === 'primary' ? 'badge-success' : 'badge-info'}">${m.role}</span>
+            <span style="font-size:0.85rem;color:var(--text-secondary);">${m.vram_gb}GB</span>
+            <button class="btn-primary" style="font-size:0.75rem;padding:0.2rem 0.6rem;"
+                    onclick="pullModel('${m.name}', this)">Pull</button>
+          </div>
+        </div>`).join('');
+      e.detail.target.innerHTML = `
+        <div style="margin-bottom:0.75rem;font-size:0.85rem;color:var(--text-secondary);">
+          Preset: <strong>${d.preset_name}</strong> ·
+          ${d.total_model_vram_gb}GB model weights ·
+          ${d.headroom_gb}GB headroom for KV cache
+        </div>
+        <div>${rows}</div>
+        <div style="margin-top:0.75rem;text-align:right;">
+          <button class="btn-primary" onclick="pullAll(${JSON.stringify(d.models)})">
+            Pull All Models
+          </button>
+        </div>`;
+    } catch(err) {}
+  }
+
+  if (e.detail.target.id === 'ollama-status') {
+    try {
+      const d = JSON.parse(e.detail.xhr.response);
+      const ok = d.ok;
+      e.detail.target.innerHTML = `
+        <span class="badge ${ok ? 'badge-success' : 'badge-error'}">
+          ${ok ? '✓ Connected' : '✗ Unreachable'}
+        </span>
+        ${ok ? `<span style="margin-left:0.5rem;font-size:0.85rem;">${d.model_count || 0} models loaded</span>` :
+               `<span style="margin-left:0.5rem;font-size:0.85rem;color:var(--error);">${d.error || 'Connection failed'}</span>`}`;
+    } catch(err) {}
+  }
+});
+
+async function pullModel(name, btn) {
+  btn.textContent = 'Pulling...';
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/api/setup/pull-model', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-Soma-Key': getSomaKey()},
+      body: JSON.stringify({model: name})
+    });
+    const d = await resp.json();
+    btn.textContent = d.ok ? '✓' : '✗';
+    btn.style.background = d.ok ? 'var(--success)' : 'var(--error)';
+  } catch(e) {
+    btn.textContent = '✗';
+  }
+}
+
+async function pullAll(models) {
+  for (const m of models) {
+    const btn = document.querySelector(`button[onclick*="${m.name}"]`);
+    if (btn) await pullModel(m.name, btn);
+  }
+}
+
+function getSomaKey() {
+  return document.cookie.split(';').map(c=>c.trim())
+    .find(c=>c.startsWith('soma_token='))?.split('=')[1] || '';
+}
+</script>
+{% endblock %}

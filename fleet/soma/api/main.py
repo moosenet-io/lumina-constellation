@@ -2645,6 +2645,94 @@ def cortex_summary():
     }
 
 
+
+# ── Setup Inference / Model Advisor (DT.8) ─────────────────────────────────────
+
+@app.get("/setup/inference")
+def setup_inference_page(request: Request):
+    """Model Advisor — hardware detection, fleet recommendation, model pull."""
+    return jinja2_templates.TemplateResponse(request, "inference.html", {"active_page": "setup"})
+
+
+@app.get("/api/setup/hardware")
+def get_hardware_info():
+    """Run hardware detection and return results."""
+    try:
+        import subprocess, sys
+        result = subprocess.run(
+            [sys.executable, str(FLEET_DIR.parent / "deploy" / "detect_hardware.py")],
+            capture_output=True, text=True, timeout=15
+        )
+        if result.returncode == 0:
+            import json
+            hw = json.loads(result.stdout)
+            return {"ok": True, "hardware": hw}
+    except Exception as e:
+        pass
+    return {"ok": False, "hardware": {"platform": "unknown", "chip_model": "Detection failed", "total_ram_gb": 0, "estimated_vram_gb": 0, "fleet_preset": "cpu_only"}}
+
+
+@app.post("/api/setup/recommend")
+def get_model_recommendation(vram_gb: float = 0):
+    """Get model fleet recommendation for given VRAM."""
+    try:
+        import sys
+        sys.path.insert(0, str(FLEET_DIR.parent / "deploy"))
+        from detect_hardware import detect
+        from terminus.model_advisor_tools import _pick_preset_for_vram
+        import yaml
+
+        hw = detect()
+        if vram_gb <= 0:
+            vram_gb = hw.get("estimated_vram_gb", 0)
+        platform = hw.get("platform", "generic")
+
+        presets_path = FLEET_DIR.parent / "deploy" / "model_presets.yaml"
+        presets = yaml.safe_load(presets_path.read_text())
+
+        preset_name = _pick_preset_for_vram(vram_gb, platform)
+        preset = presets.get(preset_name, {})
+        models = preset.get("models", [])
+        total_vram = sum(m.get("vram_gb", 0) for m in models)
+
+        return {
+            "ok": True,
+            "preset_name": preset_name,
+            "models": models,
+            "total_model_vram_gb": total_vram,
+            "headroom_gb": round(vram_gb - total_vram, 1),
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+
+@app.post("/api/setup/test-ollama")
+def test_ollama_connection(host: str = "http://localhost:11434"):
+    """Test Ollama connection and return model count."""
+    try:
+        import urllib.request as _ur
+        with _ur.urlopen(f"{host.rstrip('/')}/api/tags", timeout=5) as r:
+            data = json.loads(r.read())
+        return {"ok": True, "model_count": len(data.get("models", []))}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:100]}
+
+
+@app.post("/api/setup/pull-model")
+async def pull_model_endpoint(request: Request, x_soma_key: str = Header(default="")):
+    """Trigger Ollama to pull a model (streaming — returns immediately)."""
+    _auth(x_soma_key)
+    body = await request.json()
+    model = body.get("model", "")
+    if not model:
+        return {"ok": False, "error": "model required"}
+    try:
+        import subprocess, sys
+        subprocess.Popen(["ollama", "pull", model])
+        return {"ok": True, "message": f"Pull started for {model}"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:100]}
+
 if __name__ == "__main__":
     import uvicorn
     # Load env
