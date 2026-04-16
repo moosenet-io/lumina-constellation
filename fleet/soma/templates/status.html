@@ -369,7 +369,7 @@ document.addEventListener('keydown', function(e) {
     <div class="widget-header">
       <div>
         <span class="widget-title">&#x1F4CA; Activity Monitor</span>
-        <span class="widget-subtitle" style="margin-left:0.5rem;">1h · CT305 · CT310 · CT214 · CT300</span>
+        <span class="widget-subtitle" style="margin-left:0.5rem;">1h · ironclaw-host · fleet-host · terminus-host · postgres-host</span>
       </div>
       <span id="activity-monitor-age" style="font-size:0.7rem;color:var(--text-tertiary);"></span>
     </div>
@@ -455,7 +455,7 @@ document.addEventListener('keydown', function(e) {
 </div>
 
 <!-- Invite modal (stub — BS.16 builds backend) -->
-<div id="invite-modal" hidden style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;display:flex;align-items:center;justify-content:center;">
+<div id="invite-modal" hidden style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;display:none;align-items:center;justify-content:center;">
   <div class="card" style="width:420px;max-width:90vw;padding:0;">
     <div class="widget-header" style="border-bottom:1px solid var(--border-color);">
       <span class="widget-title">&#x2B50; Invite Someone</span>
@@ -488,19 +488,18 @@ var SOMA_KEY_W = (function() { return localStorage.getItem('soma_key') || ''; })
 function _hw() { var h = {'Content-Type':'application/json'}; if (SOMA_KEY_W) h['X-Soma-Key'] = SOMA_KEY_W; return h; }
 function _escW(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-var PROMETHEUS = 'http://192.168.0.222:9090';
+var PROMETHEUS = window.SOMA_PROMETHEUS_URL || '';
 
-// ── CT IPs for Activity Monitor ──
-var AM_HOSTS = [
-  {label: 'CT305', ip: '192.168.0.217'},
-  {label: 'CT310', ip: '192.168.0.120'},
-  {label: 'CT214', ip: '192.168.0.226'},
-  {label: 'CT300', ip: '192.168.0.200'}
-];
+// Operators can inject Prometheus instances without committing infrastructure details.
+var AM_HOSTS = window.SOMA_PROMETHEUS_HOSTS || [];
 
 // ── Activity Monitor (Prometheus sparklines) ──────────────────────────────────
 function loadActivityMonitor() {
   var body = document.getElementById('activity-monitor-body');
+  if (!PROMETHEUS || !AM_HOSTS.length) {
+    body.innerHTML = '<div class="empty-widget">Prometheus host metadata not configured.</div>';
+    return;
+  }
   var now = Math.floor(Date.now()/1000);
   var start = now - 3600;
   var step = 120;
@@ -530,7 +529,7 @@ function loadActivityMonitor() {
       var canvasIdRam = 'spark-' + host.label + '-ram';
 
       html += '<div style="background:var(--bg-secondary);border-radius:6px;padding:0.625rem 0.75rem;">';
-      html += '<div style="font-size:0.8125rem;font-weight:700;margin-bottom:0.5rem;color:var(--text-primary);">' + _escW(host.label) + ' <span style="font-size:0.7rem;color:var(--text-tertiary);">' + _escW(host.ip) + '</span></div>';
+      html += '<div style="font-size:0.8125rem;font-weight:700;margin-bottom:0.5rem;color:var(--text-primary);">' + _escW(host.label) + '</div>';
 
       html += '<div class="sparkline-row"><span class="sparkline-label">CPU</span><canvas class="sparkline-wrap" id="' + canvasId + '" height="28"></canvas><span class="sparkline-val">' + cpuNow + '%</span></div>';
       html += '<div class="sparkline-row"><span class="sparkline-label">RAM</span><canvas class="sparkline-wrap" id="' + canvasIdRam + '" height="28"></canvas><span class="sparkline-val">' + ramNow + '%</span></div>';
@@ -549,7 +548,7 @@ function loadActivityMonitor() {
 
     document.getElementById('activity-monitor-age').textContent = new Date().toLocaleTimeString();
   }).catch(function() {
-    body.innerHTML = '<div class="empty-widget">Prometheus unreachable — <a href="http://192.168.0.222:9090" style="color:var(--accent);">check metrics server</a></div>';
+    body.innerHTML = '<div class="empty-widget">Prometheus unreachable.</div>';
   });
 }
 
