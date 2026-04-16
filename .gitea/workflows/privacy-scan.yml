@@ -1,0 +1,15 @@
+name: Privacy Scan
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  privacy-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run privacy scanner
+        run: python3 scripts/privacy_scan.py --all

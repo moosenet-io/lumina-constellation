@@ -14,6 +14,7 @@ Read T1 and T2 progress files before starting. Write your own.
 ```bash
 cd /home/coder/lumina-constellation
 git pull gitea main                          # Always pull first
+git config core.hooksPath .githooks          # Enables local privacy gates
 cat /home/coder/session-progress-t1.md      # What T1 is doing
 cat /home/coder/session-progress-t2.md      # What T2 is doing
 ```
@@ -77,6 +78,8 @@ Terminus (terminus-host) path: `/opt/ai-mcp/`
 **Git hygiene:**
 - Commit messages: imperative, describe what changed and why
 - No secrets, IPs, or private infrastructure references in committed files
+- Local commits and pushes must pass `scripts/privacy_scan.py`; `.githooks/pre-commit`
+  scans staged content and `.githooks/pre-push` blocks Gitea uploads.
 - If the pre-commit hook blocks: fix the issue, don't use `--no-verify` unless it's documented CIDR ranges in infrastructure config
 
 ## Inference De-bloat Rule

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Blocks pushes to Gitea when pushed commits contain secrets, PII, or private
+# infrastructure details. Git passes pushed refs on stdin.
+
+exec python3 scripts/privacy_scan.py --pre-push

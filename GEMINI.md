@@ -73,6 +73,7 @@ Your role is support and quality — you make the other agents' output more corr
 ```bash
 cd /home/coder/lumina-constellation
 git pull gitea main
+git config core.hooksPath .githooks
 cat /home/coder/session-progress-t1.md
 cat /home/coder/session-progress-t2.md
 cat /home/coder/session-progress-t3.md
@@ -102,6 +103,8 @@ Key privacy rules (from Doc 31 Part B, summarized):
 - Use "non-developer" — never a job title
 - MooseNet is the project brand — always fine to mention
 - API endpoints that return session/conversation data: **meta only, never content**
+- Commits and pushes must pass `scripts/privacy_scan.py`; the shared `.githooks`
+  block PII and private infrastructure details before Gitea upload.
 
 When generating READMEs, follow the personality plan at `/home/coder/subdirectory-readme-plan.md`. Each module has a one-liner and a consistent skeleton — match it.
 

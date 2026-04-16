@@ -6,7 +6,7 @@
           type: customapi
           url: http://YOUR_FLEET_SERVER_IP:8080/api/inbox
           headers:
-            x-api-key: lumina-gateway-dev
+            x-api-key: ${LUMINA_GATEWAY_KEY}
           mappings:
             - field: pending
               label: Pending
@@ -19,7 +19,7 @@
           type: customapi
           url: http://YOUR_FLEET_SERVER_IP:8080/api/health
           headers:
-            x-api-key: lumina-gateway-dev
+            x-api-key: ${LUMINA_GATEWAY_KEY}
           mappings:
             - field: summary
               label: Status
@@ -32,7 +32,7 @@
           type: customapi
           url: http://YOUR_FLEET_SERVER_IP:8080/api/tasks
           headers:
-            x-api-key: lumina-gateway-dev
+            x-api-key: ${LUMINA_GATEWAY_KEY}
           mappings:
             - field: count
               label: Urgent
