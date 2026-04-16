@@ -203,7 +203,7 @@ def refresh_status() -> dict:
         _sy_muted = time.time() < _markers.get('synapse_muted_until', 0)
         services['synapse'] = {
             'name': 'Synapse',
-            'ok': _sy_enabled,
+            'ok': True,        # Synapse is always "ok" when configured; use 'enabled' for state
             'enabled': _sy_enabled,
             'strength': _sy_strength,
             'sent_today': _sy_sent,
