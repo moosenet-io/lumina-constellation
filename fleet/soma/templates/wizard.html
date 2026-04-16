@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lumina — Setup</title>
   <link rel="stylesheet" href="/shared/constellation.css">
-  <script src="http://192.168.0.120/shared/htmx.min.js"></script>
+  <script src="/shared/htmx.min.js"></script>
+<script>window.__somaKey = document.cookie.split(";").map(c=>c.trim()).find(c=>c.startsWith("soma_token="))?.split("=")[1] || "";
+function somaHeaders() { return {"X-Soma-Key": window.__somaKey || ""}; }</script>
 </head>
-<body hx-headers='{"X-Soma-Key": "YOUR_SOMA_ADMIN_KEY"}' style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;">
+<body id="wizard-root" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;">
 
   <!-- FIX 4a: Back to Dashboard link -->
   <div style="position:fixed;top:1rem;left:1rem;z-index:100;">

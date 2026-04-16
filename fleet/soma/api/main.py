@@ -587,9 +587,13 @@ jinja2_templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 @app.get("/setup")
+def setup_page(request: Request):
+    """Setup wizard — onboarding and configuration flow."""
+    return jinja2_templates.TemplateResponse(request, "wizard.html", {"active_page": "setup"})
+
 @app.get("/wizard")
 def wizard_redirect():
-    """Redirect /wizard → /setup (backward compat)."""
+    """Redirect /wizard → /setup (301 backward compat)."""
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/setup", status_code=301)
 
