@@ -1,118 +1,34 @@
-# Axon — Work Queue Manager
+# ✦ Axon
 
-Axon is the work queue manager for Lumina Constellation. It monitors the Nexus inbox for incoming work orders, dispatches them to the appropriate agents or tools, and reports results back to Lumina.
+> Work orders in. Results out. No drama.
 
-**Deploys to:** <fleet-host> (<fleet-server-ip>) at `/opt/lumina-fleet/axon/`
-**Trigger:** systemd timer — polls every 60 seconds
-**Inference cost:** $0 (pure Python decision logic)
+**Axon** is the work queue executor that polls for tasks and dispatches them to the appropriate agent.
 
----
+## What it does
 
-## What Axon Does
+- Polls Plane CE for new tasks assigned to the agent fleet.
+- Dispatches work orders to Lumina or other specialized agents.
+- Tracks task execution status and updates the project management layer.
+- Integrates with Pulse for real-time activity streaming.
+- Maintains execution context using Engram memory.
 
-1. Polls the Nexus inbox via `nexus_check()` for messages addressed to `axon`.
-2. Parses the work order (task type, parameters, priority).
-3. Routes to the correct handler: Plane work item creation, agent trigger, API call, etc.
-4. Marks the message acknowledged with `nexus_ack()`.
-5. Sends a completion report back to Lumina via `nexus_send()`.
-
-Axon never makes LLM calls. Routing decisions use keyword lookup tables and task type fields. If a task is ambiguous, it escalates back to Lumina rather than guessing.
-
----
-
-## Files
+## Key files
 
 | File | Purpose |
 |------|---------|
-| `axon.py` | Main agent script. Inbox polling loop, task router, handler dispatch. |
-| `axon.service` | systemd service unit. Managed by <fleet-host>. |
+| `axon.py` | Main work queue polling and dispatch logic |
+| `README.md` | This documentation |
 
----
+## Talks to
 
-## systemd Service
-
-```ini
-[Unit]
-Description=Axon Work Queue Manager
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=/opt/lumina-fleet/axon
-ExecStart=/usr/bin/python3 /opt/lumina-fleet/axon/axon.py
-Restart=always
-RestartSec=30
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Manage with standard systemd commands on <fleet-host>:
-
-```bash
-systemctl status axon
-systemctl restart axon
-journalctl -u axon -f
-```
-
----
-
-## Work Order Format
-
-Axon reads Nexus messages with the following structure:
-
-```json
-{
-  "to": "axon",
-  "from": "lumina",
-  "priority": "normal",
-  "task_type": "create_plane_item",
-  "payload": {
-    "project": "PX",
-    "title": "...",
-    "description": "..."
-  }
-}
-```
-
-Supported task types are defined in `axon.py`. Unknown task types are escalated to Lumina.
-
----
-
-## Architecture
-
-- **Runs on:** <fleet-host> (`<fleet-server-ip>`) at `/opt/lumina-fleet/axon/`
-- **Dependencies:** Python 3.11+, `psycopg2` (Nexus inbox), `requests` (Plane API)
-- **Connections:** Reads from Nexus inbox (<postgres-host> Postgres); dispatches via Plane API (<plane-host>) and Nexus `nexus_send()`; no direct peer agent connections
+- **[Plexus (Plane)](../nexus/)** — Polls for new work orders and tasks.
+- **[Engram](../engram/)** — Retrieves and stores task-related memory.
+- **[Pulse](../terminus/)** — Streams execution status and activity logs.
 
 ## Configuration
 
-Axon reads configuration from environment variables set by the <fleet-host> systemd unit:
+Requires `.env` with `PLANE_TOKEN` and `PLANE_URL`. Monitors the `Lumina` project by default.
 
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `INBOX_DB_HOST` | Postgres host for Nexus | <postgres-host> IP |
-| `INBOX_DB_USER` | Nexus database user | — |
-| `INBOX_DB_PASS` | Nexus database password | — |
-| `PLANE_API_URL` | Plane CE base URL | `http://<plane-ip>:8000` |
-| `PLANE_API_TOKEN` | Plane API token | — |
-| `PLANE_WORKSPACE` | Plane workspace slug | `moosenet` |
-| `AXON_POLL_INTERVAL` | Inbox poll interval (seconds) | `60` |
+---
 
-## History / Lineage
-
-Axon was designed in session 11 as the work queue manager for the Nexus inbox system (see `specs/lumina-nexus-prd.docx`, Phase 4). It replaces ad-hoc task delegation that previously required Lumina to make multiple direct Plane API calls per work request. The name comes from the neurological axon — the signal-carrying fiber that transmits decisions to effectors.
-
-Previously known as "Agent Tasker" in early architecture docs.
-
-## Credits
-
-- Nexus inbox system — designed in session 11 (see `specs/lumina-nexus-prd.docx`)
-- Plane CE integration — built on `plane_tools.py` patterns from Terminus
-- psycopg2 — PostgreSQL adapter: Federico Di Gregorio (LGPL)
-
-## Related
-
-- [fleet/README.md](../README.md) — Fleet overview and agent list
-- [terminus/axon_tools.py](../../terminus/axon_tools.py) — MCP tools Lumina uses to dispatch work to Axon
-- Nexus inbox — Postgres-backed priority queue on <postgres-host>
+Part of [Lumina Constellation](../../README.md) · Built by [MooseNet](https://github.com/moosenet-io)
