@@ -473,6 +473,70 @@ def get_config_section(section: str, request: Request, x_soma_key: str = Header(
                 "cached_at": None, "stale": False}
     return {"ok": True, "section": section, "data": _redact(data) if isinstance(data, dict) else data}
 
+@app.get("/api/config/timezone/detect")
+def detect_system_timezone(request: Request, x_soma_key: str = Header(default="")):
+    """Detect the system timezone. Returns IANA tz name."""
+    _auth(x_soma_key, request)
+    import subprocess as _sp
+    detected = None
+    # 1. timedatectl (systemd Linux)
+    try:
+        r = _sp.run(["timedatectl", "show", "--property=Timezone", "--value"],
+                    capture_output=True, text=True, timeout=3)
+        if r.returncode == 0 and r.stdout.strip():
+            detected = r.stdout.strip()
+    except Exception:
+        pass
+    # 2. /etc/timezone
+    if not detected:
+        try:
+            detected = Path("/etc/timezone").read_text().strip()
+        except Exception:
+            pass
+    # 3. Python's local timezone as IANA name
+    if not detected:
+        try:
+            import datetime as _dt
+            detected = _dt.datetime.now(_dt.timezone.utc).astimezone().tzname()
+        except Exception:
+            pass
+    return {"ok": True, "detected": detected or "UTC", "current": os.environ.get("LUMINA_TIMEZONE", "UTC")}
+
+
+@app.post("/api/config/timezone")
+async def set_timezone(request: Request, x_soma_key: str = Header(default="")):
+    """Save IANA timezone to constellation.yaml and update LUMINA_TIMEZONE env."""
+    _auth(x_soma_key, request)
+    body = await request.json()
+    tz = body.get("timezone", "").strip()
+    if not tz:
+        raise HTTPException(400, "timezone required")
+    # Validate it's a real IANA timezone
+    try:
+        import zoneinfo
+        zoneinfo.ZoneInfo(tz)  # raises if invalid
+    except Exception:
+        try:
+            import pytz
+            pytz.timezone(tz)  # fallback validator
+        except Exception:
+            raise HTTPException(400, f"Invalid timezone: {tz}")
+    # Save to constellation.yaml
+    cfg = _load_constellation()
+    cfg["timezone"] = tz
+    _save_constellation(cfg)
+    # Update env so running process also picks it up
+    os.environ["LUMINA_TIMEZONE"] = tz
+    # Also update axon .env for persistence across restarts
+    env_path = FLEET_DIR / "axon" / ".env"
+    if env_path.exists():
+        lines = env_path.read_text().splitlines()
+        lines = [l for l in lines if not l.startswith("LUMINA_TIMEZONE=")]
+        lines.append(f"LUMINA_TIMEZONE={tz}")
+        env_path.write_text("\n".join(lines) + "\n")
+    return {"ok": True, "timezone": tz, "message": f"Timezone set to {tz}"}
+
+
 @app.put("/api/config/{section}")
 async def update_config_section(
     section: str,

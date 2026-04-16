@@ -160,14 +160,58 @@ function renderTab(tab, d) {
 
   if (tab === 'general') {
     // d comes from /api/config/general
+    var currentTz = d.timezone || 'UTC';
     var html = '<table style="width:100%;font-size:0.875rem;border-collapse:collapse;">';
-    html += _kv('Assistant name', d.assistant_name || '—');
-    html += _kv('Constellation', d.constellation_name || '—');
-    html += _kv('Tagline', d.tagline || '—');
-    html += _kv('Timezone', d.timezone || '—');
-    html += _kv('Language', d.language || '—');
+    html += _kv('Assistant name', _ec(d.assistant_name || '—'));
+    html += _kv('Constellation', _ec(d.constellation_name || '—'));
+    html += _kv('Tagline', _ec(d.tagline || '—'));
+    html += _kv('Language', _ec(d.language || '—'));
     html += '</table>';
+
+    // Timezone section with detect + picker
+    html += '<div style="margin-top:1.25rem;">';
+    html += '<div style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.04em;">Timezone</div>';
+    html += '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">';
+    html += '<span id="tz-current" style="font-size:0.875rem;padding:0.35rem 0.75rem;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:6px;">' + _ec(currentTz) + '</span>';
+    html += '<button onclick="detectTimezone()" style="padding:0.35rem 0.85rem;background:none;border:1px solid var(--border-color);border-radius:6px;font-size:0.8rem;color:var(--accent);cursor:pointer;">&#x1F50D; Auto-detect</button>';
+    html += '<button onclick="showTzPicker()" style="padding:0.35rem 0.85rem;background:none;border:1px solid var(--border-color);border-radius:6px;font-size:0.8rem;color:var(--text-secondary);cursor:pointer;">&#x2699;&#xFE0F; Change</button>';
+    html += '</div>';
+    // Inline picker (hidden by default)
+    html += '<div id="tz-picker" style="display:none;margin-top:0.75rem;">';
+    html += '<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.35rem;">Enter IANA timezone (e.g. America/Los_Angeles, Europe/London):</div>';
+    html += '<div style="display:flex;gap:0.5rem;">';
+    html += '<input id="tz-input" type="text" value="' + _ec(currentTz) + '" placeholder="America/Los_Angeles" ';
+    html += 'style="flex:1;padding:0.4rem 0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);font-size:0.875rem;" ';
+    html += 'list="tz-common">';
+    html += '<datalist id="tz-common">';
+    ['America/Los_Angeles','America/Denver','America/Chicago','America/New_York','America/Vancouver','America/Toronto',
+     'Europe/London','Europe/Paris','Europe/Berlin','Europe/Amsterdam','Europe/Stockholm',
+     'Asia/Tokyo','Asia/Singapore','Asia/Seoul','Asia/Shanghai','Asia/Kolkata',
+     'Australia/Sydney','Australia/Melbourne','Pacific/Auckland','UTC'].forEach(function(t) {
+      html += '<option value="' + t + '">';
+    });
+    html += '</datalist>';
+    html += '<button onclick="saveTimezone()" style="padding:0.4rem 1rem;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:0.875rem;font-weight:600;cursor:pointer;">Save</button>';
+    html += '<button onclick="document.getElementById(\'tz-picker\').style.display=\'none\'" style="padding:0.4rem 0.75rem;background:none;border:1px solid var(--border-color);border-radius:6px;font-size:0.875rem;color:var(--text-secondary);cursor:pointer;">Cancel</button>';
+    html += '</div>';
+    html += '<div id="tz-msg" style="margin-top:0.5rem;font-size:0.8rem;"></div>';
+    html += '</div>';
+    html += '</div>';
+
     el.innerHTML = html;
+
+    // Also try browser-side timezone detection immediately
+    try {
+      var browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (browserTz && browserTz !== currentTz) {
+        var hint = document.createElement('div');
+        hint.style.cssText = 'margin-top:0.6rem;padding:0.5rem 0.75rem;background:var(--bg-secondary);border:1px solid var(--color-warning);border-radius:6px;font-size:0.8rem;color:var(--text-secondary);';
+        hint.innerHTML = '&#x26A0;&#xFE0F; Your browser reports <strong>' + _ec(browserTz) + '</strong>. ' +
+          '<a href="#" onclick="applyTz(\'' + _ec(browserTz) + '\');return false;" style="color:var(--accent);">Apply this timezone</a>';
+        el.appendChild(hint);
+      }
+    } catch(e) {}
+
 
   } else if (tab === 'modules') {
     var mods = d.modules || d || {};
@@ -295,6 +339,66 @@ function renameAgent() {
   .catch(function(e) {
     result.innerHTML = '<span style="color:var(--color-error);">Error: ' + _ec(e.message) + '</span>';
   });
+}
+
+// ── Timezone helpers ──────────────────────────────────────────────────────────
+function showTzPicker() {
+  var p = document.getElementById('tz-picker');
+  if (p) p.style.display = 'block';
+}
+
+function applyTz(tz) {
+  var inp = document.getElementById('tz-input');
+  if (inp) inp.value = tz;
+  showTzPicker();
+}
+
+function detectTimezone() {
+  var btn = event.target;
+  btn.textContent = '&#x23F3; Detecting…';
+  btn.disabled = true;
+  fetch('/api/config/timezone/detect', {headers: _ch()})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      btn.disabled = false;
+      btn.innerHTML = '&#x1F50D; Auto-detect';
+      if (d.ok && d.detected) {
+        applyTz(d.detected);
+        var msg = document.getElementById('tz-msg');
+        if (msg) { msg.style.color = 'var(--accent)'; msg.textContent = 'Detected: ' + d.detected; }
+      }
+    })
+    .catch(function() { btn.disabled = false; btn.innerHTML = '&#x1F50D; Auto-detect'; });
+}
+
+function saveTimezone() {
+  var inp = document.getElementById('tz-input');
+  var msg = document.getElementById('tz-msg');
+  var tz = inp ? inp.value.trim() : '';
+  if (!tz) return;
+  if (msg) { msg.style.color = 'var(--text-secondary)'; msg.textContent = 'Saving…'; }
+  fetch('/api/config/timezone', {
+    method: 'POST',
+    headers: _ch(),
+    body: JSON.stringify({timezone: tz})
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) {
+        var cur = document.getElementById('tz-current');
+        if (cur) cur.textContent = tz;
+        if (msg) { msg.style.color = 'var(--color-success, #3fb950)'; msg.textContent = '✓ Saved. Restart services to apply.'; }
+        document.getElementById('tz-picker').style.display = 'none';
+        // Reload general tab data
+        loadedTabs['general'] = false;
+        loadTab('general');
+      } else {
+        if (msg) { msg.style.color = 'var(--color-error, #f85149)'; msg.textContent = 'Error: ' + (d.error || d.detail || 'Invalid timezone'); }
+      }
+    })
+    .catch(function(e) {
+      if (msg) { msg.style.color = 'var(--color-error, #f85149)'; msg.textContent = 'Error: ' + e.message; }
+    });
 }
 
 // Load general tab on page load
