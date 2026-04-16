@@ -2672,9 +2672,9 @@ def spectra_config_api(x_soma_key: str = Header(default="")):
 
 @app.get("/api/spectra/audit")
 def spectra_audit(filter_key: str = "", action: str = "", limit: int = 50,
-                  x_soma_key: str = Header(default="")):
+                  x_soma_key: str = Header(default=""), request: Request = None):
     """Proxy Spectra audit log query."""
-    _auth(x_soma_key)
+    _auth(x_soma_key, request)
     if not SPECTRA_URL_BASE:
         return {"ok": False, "entries": []}
     try:
