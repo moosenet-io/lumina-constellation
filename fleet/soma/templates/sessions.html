@@ -2,18 +2,95 @@
 {% block title %}Sessions{% endblock %}
 {% block content %}
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-  <h1 style="font-size:1.5rem;font-weight:700;">💬 Sessions</h1>
-  <span class="badge-secondary" id="session-count">Loading...</span>
+  <div>
+    <h1 style="font-size:1.5rem;font-weight:700;margin:0;">&#x1F4AC; Sessions</h1>
+    <div style="color:var(--text-tertiary);font-size:0.85rem;margin-top:0.2rem;">IronClaw session history — metadata only, no conversation content</div>
+  </div>
+  <button class="btn-secondary" onclick="loadSessions()" style="font-size:0.85rem;">&#x21BA; Refresh</button>
 </div>
 
-<div id="sessions-container"
-  hx-get="/api/sessions"
-  hx-trigger="load"
-  hx-swap="innerHTML">
+<div id="sessions-container">
   <div style="text-align:center;padding:3rem;color:var(--text-secondary);">Loading sessions...</div>
 </div>
 
-<template id="sessions-template">
-  <!-- Populated by HTMX response -->
-</template>
+<script>
+var SOMA_KEY_S = localStorage.getItem('soma_key') || '';
+function _sh() { var h = {'Content-Type':'application/json'}; if (SOMA_KEY_S) h['X-Soma-Key'] = SOMA_KEY_S; return h; }
+
+function _esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function fmtDuration(s) {
+  if (!s) return '—';
+  if (s < 60) return s + 's';
+  if (s < 3600) return Math.floor(s/60) + 'm ' + (s%60) + 's';
+  return Math.floor(s/3600) + 'h ' + Math.floor((s%3600)/60) + 'm';
+}
+
+function fmtTokens(n) {
+  if (!n) return '0';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(0) + 'K';
+  return String(n);
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try {
+    var d = new Date(iso);
+    return d.toLocaleDateString([], {month:'short',day:'numeric'}) + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  } catch(e) { return iso; }
+}
+
+function loadSessions() {
+  var container = document.getElementById('sessions-container');
+  container.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-secondary);">Loading...</div>';
+  fetch('/api/sessions', {headers: _sh()})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var sessions = d.sessions || [];
+      var total = d.total || sessions.length;
+
+      if (!sessions.length) {
+        container.innerHTML = '<div class="card" style="padding:2rem;text-align:center;color:var(--text-tertiary);">No sessions found.</div>';
+        return;
+      }
+
+      var html = '<div style="margin-bottom:1rem;font-size:0.85rem;color:var(--text-tertiary);">' + total + ' sessions total</div>';
+      html += '<div style="display:grid;gap:0.75rem;">';
+
+      sessions.forEach(function(s) {
+        var models = (s.models_used || []).join(', ') || '—';
+        var cost = s.cost_usd ? ('$' + parseFloat(s.cost_usd).toFixed(4)) : '$0.0000';
+        html += '<div class="card" style="padding:1rem 1.25rem;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">' +
+            '<div style="flex:1;min-width:0;">' +
+              '<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.3rem;">' +
+                '<code style="font-size:0.75rem;color:var(--accent);">' + _esc(s.id ? s.id.slice(0,8) : '?') + '</code>' +
+                '<span class="badge-secondary" style="font-size:0.7rem;padding:0.1rem 0.4rem;border-radius:4px;">' + _esc(s.channel || 'unknown') + '</span>' +
+              '</div>' +
+              '<div style="font-size:0.8rem;color:var(--text-tertiary);">' + _esc(fmtDate(s.started_at)) + '</div>' +
+            '</div>' +
+            '<div style="display:flex;gap:1.5rem;text-align:center;flex-shrink:0;">' +
+              '<div><div style="font-weight:700;font-size:0.95rem;">' + _esc(String(s.message_count || 0)) + '</div><div style="font-size:0.7rem;color:var(--text-tertiary);">msgs</div></div>' +
+              '<div><div style="font-weight:700;font-size:0.95rem;">' + _esc(fmtTokens(s.total_tokens)) + '</div><div style="font-size:0.7rem;color:var(--text-tertiary);">tokens</div></div>' +
+              '<div><div style="font-weight:700;font-size:0.95rem;">' + _esc(cost) + '</div><div style="font-size:0.7rem;color:var(--text-tertiary);">cost</div></div>' +
+              '<div><div style="font-weight:700;font-size:0.95rem;">' + _esc(fmtDuration(s.duration_s)) + '</div><div style="font-size:0.7rem;color:var(--text-tertiary);">duration</div></div>' +
+            '</div>' +
+          '</div>' +
+          (models ? '<div style="margin-top:0.5rem;font-size:0.75rem;color:var(--text-tertiary);">&#x1F916; ' + _esc(models) + '</div>' : '') +
+        '</div>';
+      });
+
+      html += '</div>';
+      container.innerHTML = html;
+    })
+    .catch(function(e) {
+      container.innerHTML = '<div class="card" style="padding:1.5rem;color:var(--color-error);">Failed to load sessions: ' + _esc(e.message) + '</div>';
+    });
+}
+
+loadSessions();
+</script>
 {% endblock %}

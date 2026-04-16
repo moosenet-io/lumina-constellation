@@ -11,13 +11,30 @@
 </div>
 
 <script>
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 async function loadPlugins() {
   const grid = document.getElementById('plugin-grid');
   grid.innerHTML = '<div class="card" style="color:var(--text-tertiary);font-size:0.85rem;">Loading…</div>';
+  const somaKey = localStorage.getItem('soma_key') || '';
   try {
-    const resp = await fetch('/api/plugins', {headers: {'X-Soma-Key': ''}});
+    const resp = await fetch('/api/plugins', {headers: {'X-Soma-Key': somaKey}});
     const data = await resp.json();
     const plugins = data.plugins || data || [];
+    if (!data.ok && data.error) {
+      grid.innerHTML = `<div class="card" style="padding:1.25rem;">
+        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+          <span style="width:8px;height:8px;border-radius:50%;background:#d29922;display:inline-block;flex-shrink:0;"></span>
+          <strong style="font-size:0.875rem;">Terminus unreachable</strong>
+        </div>
+        <p style="color:var(--text-secondary);font-size:0.85rem;margin:0 0 0.5rem;">Cannot load plugins — SSH connection to CT214 failed.</p>
+        <code style="font-size:0.75rem;color:var(--text-tertiary);display:block;">${escHtml(data.error.slice(0,120))}</code>
+        <div style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-tertiary);">Check <code>PVM_SSH_HOST</code> env var and SSH access to Terminus (CT214).</div>
+      </div>`;
+      return;
+    }
     if (!plugins.length) {
       grid.innerHTML = '<div class="card"><span style="color:var(--text-tertiary);">No plugins found in /opt/ai-mcp/plugins/</span></div>';
       return;

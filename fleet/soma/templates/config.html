@@ -2,7 +2,7 @@
 {% block title %}Config{% endblock %}
 {% block content %}
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-  <h1 style="font-size:1.5rem;font-weight:700;">⚙️ Configuration</h1>
+  <h1 style="font-size:1.5rem;font-weight:700;">&#x2699;&#xFE0F; Configuration</h1>
 </div>
 
 <!-- Tab navigation -->
@@ -18,11 +18,12 @@
   {% endfor %}
 </div>
 
+<!-- General tab -->
 <div id="tab-general">
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
     <div class="card">
       <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Constellation Config</h2>
-      <div id="constellation-config" hx-get="/api/constellation" hx-trigger="load" hx-swap="innerHTML">
+      <div id="constellation-config">
         <div style="color:var(--text-secondary);">Loading...</div>
       </div>
     </div>
@@ -31,88 +32,275 @@
       <div style="display:flex;gap:0.75rem;">
         <input type="text" id="agent-name" placeholder="New assistant name..."
           style="flex:1;padding:0.5rem 0.75rem;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);color:var(--text-primary);">
-        <button hx-put="/api/constellation/agent/lumina/display_name"
-          hx-include="#agent-name" hx-vals='js:{"name":document.getElementById("agent-name").value}'
-          hx-target="#rename-result" class="btn-primary">Rename</button>
+        <button onclick="renameAgent()" class="btn-primary">Rename</button>
       </div>
-      <div id="rename-result" style="margin-top:0.75rem;"></div>
+      <div id="rename-result" style="margin-top:0.75rem;font-size:0.875rem;"></div>
     </div>
   </div>
 </div>
 
+<!-- Modules tab -->
 <div id="tab-modules" style="display:none;">
   <div class="card">
     <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Active Modules</h2>
-    <div hx-get="/api/modules" hx-trigger="load" hx-swap="innerHTML">
-      <div style="color:var(--text-secondary);">Click Modules tab to load...</div>
+    <div id="modules-content">
+      <div style="color:var(--text-secondary);">Loading...</div>
     </div>
   </div>
 </div>
 
+<!-- Inference tab -->
 <div id="tab-inference" style="display:none;">
   <div class="card">
     <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">LiteLLM + Myelin Virtual Keys</h2>
     <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:1rem;">
       Consumer budgets and rate limits are configured via Myelin (MY.1–MY.9).
-      Spend tracking via LiteLLM <code>/spend/logs</code>.
+      Spend tracking via LiteLLM <code>spend/logs</code>.
     </p>
-    <div hx-get="/api/config/inference" hx-trigger="load" hx-swap="innerHTML">
+    <div id="inference-content">
       <div style="color:var(--text-secondary);">Loading inference config...</div>
     </div>
   </div>
 </div>
 
+<!-- Channels tab -->
 <div id="tab-channels" style="display:none;">
   <div class="card">
     <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Channels &amp; Integrations</h2>
-    <div hx-get="/api/config/channels" hx-trigger="load" hx-swap="innerHTML">
+    <div id="channels-content">
       <div style="color:var(--text-secondary);">Loading channel config...</div>
     </div>
   </div>
 </div>
 
+<!-- Secrets tab -->
 <div id="tab-secrets" style="display:none;">
   <div class="card">
     <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Secret Registry</h2>
     <p style="color:var(--text-secondary);font-size:0.875rem;">Full rotation dashboard: <a href="/security" style="color:var(--accent);">/security</a></p>
-    <div hx-get="/api/security/secrets" hx-trigger="load" hx-swap="innerHTML">
+    <div id="secrets-content">
       <div style="color:var(--text-secondary);">Loading secrets...</div>
     </div>
   </div>
 </div>
 
+<!-- Synapse tab -->
 <div id="tab-synapse" style="display:none;">
   <div class="card">
     <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Synapse Toggle</h2>
-    <div hx-get="/api/config/synapse" hx-trigger="load" hx-swap="innerHTML">
+    <div id="synapse-content">
       <div style="color:var(--text-secondary);">Loading Synapse config...</div>
     </div>
   </div>
 </div>
 
+<!-- Security tab -->
 <div id="tab-security" style="display:none;">
   <div class="card">
     <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Security</h2>
     <p style="color:var(--text-secondary);">Full security panel at <a href="/security" style="color:var(--accent);">/security</a></p>
-    <div hx-get="/api/security/secrets" hx-trigger="load" hx-swap="innerHTML">
+    <div id="security-content">
       <div style="color:var(--text-secondary);">Loading...</div>
     </div>
   </div>
 </div>
 
 <script>
+var SOMA_KEY_C = localStorage.getItem('soma_key') || '';
+function _ch() { var h = {'Content-Type':'application/json'}; if (SOMA_KEY_C) h['X-Soma-Key'] = SOMA_KEY_C; return h; }
+function _ec(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+var loadedTabs = {};
+
 function switchTab(tab) {
-  ['general','modules','inference','channels','secrets','synapse','security'].forEach(t => {
-    const panel = document.getElementById('tab-' + t);
-    const btn = document.getElementById('tab-btn-' + t);
+  ['general','modules','inference','channels','secrets','synapse','security'].forEach(function(t) {
+    var panel = document.getElementById('tab-' + t);
+    var btn = document.getElementById('tab-btn-' + t);
     if (panel) panel.style.display = (t === tab) ? 'block' : 'none';
     if (btn) {
       btn.style.borderBottom = t === tab ? '2px solid var(--accent)' : '2px solid transparent';
       btn.style.color = t === tab ? 'var(--accent)' : 'var(--text-secondary)';
       btn.style.fontWeight = t === tab ? '600' : '400';
     }
-    if (t === tab && panel) htmx.process(panel);
+  });
+  if (!loadedTabs[tab]) {
+    loadedTabs[tab] = true;
+    loadTab(tab);
+  }
+}
+
+function loadTab(tab) {
+  var endpoints = {
+    'general':   '/api/constellation',
+    'modules':   '/api/modules',
+    'inference': '/api/config/inference',
+    'channels':  '/api/config/channels',
+    'secrets':   '/api/security/secrets',
+    'synapse':   '/api/config/synapse',
+    'security':  '/api/security/secrets'
+  };
+  var ep = endpoints[tab];
+  if (!ep) return;
+
+  fetch(ep, {headers: _ch()})
+    .then(function(r) { return r.json(); })
+    .then(function(d) { renderTab(tab, d); })
+    .catch(function(e) {
+      var el = document.getElementById(tab + '-content');
+      if (el) el.innerHTML = '<div style="color:var(--color-error);font-size:0.875rem;">Failed to load: ' + _ec(e.message) + '</div>';
+    });
+}
+
+function renderTab(tab, d) {
+  var el = document.getElementById(tab + '-content');
+  if (!el) return;
+
+  if (tab === 'general') {
+    var lead = d.lead_agent || {};
+    var agents = d.agents || [];
+    var constellation = d.constellation || {};
+    var html = '<table style="width:100%;font-size:0.875rem;border-collapse:collapse;">';
+    html += _kv('Constellation', constellation.name || '—');
+    html += _kv('Tagline', constellation.tagline || '—');
+    html += _kv('Lead agent', (lead.emoji || '') + ' ' + (lead.display_name || '—'));
+    if (agents.length) {
+      agents.forEach(function(a) {
+        html += _kv('Agent', (a.emoji || '') + ' ' + (a.display_name || a.internal));
+      });
+    }
+    html += '</table>';
+    el.innerHTML = html;
+
+  } else if (tab === 'modules') {
+    var mods = d.modules || d || {};
+    var keys = Object.keys(mods);
+    if (!keys.length) { el.innerHTML = '<div style="color:var(--text-tertiary);">No modules configured</div>'; return; }
+    var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.75rem;">';
+    keys.forEach(function(k) {
+      var m = mods[k] || {};
+      var name = m.display_name || k;
+      var desc = m.description || '';
+      var enabled = m.enabled !== false;
+      html += '<div style="padding:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary);">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">' +
+          '<strong style="font-size:0.85rem;">' + _ec(name) + '</strong>' +
+          '<span class="badge-' + (enabled ? 'success' : 'secondary') + '" style="font-size:0.7rem;padding:0.1rem 0.35rem;border-radius:3px;">' + (enabled ? 'on' : 'off') + '</span>' +
+        '</div>' +
+        (desc ? '<div style="font-size:0.75rem;color:var(--text-tertiary);">' + _ec(desc.slice(0,80)) + '</div>' : '') +
+      '</div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+
+  } else if (tab === 'inference') {
+    var models = d.models || [];
+    var preset = d.fleet_preset || '—';
+    var routing = d.routing || {};
+    var html = '<table style="width:100%;font-size:0.875rem;border-collapse:collapse;">';
+    html += _kv('Fleet preset', preset);
+    if (routing.strategy) html += _kv('Routing', routing.strategy);
+    html += '</table>';
+    if (models.length) {
+      html += '<div style="margin-top:1rem;"><div style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);margin-bottom:0.5rem;">Models</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:0.5rem;">';
+      models.forEach(function(m) {
+        var name = typeof m === 'string' ? m : (m.name || m.id || JSON.stringify(m));
+        html += '<code style="font-size:0.75rem;background:var(--bg-tertiary);padding:0.2rem 0.5rem;border-radius:4px;">' + _ec(name) + '</code>';
+      });
+      html += '</div></div>';
+    }
+    el.innerHTML = html;
+
+  } else if (tab === 'channels') {
+    var matrix = d.matrix || {};
+    var email = d.email || {};
+    var webhook = d.webhook || {};
+    var html = '';
+    if (Object.keys(matrix).length) {
+      html += '<div style="margin-bottom:1rem;"><strong style="font-size:0.875rem;">Matrix</strong>';
+      html += '<table style="width:100%;font-size:0.85rem;border-collapse:collapse;margin-top:0.5rem;">';
+      Object.entries(matrix).forEach(function(kv) { html += _kv(kv[0], kv[1]); });
+      html += '</table></div>';
+    }
+    if (Object.keys(email).length) {
+      html += '<div style="margin-bottom:1rem;"><strong style="font-size:0.875rem;">Email</strong>';
+      html += '<table style="width:100%;font-size:0.85rem;border-collapse:collapse;margin-top:0.5rem;">';
+      Object.entries(email).forEach(function(kv) { html += _kv(kv[0], kv[1]); });
+      html += '</table></div>';
+    }
+    if (!Object.keys(matrix).length && !Object.keys(email).length) {
+      html = '<div style="color:var(--text-tertiary);font-size:0.875rem;">No channels configured yet.</div>';
+    }
+    el.innerHTML = html;
+
+  } else if (tab === 'secrets' || tab === 'security') {
+    var secrets = d.secrets || [];
+    if (!secrets.length) { el.innerHTML = '<div style="color:var(--text-tertiary);">No secret entries found. <a href="/security" style="color:var(--accent);">Go to Security</a></div>'; return; }
+    var html = '<div style="display:grid;gap:0.5rem;">';
+    secrets.forEach(function(s) {
+      var statusClass = s.status === 'ok' ? 'badge-success' : s.status === 'warn' ? 'badge-warning' : s.status === 'expired' ? 'badge-error' : 'badge-secondary';
+      var age = s.age_days !== null ? (s.age_days + 'd old') : 'age unknown';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary);">' +
+        '<div>' +
+          '<code style="font-size:0.8rem;">' + _ec(s.name) + '</code>' +
+          (s.services && s.services.length ? '<span style="font-size:0.75rem;color:var(--text-tertiary);margin-left:0.5rem;">' + _ec(s.services.join(', ')) + '</span>' : '') +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+          '<span style="font-size:0.75rem;color:var(--text-tertiary);">' + _ec(age) + '</span>' +
+          '<span class="' + statusClass + '" style="font-size:0.75rem;padding:0.15rem 0.5rem;border-radius:4px;">' + _ec(s.status || 'unknown') + '</span>' +
+        '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+
+  } else if (tab === 'synapse') {
+    var enabled = d.enabled;
+    var strength = d.strength || '—';
+    var maxPerDay = d.max_per_day || d.max_messages_per_day || 3;
+    var html = '<table style="width:100%;font-size:0.875rem;border-collapse:collapse;">';
+    html += _kv('Status', enabled ? '<span class="badge-success" style="padding:0.15rem 0.5rem;border-radius:4px;font-size:0.8rem;">Enabled</span>' : '<span class="badge-secondary" style="padding:0.15rem 0.5rem;border-radius:4px;font-size:0.8rem;">Disabled</span>');
+    html += _kv('Strength', strength);
+    html += _kv('Max/day', maxPerDay);
+    html += '</table>';
+    if (!enabled) {
+      html += '<div style="margin-top:1rem;font-size:0.85rem;color:var(--text-tertiary);">Enable Synapse in <code>constellation.yaml</code> to start receiving proactive notifications.</div>';
+    }
+    el.innerHTML = html;
+  }
+}
+
+function _kv(k, v) {
+  return '<tr><td style="padding:0.35rem 0.75rem 0.35rem 0;color:var(--text-tertiary);width:40%;vertical-align:top;font-size:0.8125rem;">' + _ec(k) + '</td>' +
+    '<td style="padding:0.35rem 0;font-size:0.8125rem;">' + v + '</td></tr>';
+}
+
+function renameAgent() {
+  var name = document.getElementById('agent-name').value.trim();
+  if (!name) return;
+  var result = document.getElementById('rename-result');
+  fetch('/api/constellation/agent/lumina/display_name', {
+    method: 'PUT',
+    headers: _ch(),
+    body: JSON.stringify({name: name})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.updated) {
+      result.innerHTML = '<span style="color:var(--color-success);">&#x2713; Renamed to ' + _ec(d.display_name) + '</span>';
+      loadedTabs['general'] = false;
+      loadTab('general');
+    } else {
+      result.innerHTML = '<span style="color:var(--color-error);">Failed: ' + _ec(d.error || 'unknown error') + '</span>';
+    }
+  })
+  .catch(function(e) {
+    result.innerHTML = '<span style="color:var(--color-error);">Error: ' + _ec(e.message) + '</span>';
   });
 }
+
+// Load general tab on page load
+loadedTabs['general'] = true;
+loadTab('general');
 </script>
 {% endblock %}
