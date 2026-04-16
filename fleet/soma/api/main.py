@@ -44,6 +44,11 @@ from pydantic import BaseModel
 app = FastAPI(title="Soma Admin API", version="1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
+# Serve fleet/shared/ at /shared (constellation.css, htmx, etc.)
+_shared_dir = Path("/opt/lumina-fleet/shared")
+if _shared_dir.exists():
+    app.mount("/shared", StaticFiles(directory=str(_shared_dir)), name="shared")
+
 SOMA_KEY = os.environ.get("SOMA_SECRET_KEY", "soma-dev-key")
 FLEET_DIR = Path("/opt/lumina-fleet")
 CONSTELLATION_YAML = FLEET_DIR / "constellation.yaml"
