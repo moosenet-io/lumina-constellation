@@ -55,10 +55,13 @@ CONSTELLATION_YAML = FLEET_DIR / "constellation.yaml"
 
 try:
     from . import skills as skills_api
+    from . import timers as timers_api
 except ImportError:
     import skills as skills_api
+    import timers as timers_api
 
 app.include_router(skills_api.router)
+app.include_router(timers_api.router)
 
 # ── Auth module (SP.2) ────────────────────────────────────────────────────────
 try:
