@@ -131,7 +131,7 @@ function switchTab(tab) {
 
 function loadTab(tab) {
   var endpoints = {
-    'general':   '/api/constellation',
+    'general':   '/api/config/general',
     'modules':   '/api/modules',
     'inference': '/api/config/inference',
     'channels':  '/api/config/channels',
@@ -152,22 +152,20 @@ function loadTab(tab) {
 }
 
 function renderTab(tab, d) {
-  var el = document.getElementById(tab + '-content');
+  // General tab uses a different element id (constellation-config, not general-content)
+  var el = (tab === 'general')
+    ? document.getElementById('constellation-config')
+    : document.getElementById(tab + '-content');
   if (!el) return;
 
   if (tab === 'general') {
-    var lead = d.lead_agent || {};
-    var agents = d.agents || [];
-    var constellation = d.constellation || {};
+    // d comes from /api/config/general
     var html = '<table style="width:100%;font-size:0.875rem;border-collapse:collapse;">';
-    html += _kv('Constellation', constellation.name || '—');
-    html += _kv('Tagline', constellation.tagline || '—');
-    html += _kv('Lead agent', (lead.emoji || '') + ' ' + (lead.display_name || '—'));
-    if (agents.length) {
-      agents.forEach(function(a) {
-        html += _kv('Agent', (a.emoji || '') + ' ' + (a.display_name || a.internal));
-      });
-    }
+    html += _kv('Assistant name', d.assistant_name || '—');
+    html += _kv('Constellation', d.constellation_name || '—');
+    html += _kv('Tagline', d.tagline || '—');
+    html += _kv('Timezone', d.timezone || '—');
+    html += _kv('Language', d.language || '—');
     html += '</table>';
     el.innerHTML = html;
 

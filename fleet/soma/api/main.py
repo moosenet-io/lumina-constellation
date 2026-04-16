@@ -93,10 +93,27 @@ if _CACHE_AVAILABLE:
     _soma_cache.register('/api/status', _refresh_status_fn, ttl=10)
     _soma_cache.start_background_refresh(app)
 
-def _auth(x_soma_key: str = ""):
-    """Legacy auth check for existing endpoints. New endpoints use require_auth Depends."""
-    if SOMA_KEY and x_soma_key != SOMA_KEY:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def _auth(x_soma_key: str = "", request: Request = None):
+    """Auth check: accepts X-Soma-Key header OR valid JWT session cookie."""
+    if not SOMA_KEY:
+        return  # no auth configured
+    if x_soma_key == SOMA_KEY:
+        return  # direct key auth OK
+    # Fall back to cookie-based JWT auth
+    if request is not None:
+        cookie = request.cookies.get("soma_session", "")
+        if cookie and _AUTH_AVAILABLE:
+            try:
+                # Import the module-level JWT verify function from auth.py
+                import importlib, sys
+                auth_mod = sys.modules.get("auth")
+                if auth_mod and hasattr(auth_mod, "_jwt_verify"):
+                    payload = auth_mod._jwt_verify(cookie)
+                    if payload and payload.get("username"):
+                        return  # valid session cookie
+            except Exception:
+                pass
+    raise HTTPException(status_code=401, detail="Unauthorized")
 
 def _remote_exec(target: str, command: str) -> str:
     """Build a provider-neutral remote execution command from environment."""
@@ -430,10 +447,10 @@ def get_full_config(x_soma_key: str = Header(default="")):
     return {"ok": True, "config": _redact(cfg)}
 
 @app.get("/api/config/{section}")
-def get_config_section(section: str, x_soma_key: str = Header(default="")):
+def get_config_section(section: str, request: Request, x_soma_key: str = Header(default="")):
     """Return one section of constellation.yaml.
     Special sections: 'secrets' returns Infisical key names only."""
-    _auth(x_soma_key)
+    _auth(x_soma_key, request)
     cfg = _load_constellation()
     if section == "secrets":
         # Return env var names configured (not values)
