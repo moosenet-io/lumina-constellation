@@ -101,14 +101,42 @@
 </div>
 
 {# Nexus Inbox #}
+{% set nx_pending    = _nx.get('pending',   nx_val or 0) %}
+{% set nx_processed  = _nx.get('processed', 0) %}
+{% set nx_expired    = _nx.get('expired',   0) %}
+{% set nx_oldest     = _nx.get('oldest_pending_secs') %}
+{% if nx_oldest and nx_oldest > 86400 %}
+  {% set nx_stale = True %}
+  {% set nx_age = (nx_oldest // 86400)|string + 'd' %}
+{% elif nx_oldest and nx_oldest > 3600 %}
+  {% set nx_stale = True %}
+  {% set nx_age = (nx_oldest // 3600)|string + 'h' %}
+{% else %}
+  {% set nx_stale = False %}
+  {% set nx_age = '' %}
+{% endif %}
+{% set nx_dot = 'dead' if not nx_ok else ('degraded' if nx_stale and nx_pending > 0 else 'healthy') %}
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <h3 style="margin:0;">Nexus Inbox</h3>
-    <span class="health-dot {% if nx_ok %}healthy{% else %}dead{% endif %}"></span>
+    <span class="health-dot {{ nx_dot }}"></span>
   </div>
   <div style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">
     {% if nx_ok %}
-      {{ nx_val or 0 }} pending message{% if nx_val != 1 %}s{% endif %}
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:baseline;">
+        <span>
+          <span style="color:{% if nx_stale and nx_pending > 0 %}var(--color-warn){% else %}var(--text-primary){% endif %};font-weight:600;">{{ nx_pending }}</span>
+          <span> pending</span>
+          {% if nx_age %}<span style="font-size:0.75rem;color:var(--color-warn);margin-left:0.2rem;">({{ nx_age }} old)</span>{% endif %}
+        </span>
+        {% if nx_processed %}<span style="color:var(--color-ok);">{{ nx_processed }} done</span>{% endif %}
+        {% if nx_expired %}<span>{{ nx_expired }} expired</span>{% endif %}
+      </div>
+      {% if nx_stale and nx_pending > 0 %}
+      <div style="margin-top:0.35rem;font-size:0.75rem;color:var(--color-warn);">
+        Inbox monitor not running — messages accumulating
+      </div>
+      {% endif %}
     {% else %}
       <span style="color:var(--color-error);" title="{{ nx_err }}">{{ (nx_err or 'unreachable')[:60] }}{% if nx_err and nx_err|length > 60 %}…{% endif %}</span>
       <button

@@ -112,16 +112,31 @@ def refresh_status() -> dict:
         'error': mx_data.get('error') if not mx_ok else None,
     }
 
-    # Nexus (SQLite-backed inbox — check DB file, then count messages)
+    # Nexus inbox — status breakdown + auto-expire messages older than 7 days
     import sqlite3 as _sqlite3
     nexus_db = '/opt/lumina-fleet/nexus/nexus.db'
     _nexus_pg_host = os.environ.get('INBOX_DB_HOST', '')
     nx_ok = False
-    nx_message_count = None
-    nx_unacked = None
+    nx_pending = None
+    nx_processed = None
+    nx_expired = None
+    nx_read = None
+    nx_oldest_secs = None
     nx_err = None
+    _NX_DETAIL_SQL = """
+        SELECT
+            SUM(CASE WHEN status='pending'   THEN 1 ELSE 0 END),
+            SUM(CASE WHEN status='processed' THEN 1 ELSE 0 END),
+            SUM(CASE WHEN status='expired'   THEN 1 ELSE 0 END),
+            SUM(CASE WHEN status='read'      THEN 1 ELSE 0 END),
+            EXTRACT(EPOCH FROM (NOW() - MIN(CASE WHEN status='pending' THEN created_at END)))::int
+        FROM inbox_messages
+    """
+    _NX_EXPIRE_SQL = """
+        UPDATE inbox_messages SET status='expired'
+        WHERE status='pending' AND created_at < NOW() - INTERVAL '7 days'
+    """
     if _nexus_pg_host:
-        # Postgres-backed Nexus — probe the DB directly
         try:
             import psycopg2 as _pg2
             _pg_conn = _pg2.connect(
@@ -132,10 +147,15 @@ def refresh_status() -> dict:
                 connect_timeout=3,
             )
             _cur = _pg_conn.cursor()
-            _cur.execute("SELECT COUNT(*) FROM inbox_messages")
-            nx_message_count = _cur.fetchone()[0]
-            _cur.execute("SELECT COUNT(*) FROM inbox_messages WHERE status='pending'")
-            nx_unacked = _cur.fetchone()[0]
+            _cur.execute(_NX_EXPIRE_SQL)
+            _pg_conn.commit()
+            _cur.execute(_NX_DETAIL_SQL)
+            _row = _cur.fetchone()
+            nx_pending, nx_processed, nx_expired, nx_read, nx_oldest_secs = (
+                int(_row[0] or 0), int(_row[1] or 0),
+                int(_row[2] or 0), int(_row[3] or 0),
+                int(_row[4]) if _row[4] is not None else None,
+            )
             _pg_conn.close()
             nx_ok = True
         except Exception as _e:
@@ -143,8 +163,22 @@ def refresh_status() -> dict:
     elif os.path.exists(nexus_db):
         try:
             conn = _sqlite3.connect(nexus_db, timeout=2)
-            nx_message_count = conn.execute("SELECT COUNT(*) FROM inbox_messages").fetchone()[0]
-            nx_unacked = conn.execute("SELECT COUNT(*) FROM inbox_messages WHERE status='pending'").fetchone()[0]
+            conn.execute("UPDATE inbox_messages SET status='expired' WHERE status='pending' AND created_at < datetime('now', '-7 days')")
+            conn.commit()
+            row = conn.execute("""
+                SELECT
+                    SUM(CASE WHEN status='pending'   THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN status='processed' THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN status='expired'   THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN status='read'      THEN 1 ELSE 0 END),
+                    CAST((julianday('now') - julianday(MIN(CASE WHEN status='pending' THEN created_at END))) * 86400 AS INTEGER)
+                FROM inbox_messages
+            """).fetchone()
+            nx_pending, nx_processed, nx_expired, nx_read, nx_oldest_secs = (
+                int(row[0] or 0), int(row[1] or 0),
+                int(row[2] or 0), int(row[3] or 0),
+                int(row[4]) if row[4] is not None else None,
+            )
             conn.close()
             nx_ok = True
         except Exception as e:
@@ -155,8 +189,13 @@ def refresh_status() -> dict:
     services['nexus'] = {
         'name': 'Nexus', 'ok': nx_ok,
         'latency_ms': 0,
-        'message_count': nx_message_count,
-        'unacked': nx_unacked,
+        'message_count': nx_pending,   # kept for legacy consumers
+        'unacked': nx_pending,
+        'pending': nx_pending,
+        'processed': nx_processed,
+        'expired': nx_expired,
+        'read': nx_read,
+        'oldest_pending_secs': nx_oldest_secs,
         'error': nx_err if not nx_ok else None,
     }
 
@@ -196,21 +235,22 @@ def refresh_status() -> dict:
     _ag_err = None
     try:
         if _pvs:
-            # SSH to infra host → pct exec $FLEET_CT (the fleet container)
+            # SSH to infra host → pct exec into fleet container
+            _fleet_ct = os.environ.get('FLEET_CT', '')
             for _svc, _name in [
                 ('axon.service', 'axon'),
                 ('sentinel-health.timer', 'sentinel'),
             ]:
                 _r = subprocess.run(
                     ['ssh', '-o', 'ConnectTimeout=4', '-o', 'BatchMode=yes', _pvs,
-                     f'pct exec {os.environ.get("FLEET_CT","310")} -- systemctl is-active {_svc} 2>/dev/null'],
+                     f'pct exec {_fleet_ct} -- systemctl is-active {_svc} 2>/dev/null'],
                     capture_output=True, text=True, timeout=8
                 )
                 _ag_agents[_name] = _r.stdout.strip() == 'active'
             # Vigil: check for briefing process
             _r3 = subprocess.run(
                 ['ssh', '-o', 'ConnectTimeout=4', '-o', 'BatchMode=yes', _pvs,
-                 f'pct exec {os.environ.get("FLEET_CT","310")} -- pgrep -f briefing.py 2>/dev/null'],
+                 f'pct exec {_fleet_ct} -- pgrep -f briefing.py 2>/dev/null'],
                 capture_output=True, text=True, timeout=8
             )
             _ag_agents['vigil'] = bool(_r3.stdout.strip())
@@ -241,7 +281,7 @@ def refresh_status() -> dict:
         'error': _ag_err if not _ag_ok else None,
     }
 
-    # Refractor — llm-proxy.py on ironclaw-host:4000 (127.0.0.1 only, SSH-check via PVS)
+    # Refractor — llm-proxy.py on the IronClaw container, port 4000 (127.0.0.1 only, SSH-check via PVS)
     _rf_ok = False
     _rf_count = 0
     _rf_display = None
@@ -250,10 +290,11 @@ def refresh_status() -> dict:
     _pvs_rf = os.environ.get('PVS_SSH_HOST', '')
     try:
         _t0 = time.time()
+        _ironclaw_ct = os.environ.get('IRONCLAW_CT', '')
         if _pvs_rf:
             _r = subprocess.run(
                 ['ssh', '-o', 'ConnectTimeout=4', '-o', 'BatchMode=yes', _pvs_rf,
-                 f'pct exec {os.environ.get("IRONCLAW_CT","305")} -- pgrep -f llm-proxy.py 2>/dev/null'],
+                 f'pct exec {_ironclaw_ct} -- pgrep -f llm-proxy.py 2>/dev/null'],
                 capture_output=True, text=True, timeout=8
             )
             _rf_ok = bool(_r.stdout.strip())
@@ -261,7 +302,7 @@ def refresh_status() -> dict:
                 # Get model count from models endpoint via SSH
                 _rm = subprocess.run(
                     ['ssh', '-o', 'ConnectTimeout=4', '-o', 'BatchMode=yes', _pvs_rf,
-                     f'pct exec {os.environ.get("IRONCLAW_CT","305")} -- curl -s -o /dev/null -w "%{http_code}" '
+                     f'pct exec {_ironclaw_ct} -- curl -s -o /dev/null -w "%{{http_code}}" '
                      '-H "Authorization: Bearer ' + os.environ.get('LITELLM_MASTER_KEY', '') + '" '
                      'http://localhost:4000/v1/models 2>/dev/null'],
                     capture_output=True, text=True, timeout=8
