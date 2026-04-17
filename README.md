@@ -156,14 +156,14 @@ lumina-constellation/
 ├── plugins/         # Plugin loader
 ├── skills/          # Agent skill definitions
 ├── fleet/spectra/   # Browser automation (Playwright)
-├── specs/           # 30 specification documents
+├── specs/           # 30 specification documents (internal, see docs/specs.md)
 ├── terminus/        # MCP tool hub (38 modules, 272+ tools)
 └── tests/           # Test suites
 ```
 
 ### Specification library
 
-Every module was designed before it was built. The [specs/](specs/) directory contains the full design bible — 30 documents written in Claude.ai before a single line of code was executed.
+Every module was designed before it was built. The [specification library](docs/specs.md) catalogs 30+ documents written in Claude.ai before a single line of code was executed.
 
 | Range | Documents | What they cover |
 |-------|-----------|----------------|
@@ -187,7 +187,7 @@ Built by directing AI — no IDE expertise required.
 
 ### Contributing
 
-1. Read the relevant spec in [specs/](specs/)
+1. Read the relevant spec in the [specification library](docs/specs.md)
 2. Check the Plane backlog for open items
 3. Follow the patterns in `CLAUDE.md` (the build instructions Claude Code follows)
 4. Submit a PR — the same process the AI uses
