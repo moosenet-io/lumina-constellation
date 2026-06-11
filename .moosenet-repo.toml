@@ -1,0 +1,18 @@
+# Repository posture declaration — read by the PII gate (.githooks/pii_gate.py).
+# This is the PUBLIC repository, so the strictest posture applies.
+
+[repository]
+# Public visibility activates the extended PII pattern set (container numbers,
+# internal hostnames/URLs, paths, UUIDs) and HARD-BLOCKS any --no-verify bypass.
+visibility = "public"
+
+[pii_gate]
+# No bypass of the gate is permitted on a public repository.
+noverify_allowed = false
+
+# Scan the entire history and every branch, not just the working tree.
+scan_history = true
+scan_branches = true
+
+# Repo-specific extra patterns to flag, in addition to the built-in set.
+extra_patterns = ["moosenet\\.online", "lumina\\.moosenet"]

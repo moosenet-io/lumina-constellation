@@ -1,0 +1,27 @@
+[Unit]
+Description=DiffusionGemma persistent inference daemon (S80 DGEM-01)
+Documentation=https://git.example.com/moosenet/lumina-constellation
+After=network.target
+
+[Service]
+Type=simple
+# Loopback-only HTTP; terminus-rs (in chord-proxy) reaches it over localhost.
+Environment=DGEM_BIND=127.0.0.1
+Environment=DGEM_HTTP_PORT=8877
+# Release VRAM after 5 min idle; the listener stays up and reloads on the next request.
+Environment=DGEM_IDLE_TIMEOUT_SECS=300
+# The Vulkan ggml .so files live alongside the binary in the build tree.
+Environment=LD_LIBRARY_PATH=/opt/lumina/llama-diffusion/build-vulkan/bin
+# Context sized to 8192: the canvas model needs the whole [prompt|canvas] in one ubatch, and at 12288
+# this Vulkan device hits its per-buffer size limit (non-fatal warning, falls back to unpinned). 8192
+# comfortably covers typical review diffs while keeping every buffer within the device limit.
+ExecStart=/opt/lumina/llama-diffusion/build-vulkan/bin/llama-diffusion-daemon \
+  -m /opt/lumina/diffusiongemma-eval/models/diffusiongemma-26B-A4B-it-Q4_K_M.gguf \
+  -ngl 99 -t 4 --diffusion-eb auto -c 8192 -ub 8192 -b 8192
+Restart=on-failure
+RestartSec=5
+# The model is loaded lazily on first request, so startup is cheap; allow generous stop time.
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

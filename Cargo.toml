@@ -1,0 +1,8 @@
+[workspace]
+members = ["crates/lumina-core", "crates/chord-proxy", "crates/terminus-rs"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"

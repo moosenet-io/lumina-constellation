@@ -1,0 +1,9 @@
+# Appended to /opt/lumina/llama-diffusion/examples/diffusion/CMakeLists.txt on gpu-host.
+# DiffusionGemma persistent HTTP daemon (S80 DGEM-01). Reuses the llama-diffusion static lib;
+# cpp-httplib provides the HTTP server, llama-common's PUBLIC ../vendor include resolves nlohmann/json.
+set(TARGET llama-diffusion-daemon)
+add_executable(${TARGET} diffusion-daemon.cpp)
+install(TARGETS ${TARGET} RUNTIME)
+target_link_libraries(${TARGET} PRIVATE llama-diffusion llama llama-common cpp-httplib ${CMAKE_THREAD_LIBS_INIT})
+target_compile_features(${TARGET} PRIVATE cxx_std_17)
+target_include_directories(llama-diffusion-daemon PRIVATE ${CMAKE_SOURCE_DIR}/vendor/cpp-httplib ${CMAKE_SOURCE_DIR}/vendor)

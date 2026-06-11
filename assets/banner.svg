@@ -1,0 +1,123 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#0D0B1A"/>
+<stop offset="100%" stop-color="#1A1333"/>
+</linearGradient>
+<linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#7C3AED"/>
+<stop offset="100%" stop-color="#7C3AED" stop-opacity="0.6"/>
+</linearGradient>
+<linearGradient id="glow" x1="0.5" y1="0" x2="0.5" y2="1">
+<stop offset="0%" stop-color="#7C3AED" stop-opacity="0.12"/>
+<stop offset="100%" stop-color="#7C3AED" stop-opacity="0"/>
+</linearGradient>
+<radialGradient id="nebula1" cx="30%" cy="40%" r="60%">
+<stop offset="0%" stop-color="#7C3AED" stop-opacity="0.06"/>
+<stop offset="50%" stop-color="#7C3AED" stop-opacity="0.02"/>
+<stop offset="100%" stop-color="#0D0B1A" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="nebula2" cx="75%" cy="65%" r="50%">
+<stop offset="0%" stop-color="#3B82F6" stop-opacity="0.03"/>
+<stop offset="100%" stop-color="#0D0B1A" stop-opacity="0"/>
+</radialGradient>
+<filter id="soften"><feGaussianBlur stdDeviation="1.5"/></filter>
+</defs>
+
+<rect width="1280" height="640" fill="url(#bg)"/>
+<rect width="1280" height="640" fill="url(#nebula1)"/>
+<rect width="1280" height="640" fill="url(#nebula2)"/>
+
+<g opacity="0.5">
+<circle cx="45" cy="38" r="1" fill="#fff"/>
+<circle cx="123" cy="17" r="0.7" fill="#fff"/>
+<circle cx="210" cy="78" r="0.5" fill="#fff"/>
+<circle cx="298" cy="44" r="0.8" fill="#fff"/>
+<circle cx="367" cy="99" r="0.6" fill="#fff"/>
+<circle cx="456" cy="22" r="1" fill="#fff"/>
+<circle cx="534" cy="83" r="0.5" fill="#fff"/>
+<circle cx="623" cy="39" r="0.7" fill="#fff"/>
+<circle cx="712" cy="67" r="0.9" fill="#fff"/>
+<circle cx="801" cy="28" r="0.6" fill="#fff"/>
+<circle cx="889" cy="94" r="0.5" fill="#fff"/>
+<circle cx="978" cy="33" r="0.8" fill="#fff"/>
+<circle cx="1067" cy="72" r="0.6" fill="#fff"/>
+<circle cx="1145" cy="17" r="1" fill="#fff"/>
+<circle cx="1223" cy="89" r="0.7" fill="#fff"/>
+<circle cx="89" cy="117" r="0.5" fill="#fff"/>
+<circle cx="178" cy="156" r="0.6" fill="#fff"/>
+<circle cx="267" cy="139" r="0.8" fill="#fff"/>
+<circle cx="78" cy="228" r="0.7" fill="#fff"/>
+<circle cx="167" cy="267" r="0.5" fill="#fff"/>
+<circle cx="256" cy="244" r="0.9" fill="#fff"/>
+<circle cx="345" cy="283" r="0.6" fill="#fff"/>
+<circle cx="789" cy="228" r="0.5" fill="#fff"/>
+<circle cx="878" cy="267" r="0.7" fill="#fff"/>
+<circle cx="967" cy="239" r="0.6" fill="#fff"/>
+<circle cx="1056" cy="272" r="0.8" fill="#fff"/>
+<circle cx="1145" cy="244" r="0.5" fill="#fff"/>
+<circle cx="1234" cy="278" r="0.7" fill="#fff"/>
+<circle cx="434" cy="211" r="0.6" fill="#fff"/>
+<circle cx="523" cy="267" r="0.5" fill="#fff"/>
+<circle cx="612" cy="244" r="0.8" fill="#fff"/>
+<circle cx="701" cy="278" r="0.6" fill="#fff"/>
+<circle cx="1190" cy="144" r="0.7" fill="#fff"/>
+<circle cx="1100" cy="172" r="0.5" fill="#fff"/>
+</g>
+
+<circle cx="156" cy="56" r="1.5" fill="#fff" opacity="0.8"/>
+<circle cx="489" cy="44" r="1.8" fill="#fff" opacity="0.8"/>
+<circle cx="834" cy="83" r="1.5" fill="#fff" opacity="0.8"/>
+<circle cx="1112" cy="56" r="2" fill="#fff" opacity="0.8"/>
+<circle cx="345" cy="228" r="1.5" fill="#fff" opacity="0.8"/>
+<circle cx="934" cy="244" r="1.8" fill="#fff" opacity="0.8"/>
+<circle cx="67" cy="189" r="1.5" fill="#fff" opacity="0.8"/>
+<circle cx="1200" cy="211" r="1.5" fill="#fff" opacity="0.8"/>
+
+<ellipse cx="640" cy="300" rx="280" ry="100" fill="url(#glow)"/>
+
+<g transform="translate(640, 140)">
+<g stroke="#7C3AED" stroke-width="0.5" opacity="0.3">
+<line x1="-140" y1="-60" x2="-60" y2="-15"/><line x1="-140" y1="60" x2="-60" y2="15"/>
+<line x1="140" y1="-60" x2="60" y2="-15"/><line x1="140" y1="60" x2="60" y2="15"/>
+<line x1="0" y1="-90" x2="-60" y2="-15"/><line x1="0" y1="-90" x2="60" y2="-15"/>
+<line x1="0" y1="90" x2="-60" y2="15"/><line x1="0" y1="90" x2="60" y2="15"/>
+</g>
+<g stroke="#7C3AED" stroke-width="1" opacity="0.5">
+<line x1="-60" y1="-15" x2="0" y2="0"/><line x1="60" y1="-15" x2="0" y2="0"/>
+<line x1="-60" y1="15" x2="0" y2="0"/><line x1="60" y1="15" x2="0" y2="0"/>
+</g>
+<circle cx="-140" cy="-60" r="3" fill="#3B82F6" opacity="0.6"/>
+<circle cx="-140" cy="60" r="3" fill="#3B82F6" opacity="0.6"/>
+<circle cx="140" cy="-60" r="3" fill="#10B981" opacity="0.6"/>
+<circle cx="140" cy="60" r="3" fill="#10B981" opacity="0.6"/>
+<circle cx="0" cy="-90" r="3" fill="#A855F7" opacity="0.6"/>
+<circle cx="0" cy="90" r="3" fill="#A855F7" opacity="0.6"/>
+<circle cx="-60" cy="-15" r="4" fill="#7C3AED" opacity="0.7"/>
+<circle cx="60" cy="-15" r="4" fill="#7C3AED" opacity="0.7"/>
+<circle cx="-60" cy="15" r="4" fill="#7C3AED" opacity="0.7"/>
+<circle cx="60" cy="15" r="4" fill="#7C3AED" opacity="0.7"/>
+<circle cx="0" cy="0" r="8" fill="#7C3AED" opacity="0.3" filter="url(#soften)"/>
+<circle cx="0" cy="0" r="5" fill="#A855F7"/>
+<circle cx="0" cy="0" r="2.5" fill="#fff" opacity="0.9"/>
+</g>
+
+<text x="640" y="230" text-anchor="middle" fill="#9CA3AF" font-family="Inter, -apple-system, sans-serif" font-size="14" font-weight="400" letter-spacing="6">LUMINA CONSTELLATION</text>
+
+<text x="640" y="330" text-anchor="middle" fill="#FFFFFF" font-family="Inter, -apple-system, sans-serif" font-size="68" font-weight="600" letter-spacing="3">CONSTELLATION</text>
+
+<text x="640" y="378" text-anchor="middle" fill="#7C3AED" font-family="JetBrains Mono, monospace" font-size="14" font-weight="400" letter-spacing="2">AUTONOMOUS AI PERSONAL ASSISTANT</text>
+
+
+
+<g transform="translate(640, 440)">
+<text x="-200.0" y="0" text-anchor="middle" fill="#4B5563" font-family="Inter, -apple-system, sans-serif" font-size="11" letter-spacing="1">NEURAL CORE</text>
+<text x="0.0" y="0" text-anchor="middle" fill="#4B5563" font-family="Inter, -apple-system, sans-serif" font-size="11" letter-spacing="1">AGENTS</text>
+<text x="200.0" y="0" text-anchor="middle" fill="#4B5563" font-family="Inter, -apple-system, sans-serif" font-size="11" letter-spacing="1">LIFESTYLE</text>
+</g>
+
+<line x1="440" y1="530" x2="840" y2="530" stroke="url(#accent)" stroke-width="1" opacity="0.25"/>
+<text x="640" y="570" text-anchor="middle" fill="#374151" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="2">MOOSENET</text>
+
+<text x="640" y="600" text-anchor="middle" fill="#2D2D2D" font-family="Inter, -apple-system, sans-serif" font-size="9" letter-spacing="1">19 modules across neural core, agents, and lifestyle domains</text>
+</svg>

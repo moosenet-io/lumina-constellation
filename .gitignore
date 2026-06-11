@@ -1,0 +1,37 @@
+# ── Build artifacts ────────────────────────────────────────────────────────
+/target/
+**/target/
+**/*.rs.bk
+node_modules/
+
+# ── Secrets & credentials (NEVER commit) ───────────────────────────────────
+.env
+.env.*
+!.env.example
+.env.local
+.env.production
+vault.enc
+vault.key
+*.pem
+secrets.toml
+
+# ── Local / editor cruft ───────────────────────────────────────────────────
+*.bak
+*.bak.*
+*.log
+*.swp
+*.swo
+.DS_Store
+.idea/
+.vscode/
+
+# ── Internal / AI-assistant / build reports (not for public history) ───────
+specs/
+*-build-report.md
+CLAUDE.md
+claude.md
+.claude/
+
+# ── PII gate / audit artifacts ─────────────────────────────────────────────
+.githooks/pii-gate-audit.jsonl
+pii-audit-report.json
