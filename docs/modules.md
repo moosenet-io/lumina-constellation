@@ -1,77 +1,77 @@
 # Modules
 
 Lumina is organized as a roster of cooperating modules. Each does one thing well, and they
-all share the same three-tier memory (Engram) and the same MCP tool hub (Terminus). Modules
+all share the same three-tier memory subsystem and the same MCP tool hub. Modules
 are grouped here by the role they play in the system.
 
 ## Memory and reasoning
 
-### Engram
+### Memory subsystem
 The long-term memory. Stores facts, preferences, decisions, and learned patterns in a local
 vector store, retrievable by every module via retrieval-augmented generation. This is the
 shared brain: anything one module learns becomes available to the others.
 
-### Obsidian Circle
+### Reasoning council
 A multi-model reasoning council. Convenes several models to deliberate on a hard problem,
 each contributing a position, with the strongest model synthesizing a final recommendation.
 Used for decisions that benefit from more than one perspective.
 
-### Cortex
-Code intelligence. Analyzes repository structure, quality signals, and dependency graphs
+### Code intelligence engine
+Analyzes repository structure, quality signals, and dependency graphs
 using deterministic tooling. Feeds development loops and code-review sessions.
 
 ## Execution and routing
 
-### Axon
-The work-queue executor. Polls a task source, dispatches each item to the module best suited
+### Work-queue executor
+Polls a task source, dispatches each item to the module best suited
 to handle it, and tracks completion.
 
-### Refractor
+### Request router
 Smart request routing. Maps an incoming request to the right tool category and inference
 tier, so the cheapest capable path is always tried first.
 
-### Myelin
+### Cost tracker
 Cost governance. Tracks inference spend per consumer with virtual keys, enforces daily
 budgets, and trips a circuit breaker when autonomous spend exceeds a threshold.
 
-### Synapse
-Notification routing. Takes structured alerts from any module and delivers them through the
+### Notification router
+Takes structured alerts from any module and delivers them through the
 configured channel(s) with appropriate urgency.
 
 ## Senses
 
-### Seer
+### Research agent
 A web-research agent. Decomposes a query, searches, ranks sources (with prompt-injection
-defenses), synthesizes a report, and files the findings into Engram.
+defenses), synthesizes a report, and files the findings into the memory subsystem.
 
-### Spectra
+### Browser automation
 Sandboxed browser automation with a layered security model, human-in-the-loop confirmation,
 and session recording for review.
 
-### Vigil
+### Scheduled briefing engine
 Scheduled briefings. Compiles weather, calendar, news, and system health into a digest and
 delivers it on a schedule. Most of the work is deterministic; a local model writes the prose.
 
-### Sentinel
+### Health monitoring service
 Infrastructure monitoring. Runs periodic health checks, exports metrics, and flags anomalies
 such as runaway inference.
 
 ## System surface
 
-### Nexus
-The inbox. Notifications, alerts, and work orders flow through Nexus before being routed to
+### Inter-agent messaging system
+The inbox. Notifications, alerts, and work orders flow through it before being routed to
 the right module.
 
-### Terminus
+### Tool hub
 The MCP tool hub. A single gateway exposing 100+ tools — version control, project tracking,
 monitoring, web research, calendar, and more — to every module, with rate limiting and
 per-tool timeouts.
 
-### Soma
+### Web dashboard
 The dashboard and admin surface: configuration panels, module status, session review, and an
 onboarding flow. Authenticated.
 
-### Dura
+### System administration tools
 Operational resilience: backup orchestration, smoke testing, secret rotation, and disaster
 recovery.
 
@@ -82,13 +82,13 @@ fully built, others are specifications.
 
 | Module | Purpose |
 |--------|---------|
-| **Vector** | Autonomous development loops with behavioral correction. |
-| **Meridian** | Paper-trading sandbox with a reasoning journal. Never touches real money. |
-| **Ledger** | Expense tracking via a personal-finance integration. |
-| **Relay** | Vehicle/maintenance tracking. |
-| **Odyssey** | Travel planning. |
-| **Vitals** | Health tracking. |
-| **Hearth** | Household management. |
+| **Dev-loop runner** | Autonomous development loops with behavioral correction. |
+| **Paper-trading sandbox** | Paper-trading sandbox with a reasoning journal. Never touches real money. |
+| **Expense tracker** | Expense tracking via a personal-finance integration. |
+| **Vehicle tracker** | Vehicle/maintenance tracking. |
+| **Travel planner** | Travel planning. |
+| **Health tracker** | Health tracking. |
+| **Household manager** | Household management. |
 
 ## The orchestrator
 

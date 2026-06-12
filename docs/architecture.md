@@ -15,7 +15,7 @@ The system is three cooperating Rust binaries plus a local model server:
    +----------------------------------------------------------+
    |                       lumina-core                         |
    |  chat I/O . persona + prompt assembly . scheduler .       |
-   |  Engram three-tier memory . session + security           |
+   |  three-tier memory subsystem . session + security        |
    +----------------------------+-----------------------------+
                                 |
                                 v
@@ -28,7 +28,7 @@ The system is three cooperating Rust binaries plus a local model server:
                     |                            |
         +-----------v-----------+    +-----------v------------+
         |      terminus-rs      |    |   inference backends   |
-        |   MCP tool hub        |    |   local models (Ollama)|
+        |   MCP tool hub        |    |   local models         |
         |   (100+ tools)        |    |   + optional cloud     |
         +-----------------------+    +------------------------+
 ```
@@ -39,7 +39,7 @@ The system is three cooperating Rust binaries plus a local model server:
 | `chord-proxy` | Smart inference proxy: classifies requests, routes across cost tiers, runs the agentic tool-calling loop, and manages the model storage lifecycle. Exposes a separate control API for model-tier operations. |
 | `terminus-rs` | MCP tool hub: a single gateway exposing 100+ tools (version control, project tracking, monitoring, web research, calendar, and more) with rate limiting and per-tool timeouts. |
 
-Local inference is served by [Ollama](https://ollama.com) running natively for direct GPU
+Local inference is served by a local model server running natively for direct GPU
 access. A cloud provider can be configured as an opt-in fallback for tasks that need
 frontier reasoning.
 
@@ -50,7 +50,7 @@ A user message travels through the system as follows:
 1. **Ingest.** `lumina-core` receives the message from the configured chat channel.
 2. **Context assembly.** The orchestrator builds the prompt: persona + behavioral
    guidelines, the recent conversation window (working memory), and any relevant facts
-   retrieved from semantic memory (Engram).
+   retrieved from semantic memory.
 3. **Routing.** The assembled request is sent to `chord-proxy`, which classifies it and
    selects a cost tier (see [Model management](#model-management)).
 4. **Inference + tools.** The selected model generates a response. If it requests tools,
@@ -68,7 +68,7 @@ Memory is organized into three tiers, each optimized for a different time horizo
 |------|---------------|---------------|----------|
 | **Working memory** | The current conversation window — recent turns kept verbatim, optionally summarized when the token budget is exceeded. | In-process buffer | Current session |
 | **Episodic memory** | A rolling history of past interactions and events the assistant has lived through. | Local database | Days to weeks |
-| **Semantic memory (Engram)** | Long-term facts, preferences, decisions, and learned patterns, embedded for retrieval-augmented generation. | Local vector store (embeddings) | Indefinite |
+| **Semantic memory** | Long-term facts, preferences, decisions, and learned patterns, embedded for retrieval-augmented generation. | Local vector store (embeddings) | Indefinite |
 
 When the working-memory token budget is exceeded, older turns are summarized rather than
 dropped, so context is compressed instead of lost. Semantic memory is queried on every turn

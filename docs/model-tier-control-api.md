@@ -16,14 +16,14 @@ This API is the contract a dashboard consumes to display and manage model tiers.
 | GET | `/api/storage` | yes | Disk usage summary for local and archive tiers |
 | POST | `/api/models/sweep` | yes | Manually trigger the eviction sweep (cooldown + disk-pressure); returns `202` |
 
-`{name}` is the fully-tagged Ollama model name (e.g. `qwen3-coder:30b`); colons in the segment are permitted.
+`{name}` is the fully-tagged model name as known to the local model server (e.g. `qwen3-coder:30b`); colons in the segment are permitted.
 
 ## Responses
 
 - `GET /api/models` → `200` JSON array of records:
   ```json
   [{ "name": "qwen3-coder:30b", "tier": "warm", "size_bytes": 18601248000,
-     "local_path": "/opt/ollama-models", "archive_path": null,
+     "local_path": "/var/lib/model-server/models", "archive_path": null,
      "last_requested": 1781120000, "last_loaded": null, "protected": true }]
   ```
   `tier` is `hot` | `warm` | `cold`; timestamps are Unix epoch seconds (nullable).
@@ -36,7 +36,7 @@ This API is the contract a dashboard consumes to display and manage model tiers.
 | Env var | Default | Meaning |
 |---------|---------|---------|
 | `CHORD_CONTROL_PORT` | 8090 | Control API listener port |
-| `MODEL_LOCAL_PATH` | /var/lib/ollama/models | Warm tier (local Ollama models) |
+| `MODEL_LOCAL_PATH` | /var/lib/model-server/models | Warm tier (local model files) |
 | `MODEL_ARCHIVE_PATH` | /mnt/archive/models | Cold tier (network/archive storage) |
 | `MODEL_DISK_PRESSURE_PERCENT` | 80 | Disk-pressure eviction threshold |
 | `MODEL_WARM_COOLDOWN_HOURS` | 168 | Idle hours before cooldown archival |

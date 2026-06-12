@@ -35,7 +35,7 @@ channel of your choosing.
 
 The design goal is simple: **the assistant should be useful without sending your life to a
 third party.** By default, Lumina runs its inference locally against open-weight models
-(via [Ollama](https://ollama.com)) and only reaches out to a cloud model when a task
+(via a local model server) and only reaches out to a cloud model when a task
 genuinely needs frontier-level reasoning. For most day-to-day work — summarizing a page,
 drafting a briefing, classifying a request — nothing ever leaves the box, and the marginal
 cost of a "thought" is zero.
@@ -49,7 +49,7 @@ small cluster if you want to spread the load.
 
 ## Key features
 
-- **Persistent, multi-turn memory.** A three-tier memory system (working context, episodic
+- **Persistent, multi-turn memory.** A three-tier memory subsystem (working context, episodic
   history, semantic long-term store) means the assistant remembers what you told it last
   week, not just last message.
 - **Personality system.** The assistant has a configurable persona, voice, and behavioral
@@ -80,7 +80,7 @@ Lumina is composed of three Rust crates plus local model serving:
                 +-------------------------------+
                 |          lumina-core          |
                 |  orchestrator . personality . |
-                |  memory (engram) . scheduler  |
+                |  memory subsystem . scheduler |
                 +---------------+---------------+
                                 |
                                 v
@@ -93,13 +93,13 @@ Lumina is composed of three Rust crates plus local model serving:
                         |               |
               +---------v------+  +-----v--------------+
               |  terminus-rs   |  |  local inference   |
-              |  MCP tool hub  |  |  (Ollama models)   |
+              |  MCP tool hub  |  |  (local models)    |
               |  (100+ tools)  |  |  + cloud fallback  |
               +----------------+  +--------------------+
 ```
 
 - **`lumina-core`** — the orchestrator. Owns the chat channel(s), assembles the system
-  prompt and persona, runs the scheduler, and manages the **Engram** three-tier memory.
+  prompt and persona, runs the scheduler, and manages the three-tier memory subsystem.
 - **`chord-proxy`** — the smart inference proxy. Classifies and routes requests across cost
   tiers, runs the agentic tool-calling loop, and manages the model storage lifecycle.
 - **`terminus-rs`** — the MCP tool hub. A single gateway through which every agent reaches
@@ -119,7 +119,7 @@ memory and model-tier designs.
 ### Prerequisites
 
 - A recent stable **Rust** toolchain ([rustup](https://rustup.rs) recommended)
-- **[Ollama](https://ollama.com)** for local model serving
+- A **local model server** (model serving runtime) for local inference
 - A **GPU with Vulkan or ROCm support** (or Apple Silicon with Metal) for fast local
   inference — CPU-only works but is slow
 - A **chat channel** the assistant can talk on (e.g. a Matrix homeserver, self-hosted or
@@ -151,8 +151,7 @@ populated `.env`** — secrets belong in the vault.
 ### Run
 
 ```bash
-# Pull a local model (example)
-ollama pull qwen3:8b
+# Pull a local model into your model server (example: qwen3:8b)
 
 # Start the proxy and orchestrator (see docs/deployment.md for service files)
 ./target/release/chord-proxy &

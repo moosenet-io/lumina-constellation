@@ -14,11 +14,11 @@ Three tiers, strict routing:
 |------|---------|------|---------|
 | **Python** (~90%) | Deterministic tasks | $0 | Fetch weather API, format timestamps, check disk space, parse JSON |
 | **Local Qwen** (~8%) | Tasks needing language understanding | $0 | Summarize a page, classify a request, generate a briefing paragraph |
-| **Cloud AI** (~2%) | Tasks needing frontier reasoning | $/token | Obsidian Circle deliberation, complex code review, novel problem solving |
+| **Cloud AI** (~2%) | Tasks needing frontier reasoning | $/token | Multi-model reasoning-council deliberation, complex code review, novel problem solving |
 
 ## How it works in practice
 
-When Vigil builds the morning briefing:
+When the scheduled briefing engine builds the morning briefing:
 - **Python** fetches weather, traffic, calendar, budget → $0
 - **Python** formats everything into the briefing template → $0
 - **Local Qwen 9B** writes the natural language summary → $0
@@ -45,6 +45,6 @@ Stop at the first YES. Most requests stop at step 1 or 2.
 
 > "Inference is a resource to be allocated, not a constant."
 
-Myelin tracks per-consumer spend with virtual keys, and each module has a daily budget. A circuit breaker trips when autonomous spend exceeds a configurable threshold, so a runaway loop cannot quietly burn money.
+The cost-tracking module tracks per-consumer spend with virtual keys, and each module has a daily budget. A circuit breaker trips when autonomous spend exceeds a configurable threshold, so a runaway loop cannot quietly burn money.
 
 With enough unified memory to keep your models resident, routine daily inference cost should be effectively **$0.00**. Cloud inference is opt-in for specific tasks, never the default path.

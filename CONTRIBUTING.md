@@ -28,7 +28,7 @@ commit a populated `.env`.
 
 ## Project layout
 
-- `crates/lumina-core` — the orchestrator: chat channels, memory (Engram), prompt
+- `crates/lumina-core` — the orchestrator: chat channels, memory subsystem, prompt
   assembly, scheduler, security, vault.
 - `crates/chord-proxy` — the smart inference proxy and agentic tool-calling loop.
 - `crates/terminus-rs` — the MCP tool hub (version control, project tracking,
@@ -64,8 +64,8 @@ Use clear, imperative commit subjects, optionally with a conventional-commit
 type prefix:
 
 ```
-fix(engram): correct retrieval scoring for empty queries
-feat(vigil): add weekly cost summary to briefing
+fix(memory): correct retrieval scoring for empty queries
+feat(briefing): add weekly cost summary to the briefing engine
 docs: clarify vault setup in README
 ```
 

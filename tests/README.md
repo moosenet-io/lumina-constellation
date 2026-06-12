@@ -20,9 +20,9 @@
 
 ## Talks to
 
-- **[Vector](../fleet/vector/)** — Vector invokes these tests during dev loops.
-- **[Sentinel](../fleet/sentinel/)** — Sentinel monitors the results of scheduled test runs.
-- **[Terminus](../terminus/)** — Uses Gitea/GitHub tools to report test status.
+- **Dev-loop runner** — invokes these tests during autonomous development loops.
+- **Health monitoring service** — monitors the results of scheduled test runs.
+- **Tool hub** — uses self-hosted git server / GitHub tools to report test status.
 
 ## Configuration
 
@@ -30,4 +30,4 @@ Managed via `pytest` configuration files in the root and individual module direc
 
 ---
 
-Part of [Lumina Constellation](../README.md) · Built by [MooseNet](https://github.com/moosenet-io)
+Part of [Lumina Constellation](../README.md).

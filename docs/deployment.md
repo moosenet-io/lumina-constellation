@@ -8,7 +8,7 @@ several — and how to handle secrets safely.
 | Requirement | Notes |
 |-------------|-------|
 | **Rust toolchain** | A recent stable Rust ([rustup](https://rustup.rs) recommended) to build the workspace. |
-| **[Ollama](https://ollama.com)** | Serves open-weight models locally. Run it natively (not in a container) for direct GPU access. |
+| **A local model server** | A model serving runtime that serves open-weight models locally. Run it natively (not in a container) for direct GPU access. |
 | **A GPU** | A discrete GPU with **Vulkan** or **ROCm** support, or **Apple Silicon** with Metal. CPU-only inference works but is much slower. A machine with a large unified-memory pool (for example, an AMD APU with unified memory, or Apple Silicon with 64 GB+) can keep several models resident at once. |
 | **A chat channel** | A messaging endpoint the assistant talks on — for example a Matrix homeserver (self-hosted or public). |
 | **A relational + vector store** | A local database for episodic memory and a local vector store for semantic memory. |
@@ -26,10 +26,10 @@ tool hub.
 
 ### Pull a model
 
-```bash
-ollama pull qwen3:8b          # example local model
-ollama pull nomic-embed-text  # example embedding model for semantic memory
-```
+Pull your models into the local model server, for example:
+
+- `qwen3:8b` — an example local chat model
+- `nomic-embed-text` — an example embedding model for semantic memory
 
 ## Configuration reference
 
@@ -70,7 +70,7 @@ and fill in your own values. **Never commit a populated `.env`.**
 | Variable | Example | Description |
 |----------|---------|-------------|
 | `ENGRAM_EMBED_MODEL` | `nomic-embed-text` | Embedding model for semantic memory. |
-| `OLLAMA_EMBEDDING_URL` | `http://localhost:11434` | Endpoint serving the embedding model. |
+| `OLLAMA_EMBEDDING_URL` | `http://localhost:11434` | Endpoint of the local model server serving the embedding model. |
 
 ### Chat channel (Matrix)
 
@@ -91,7 +91,7 @@ and fill in your own values. **Never commit a populated `.env`.**
 | `CHORD_PROXY_URL` | `http://localhost:8099` | URL clients use to reach the proxy. |
 | `CHORD_CONTROL_PORT` | `8090` | Separate control-API listener (model-tier management). |
 | `CHORD_JWT_SECRET` | `<random-32-bytes>` | HS256 signing secret for proxy/control auth. |
-| `CHORD_LLM_URL` | `http://localhost:11434` | Backend inference endpoint (local Ollama). |
+| `CHORD_LLM_URL` | `http://localhost:11434` | Backend inference endpoint (local model server). |
 | `CHORD_MODEL_ALIASES` | `fast=qwen3:8b,deep=...` | Friendly aliases mapped to concrete models. |
 | `CHORD_AGENTIC_MODE` | `true` | Enable the agentic tool-calling loop. |
 | `CHORD_TOOL_TIMEOUT_SECS` | `30` | Per-tool-call timeout. |
@@ -104,8 +104,8 @@ and fill in your own values. **Never commit a populated `.env`.**
 
 | Variable | Example | Description |
 |----------|---------|-------------|
-| `OLLAMA_URL` | `http://localhost:11434` | Primary (GPU) Ollama endpoint. |
-| `OLLAMA_CPU_URL` | `http://localhost:11435` | Optional CPU-only Ollama endpoint for overflow. |
+| `OLLAMA_URL` | `http://localhost:11434` | Primary (GPU) local-model-server endpoint. |
+| `OLLAMA_CPU_URL` | `http://localhost:11435` | Optional CPU-only local-model-server endpoint for overflow. |
 
 ### Tool hub (`terminus-rs`)
 
@@ -120,7 +120,7 @@ and fill in your own values. **Never commit a populated `.env`.**
 | Variable | Example | Description |
 |----------|---------|-------------|
 | `MODEL_REGISTRY_PATH` | `./data/model-registry.json` | Where model-tier state is recorded. |
-| `MODEL_LOCAL_PATH` | `/var/lib/ollama/models` | Warm tier — local model directory. |
+| `MODEL_LOCAL_PATH` | `/var/lib/model-server/models` | Warm tier — local model directory. |
 | `MODEL_ARCHIVE_PATH` | `/mnt/archive/models` | Cold tier — archive directory (e.g. network storage). |
 | `MODEL_PROTECTED` | `qwen3:8b,nomic-embed-text` | Comma-separated models never auto-archived. |
 | `MODEL_DISK_PRESSURE_PERCENT` | `80` | Disk-usage threshold that triggers eviction. |
@@ -132,10 +132,10 @@ See [model-tier-control-api.md](model-tier-control-api.md) for the control-API c
 
 ## Single-host deployment
 
-For most operators, run everything on one machine: Ollama natively, and the three Lumina
-binaries as long-running services.
+For most operators, run everything on one machine: the local model server natively, and the
+three Lumina binaries as long-running services.
 
-1. Install Ollama and pull your models.
+1. Install the local model server and pull your models.
 2. Build the workspace (`cargo build --workspace --release`).
 3. Create your `.env` from `.env.example` and point every URL at `localhost`.
 4. Run the binaries under a process supervisor (e.g. systemd units) so they restart on
@@ -143,6 +143,9 @@ binaries as long-running services.
 
 A machine with a large unified-memory pool can keep several models hot simultaneously, so
 routine operation never touches the cloud.
+
+The example unit file below assumes the workspace is checked out at `./` (repo-relative);
+adjust the paths and `EnvironmentFile` location to wherever you deploy.
 
 ### Example systemd unit
 
@@ -153,8 +156,9 @@ Description=Lumina orchestrator
 After=network-online.target
 
 [Service]
-EnvironmentFile=/opt/lumina/.env
-ExecStart=/opt/lumina/target/release/lumina-core
+WorkingDirectory=/srv/lumina-constellation
+EnvironmentFile=/srv/lumina-constellation/.env
+ExecStart=/srv/lumina-constellation/target/release/lumina-core
 Restart=on-failure
 
 [Install]
@@ -169,17 +173,14 @@ change — there is no separate "distributed" build.
 ```
 +--------------------------+        +---------------------------+
 |  services host           |        |  inference host (GPU)     |
-|  lumina-core             |        |  Ollama (native)          |
-|  chord-proxy             | -----> |  models hot in memory     |
-|  terminus-rs             |  LAN   |                           |
+|  lumina-core             |        |  local model server       |
+|  chord-proxy             | -----> |  (native)                 |
+|  terminus-rs             |  LAN   |  models hot in memory     |
 +--------------------------+        +---------------------------+
 ```
 
-On the GPU host, start Ollama listening on the LAN:
-
-```bash
-OLLAMA_HOST=0.0.0.0:11434 ollama serve
-```
+On the GPU host, start the local model server listening on the LAN (bind it to
+`0.0.0.0:11434` or your model server's equivalent).
 
 On the services host, point the inference variables at it (substitute your own LAN address):
 
@@ -189,7 +190,8 @@ CHORD_LLM_URL=http://198.51.100.20:11434
 OLLAMA_EMBEDDING_URL=http://198.51.100.20:11434
 ```
 
-Keep the link on a trusted private network; Ollama has no authentication of its own.
+Keep the link on a trusted private network; a local model server typically has no
+authentication of its own.
 
 ## Secrets management
 
@@ -201,9 +203,9 @@ Secrets are never hardcoded and never committed.
 - **`.env` for local development only.** Copy `.env.example` to `.env`, fill in your values,
   and keep `.env` out of version control (it is git-ignored). Use placeholders, not real
   secrets, anywhere a file might be committed.
-- **Optional external secret manager.** For multi-host setups you can fetch secrets from an
-  external manager (for example, a self-hosted Infisical instance) at service start and
-  merge them into the environment, rather than storing a `.env` on each host.
+- **Optional external secret manager.** For multi-host setups you can fetch secrets from a
+  self-hosted secrets management backend at service start and merge them into the
+  environment, rather than storing a `.env` on each host.
 - **Generate strong secrets.** For signing/session keys: `openssl rand -hex 32`.
 
 If you believe a secret has been exposed, treat it as compromised: rotate it immediately.
