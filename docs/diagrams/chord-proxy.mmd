@@ -1,0 +1,16 @@
+%% chord-proxy — inference + tool gateway (public)
+graph TD
+    subgraph CP["chord-proxy · ~20K LOC · 540 tests"]
+        direction TB
+        API["routes<br/>OpenAI-compatible /v1/chat/completions"] --> AUTH[auth: JWT + per-user rate limiting]
+        AUTH --> AGENT[agentic executor<br/>server-side tool loop + execution log]
+        AGENT --> TIER[model tiering<br/>hot / warm / cold + VRAM lifecycle]
+        AGENT --> MCP[MCP gateway<br/>merged tool catalog + fallback registry]
+        CTRL[model-tier control API]
+    end
+    LC[lumina-core] -->|"HTTP + JWT"| API
+    TIER -->|inference| GPU[GPU inference host<br/>local model server]
+    MCP -->|in-process| TR[terminus-rs tool hub]
+
+    classDef svc fill:#2d333b,stroke:#768390,color:#fff;
+    class LC,GPU,TR svc;

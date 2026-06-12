@@ -1,0 +1,25 @@
+%% lumina-core — agent runtime (public)
+graph TD
+    subgraph LC["lumina-core · ~85K LOC · 2,287 tests"]
+        direction TB
+        IN[channels: Matrix / web] --> LOOP[agent loop]
+        LOOP --> GUARD[input scanning<br/>prompt-injection + PII redaction]
+        LOOP --> CONV[conversation store<br/>encrypted local database]
+        LOOP --> MEM[memory subsystem<br/>working / episodic / semantic]
+        LOOP --> PRMPT[dynamic system prompt]
+        LOOP --> ROUTE[model router<br/>three-layer tier selection]
+        LOOP --> TGATE[tool gating<br/>sandboxed execution + egress filtering]
+        LOOP --> OUT[output filtering + audit log]
+        VAULT[encrypted secret vault<br/>authenticated encryption · zeroize-on-drop]
+        MSG[inter-agent messaging]
+        SKILLS[skills engine<br/>procedural memory + versioning]
+        SCHED[scheduler<br/>briefing + health-monitoring routines]
+        WEB[web dashboard]
+    end
+    LOOP -->|"HTTP + JWT"| CP[chord-proxy]
+    MEM --> DB[(PostgreSQL)]
+    MSG --> DB
+    VAULT -.secrets.-> LOOP
+
+    classDef svc fill:#2d333b,stroke:#768390,color:#fff;
+    class CP,DB svc;

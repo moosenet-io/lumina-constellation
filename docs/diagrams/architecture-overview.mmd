@@ -1,0 +1,15 @@
+%% Lumina Constellation — architecture overview (public)
+%% Render with the mermaid CLI or https://mermaid.live
+graph LR
+    User([User]) --> CH[Matrix / Web]
+    CH --> LC["lumina-core<br/>agent runtime · memory · security<br/>~85K LOC · 2,287 tests"]
+    LC -->|"HTTP + JWT"| CP["chord-proxy<br/>LLM inference + tool gateway<br/>~20K LOC · 540 tests"]
+    CP -->|"in-process"| TR["terminus-rs<br/>tool hub · 176 tools / 30 modules<br/>~27K LOC · 627 tests"]
+    CP -->|inference| GPU[GPU inference host<br/>local model server]
+    LC -->|"memory + messaging"| DB[(PostgreSQL)]
+    TR -->|tool APIs| EXT[External service APIs]
+
+    classDef core fill:#1f6feb,stroke:#1f6feb,color:#fff;
+    class LC,CP,TR core;
+    classDef svc fill:#2d333b,stroke:#768390,color:#fff;
+    class GPU,DB,EXT,CH svc;

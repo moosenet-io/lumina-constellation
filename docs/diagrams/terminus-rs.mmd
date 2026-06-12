@@ -1,0 +1,20 @@
+%% terminus-rs — tool hub (public)
+graph TD
+    subgraph TR["terminus-rs · ~27K LOC · 627 tests · 176 tools / 30 modules"]
+        direction TB
+        REG[ToolRegistry + RustTool trait]
+        REG --> G1[Dev / build tools<br/>~54]
+        REG --> G2[Infra / ops tools<br/>~35]
+        REG --> G3[AI / agent tools<br/>~34]
+        REG --> G4[Personal / life tools<br/>~53]
+        REG --> G5[LLM routing tools<br/>~4]
+    end
+    CP[chord-proxy] -->|in-process| REG
+    G1 --> EXT[External service APIs]
+    G2 --> EXT
+    G3 --> EXT
+    G4 --> EXT
+    G5 --> EXT
+
+    classDef svc fill:#2d333b,stroke:#768390,color:#fff;
+    class CP,EXT svc;
