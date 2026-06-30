@@ -1,0 +1,102 @@
+<svg width="1280" height="760" viewBox="0 0 1280 760" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <radialGradient id="bg2" cx="50%" cy="30%" r="85%">
+      <stop offset="0%" stop-color="#241a3f"/><stop offset="55%" stop-color="#1a1430"/><stop offset="100%" stop-color="#0d0a1c"/>
+    </radialGradient>
+    <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#7c5cff"/></marker>
+    <marker id="arrowG" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#10b981"/></marker>
+  </defs>
+
+  <rect width="1280" height="760" fill="url(#bg2)"/>
+
+  <text x="640" y="52" text-anchor="middle" fill="#b9b0d8" font-size="15" letter-spacing="7" font-weight="500">PERSONAL AI · SOVEREIGN ASSISTANT</text>
+  <text x="640" y="92" text-anchor="middle" fill="#ffffff" font-size="34" font-weight="700" letter-spacing="3">LUMINA · SYSTEM ARCHITECTURE</text>
+  <line x1="470" y1="112" x2="810" y2="112" stroke="#6b5bbf" stroke-width="1" opacity="0.5"/>
+
+  <!-- ===== INTERFACE (top) ===== -->
+  <g>
+    <rect x="500" y="146" width="280" height="58" rx="10" fill="#221a3d" stroke="#5b4b9b" stroke-width="1.2" filter="url(#cardShadow)"/>
+    <text x="640" y="172" text-anchor="middle" fill="#e8e3f7" font-size="15" font-weight="600">Matrix interface</text>
+    <text x="640" y="191" text-anchor="middle" fill="#9b92c0" font-size="11.5" font-family="'Courier New',monospace">SSE acks · conversational engagement</text>
+  </g>
+  <line x1="640" y1="204" x2="640" y2="248" stroke="#7c5cff" stroke-width="1.6" marker-end="url(#arrow)" opacity="0.85"/>
+
+  <!-- ===== LUMINA CORE ===== -->
+  <rect x="150" y="254" width="980" height="200" rx="16" fill="#1d1736" stroke="#7c5cff" stroke-width="1.6" opacity="0.96"/>
+  <text x="175" y="282" fill="#a78bff" font-size="13" letter-spacing="4" font-weight="600">LUMINA CORE</text>
+  <circle cx="640" cy="276" r="5" fill="#ffffff"/>
+
+  <g font-size="13.5" font-weight="600">
+    <!-- dynamic prompt -->
+    <rect x="185" y="300" width="290" height="138" rx="11" fill="#241c42" stroke="#5b4b9b" stroke-width="1"/>
+    <text x="330" y="326" text-anchor="middle" fill="#e8e3f7">Dynamic Prompt Assembler</text>
+    <g fill="#a89fc8" font-size="11.5" font-weight="400" font-family="'Courier New',monospace">
+      <text x="205" y="352">5-layer assembly (~900 tok)</text>
+      <text x="205" y="374">identity · persona · rules</text>
+      <text x="205" y="396">runtime hooks</text>
+      <text x="205" y="420">warm / quirky / curious / direct</text>
+    </g>
+    <!-- tool selection -->
+    <rect x="495" y="300" width="290" height="138" rx="11" fill="#241c42" stroke="#5b4b9b" stroke-width="1"/>
+    <text x="640" y="326" text-anchor="middle" fill="#e8e3f7">Tool Orchestration</text>
+    <g fill="#a89fc8" font-size="11.5" font-weight="400" font-family="'Courier New',monospace">
+      <text x="515" y="352">implicit-intent selection</text>
+      <text x="515" y="374">multi-step chaining</text>
+      <text x="515" y="396">anti-fabrication guard</text>
+      <text x="515" y="420">interim acknowledgments</text>
+    </g>
+    <!-- reminders / delivery -->
+    <rect x="805" y="300" width="305" height="138" rx="11" fill="#241c42" stroke="#5b4b9b" stroke-width="1"/>
+    <text x="957" y="326" text-anchor="middle" fill="#e8e3f7">Engagement &amp; Reminders</text>
+    <g fill="#a89fc8" font-size="11.5" font-weight="400" font-family="'Courier New',monospace">
+      <text x="825" y="352">3-mode engagement rules</text>
+      <text x="825" y="374">Postgres-backed reminders</text>
+      <text x="825" y="396">Matrix delivery</text>
+      <text x="825" y="420">mobile typing tolerance</text>
+    </g>
+  </g>
+
+  <!-- arrows core -> memory + inference -->
+  <line x1="380" y1="454" x2="330" y2="520" stroke="#10b981" stroke-width="1.6" marker-end="url(#arrowG)" opacity="0.8"/>
+  <line x1="900" y1="454" x2="950" y2="520" stroke="#7c5cff" stroke-width="1.6" marker-end="url(#arrow)" opacity="0.85"/>
+
+  <!-- ===== MEMORY (bottom-left) ===== -->
+  <rect x="150" y="524" width="560" height="150" rx="14" fill="#19231c" stroke="#10b981" stroke-width="1.3" opacity="0.95"/>
+  <text x="175" y="550" fill="#5fd6a8" font-size="13" letter-spacing="4" font-weight="600">3-TIER MEMORY (ENGRAM)</text>
+  <g font-size="12.5" font-weight="600">
+    <rect x="172" y="566" width="166" height="90" rx="9" fill="#1d2a22" stroke="#2e7d5b" stroke-width="1"/>
+    <text x="255" y="590" text-anchor="middle" fill="#ddf3ea">Working buffer</text>
+    <text x="255" y="612" text-anchor="middle" fill="#8fbfa9" font-size="11" font-weight="400" font-family="'Courier New',monospace">20-turn verbatim</text>
+    <text x="255" y="630" text-anchor="middle" fill="#8fbfa9" font-size="11" font-weight="400" font-family="'Courier New',monospace">recent context</text>
+
+    <rect x="348" y="566" width="166" height="90" rx="9" fill="#1d2a22" stroke="#2e7d5b" stroke-width="1"/>
+    <text x="431" y="590" text-anchor="middle" fill="#ddf3ea">Episodic</text>
+    <text x="431" y="612" text-anchor="middle" fill="#8fbfa9" font-size="11" font-weight="400" font-family="'Courier New',monospace">progressive</text>
+    <text x="431" y="630" text-anchor="middle" fill="#8fbfa9" font-size="11" font-weight="400" font-family="'Courier New',monospace">summarization</text>
+
+    <rect x="524" y="566" width="166" height="90" rx="9" fill="#1d2a22" stroke="#2e7d5b" stroke-width="1"/>
+    <text x="607" y="590" text-anchor="middle" fill="#ddf3ea">Semantic</text>
+    <text x="607" y="612" text-anchor="middle" fill="#8fbfa9" font-size="11" font-weight="400" font-family="'Courier New',monospace">knowledge digest</text>
+    <text x="607" y="630" text-anchor="middle" fill="#8fbfa9" font-size="11" font-weight="400" font-family="'Courier New',monospace">sleep-time rebuild</text>
+  </g>
+
+  <!-- ===== INFERENCE (bottom-right) ===== -->
+  <rect x="740" y="524" width="390" height="150" rx="14" fill="#1d1736" stroke="#7c5cff" stroke-width="1.3" opacity="0.95"/>
+  <text x="765" y="550" fill="#a78bff" font-size="13" letter-spacing="4" font-weight="600">INFERENCE (via CHORD)</text>
+  <g font-size="12.5" font-weight="600">
+    <rect x="762" y="566" width="160" height="90" rx="9" fill="#241c42" stroke="#5b4b9b" stroke-width="1"/>
+    <text x="842" y="590" text-anchor="middle" fill="#e8e3f7">Chat model</text>
+    <text x="842" y="612" text-anchor="middle" fill="#a89fc8" font-size="11" font-weight="400" font-family="'Courier New',monospace">pinned · fast VRAM</text>
+    <text x="842" y="630" text-anchor="middle" fill="#a89fc8" font-size="11" font-weight="400" font-family="'Courier New',monospace">profile-selected</text>
+
+    <rect x="932" y="566" width="178" height="90" rx="9" fill="#241c42" stroke="#5b4b9b" stroke-width="1"/>
+    <text x="1021" y="590" text-anchor="middle" fill="#e8e3f7">Local-first</text>
+    <text x="1021" y="612" text-anchor="middle" fill="#a89fc8" font-size="11" font-weight="400" font-family="'Courier New',monospace">cloud = fallback only</text>
+    <text x="1021" y="630" text-anchor="middle" fill="#a89fc8" font-size="11" font-weight="400" font-family="'Courier New',monospace">data sovereignty</text>
+  </g>
+
+  <text x="640" y="712" text-anchor="middle" fill="#564d75" font-size="11.5" letter-spacing="0.4">Reconstruct-don't-retrieve memory · security by construction · runs on MooseNet, owned end to end.</text>
+</svg>

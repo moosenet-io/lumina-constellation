@@ -1,188 +1,149 @@
-<p align="center">
-  <img src="./assets/banner.svg" alt="Lumina Constellation" width="100%"/>
-</p>
+<p align="center"><img src="assets/banner.svg" alt="Lumina" width="640"></p>
 
-<h1 align="center">Lumina Constellation</h1>
+<p align="center"><img src="assets/badges.svg" alt="badges"></p>
 
-<p align="center">
-  <strong>A self-hosted, privacy-first personal AI assistant — written in Rust, local-inference-first.</strong>
-</p>
+# Lumina
+
+**A sovereign, local-first personal AI with persistent memory and a stable persona.**
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"/></a>
-  <img src="https://img.shields.io/badge/language-Rust-orange" alt="Rust"/>
-  <img src="https://img.shields.io/badge/inference-local--first-7F77DD" alt="Local-first inference"/>
-</p>
-
-<p align="center">
-  <a href="#what-is-lumina">What is it?</a> ·
-  <a href="#key-features">Features</a> ·
-  <a href="#architecture">Architecture</a> ·
-  <a href="#quick-start">Quick start</a> ·
-  <a href="#modules">Modules</a> ·
-  <a href="docs/architecture.md">Docs</a> ·
-  <a href="#license">License</a>
+  <a href="#overview">Overview</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#components">Components</a> •
+  <a href="#repository-layout">Repository Layout</a> •
+  <a href="#inference-de-bloating">Inference De-Bloating</a> •
+  <a href="#citations--credits">Citations & Credits</a>
 </p>
 
 ---
 
-## What is Lumina
+## Overview
 
-Lumina is a personal AI assistant you run on your own hardware. It is not a website you
-visit or a cloud account you rent — it is a long-running service that lives on a machine
-you control, holds a persistent memory of your context, and talks to you through a chat
-channel of your choosing.
+Lumina is the umbrella project for the **Lumina constellation** — a self-hosted, personality-first personal AI that runs end-to-end on owned hardware (MooseNet). Unlike generic chatbots that forget you after every session, Lumina maintains a persistent understanding of who you are — preferences, communication style, schedule, and history — behind a single stable persona.
 
-The design goal is simple: **the assistant should be useful without sending your life to a
-third party.** By default, Lumina runs its inference locally against open-weight models
-(via a local model server) and only reaches out to a cloud model when a task
-genuinely needs frontier-level reasoning. For most day-to-day work — summarizing a page,
-drafting a briefing, classifying a request — nothing ever leaves the box, and the marginal
-cost of a "thought" is zero.
+Three principles define the system:
 
-Lumina is built as a Rust workspace. The orchestration core, the inference proxy, and the
-tool hub are all native binaries with no heavyweight runtime dependencies, so the whole
-system fits comfortably on a single mini-PC, a workstation with a discrete GPU, or a
-small cluster if you want to spread the load.
+- **Local-first, cloud-as-fallback.** Inference runs on local models served through [Chord](#inference-via-chord); cloud AI is reserved for the small fraction of work that genuinely needs it. Data sovereignty by default.
+- **Reconstruct, don't retrieve.** Memory is a three-tier structure (working buffer, episodic, semantic) that is summarized and rebuilt rather than naively recalled.
+- **Inference de-bloating.** Python and templates handle ~90% of operations at zero cost; local models cover ~8%; cloud reasoning is the ~2% remainder. Routine operation targets well under a dollar a day.
 
----
-
-## Key features
-
-- **Persistent, multi-turn memory.** A three-tier memory subsystem (working context, episodic
-  history, semantic long-term store) means the assistant remembers what you told it last
-  week, not just last message.
-- **Personality system.** The assistant has a configurable persona, voice, and behavioral
-  guidelines assembled into its system prompt at runtime — not a generic chatbot tone.
-- **Tool calling via a unified MCP hub.** A single Model Context Protocol gateway exposes
-  100+ tools (version control, project tracking, monitoring, web research, calendar, and
-  more) to every agent, with per-call rate limiting and timeouts.
-- **Tiered model management.** Models are tracked across **hot** (resident in GPU memory),
-  **warm** (on local disk), and **cold** (archived) tiers, with automatic eviction under
-  disk pressure and a control API for promotion/demotion.
-- **Cost-aware routing.** Requests are classified and routed to the cheapest tier that can
-  do the job: deterministic code first, local models next, cloud models only as a last
-  resort. Spend is tracked per consumer.
-- **Privacy-first by construction.** Secrets live in an encrypted vault, configuration is
-  injected via environment variables, outbound network access is allowlisted, and a
-  PII/secret gate guards every commit.
-
----
+This repository is the project/umbrella repo: it holds the architecture, specs, agent definitions, and the source trees for the constellation's components — the Lumina core agent, the Chord inference manager, the Terminus tool hub, the Engram memory system, and the agent fleet.
 
 ## Architecture
 
-Lumina is composed of three Rust crates plus local model serving:
+<p align="center"><img src="assets/architecture.svg" alt="Lumina architecture" width="100%"></p>
+
+The diagram shows how a single request flows through the system:
+
+- **Matrix interface** — the conversational front door. Lumina delivers SSE acknowledgments and conversational engagement over Matrix, with tolerance for mobile typing.
+- **Lumina Core** — the orchestrator, built from three cooperating subsystems:
+  - **Dynamic Prompt Assembler** — assembles the prompt from five layers (~900 tokens): identity, persona, rules, and runtime hooks — producing a voice that is warm, quirky, curious, and direct.
+  - **Tool Orchestration** — implicit-intent tool selection, multi-step chaining, an anti-fabrication guard, and interim acknowledgments so the user sees progress.
+  - **Engagement & Reminders** — three-mode engagement rules, Postgres-backed reminders, and Matrix delivery.
+- **3-Tier Memory (Engram)** — the persistence layer:
+  - **Working buffer** — 20-turn verbatim recent context.
+  - **Episodic** — progressive summarization of past interactions.
+  - **Semantic** — a knowledge digest rebuilt during sleep-time.
+- **Inference (via Chord)** — model serving and routing. A pinned, fast-VRAM **chat model** is selected per serving profile, with a **local-first** policy where cloud is a fallback only — preserving data sovereignty.
+
+In short: *reconstruct-don't-retrieve memory, security by construction, runs on MooseNet, owned end to end.*
+
+## Components
+
+| Component | Role |
+|-----------|------|
+| **Lumina Core** | Personality-first orchestrator: dynamic prompt assembly, tool orchestration, engagement & reminders. |
+| **Engram** | Three-tier memory system — working buffer, episodic summarization, semantic knowledge digest. |
+| **Chord** | Inference manager — model serving, profile-selected chat model, VRAM-aware residency, local-first routing. |
+| **Terminus** | MCP tool hub — tool modules served over FastMCP for the core and fleet. |
+| **Fleet** | Specialized agents (briefings, ops, dev loops, research, work queue, cost governance, resilience) delegated to by the core. |
+
+Each fleet agent is defined by a single `.agent.yaml` file. Adding an agent is a matter of dropping one file and starting its process — no code changes required.
+
+## Repository Layout
+
+| Directory | Contents |
+|-----------|----------|
+| [terminus/](terminus/) | MCP tool hub — tool modules and the FastMCP server. |
+| [fleet/](fleet/) | Agent processes — Axon, Vigil, Sentinel, Vector, Seer, Cortex, Myelin, Dura, Soma, and shared libraries. |
+| [agents/](agents/) | Agent definitions (`.agent.yaml`). |
+| [engram/](engram/) | Knowledge base, journals, and behavioral patterns (memory data). |
+| [deploy/](deploy/) | Docker Compose deployment, Dockerfiles, reverse-proxy config. |
+| [docs/](docs/) | Built-in help system, module docs, and guides. |
+| [specs/](specs/) | System design specifications and PRDs. |
+| [skills/](skills/) | Agent Skills in the [agentskills.io](https://agentskills.io) format, auto-discovered at startup. |
+
+## Inference De-Bloating
+
+Before every function: *can Python handle this?* If yes, no LLM. *Can a local model?* If yes, no cloud. Cloud AI only for genuine reasoning.
 
 ```
-                         You (chat channel)
-                                |
-                                v
-                +-------------------------------+
-                |          lumina-core          |
-                |  orchestrator . personality . |
-                |  memory subsystem . scheduler |
-                +---------------+---------------+
-                                |
-                                v
-                +-------------------------------+
-                |          chord-proxy          |
-                |  smart routing . cost tiers . |
-                |  model lifecycle (hot/warm/   |
-                |  cold) . agentic loop         |
-                +-------+---------------+-------+
-                        |               |
-              +---------v------+  +-----v--------------+
-              |  terminus-rs   |  |  local inference   |
-              |  MCP tool hub  |  |  (local models)    |
-              |  (100+ tools)  |  |  + cloud fallback  |
-              +----------------+  +--------------------+
+         ┌──────────────────┐
+         │  Cloud Opus       │  <0.1% — Architecture, security audits
+         ├──────────────────┤
+         │  Cloud Sonnet /   │  ~2% — Research, synthesis, reasoning
+         │  Haiku            │
+         ├──────────────────┤
+         │  Local models ($0)│  ~8% — Parsing, classification
+         ├──────────────────┤
+         │  Python +         │  ~90% — API calls, math, SQL,
+         │  Templates ($0)   │  templates, cron, threshold checks
+         └──────────────────┘
 ```
 
-- **`lumina-core`** — the orchestrator. Owns the chat channel(s), assembles the system
-  prompt and persona, runs the scheduler, and manages the three-tier memory subsystem.
-- **`chord-proxy`** — the smart inference proxy. Classifies and routes requests across cost
-  tiers, runs the agentic tool-calling loop, and manages the model storage lifecycle.
-- **`terminus-rs`** — the MCP tool hub. A single gateway through which every agent reaches
-  external systems, with rate limiting and per-tool timeouts.
+Most "AI tasks" don't need AI. A Python script checking disk usage is faster, cheaper, and more reliable than asking an LLM to do it. Threshold alerts are comparisons, not inference calls. The system only reaches for AI when it genuinely needs to think — and prefers local inference (via Chord) before any cloud call.
 
-A typical request flows: **user message → `lumina-core` assembles context + memory →
-`chord-proxy` routes to the right model tier → the model may call tools via `terminus-rs` →
-the response is returned and written back to memory.**
+## Runtime & Frameworks
 
-See [docs/architecture.md](docs/architecture.md) for the full picture, including the
-memory and model-tier designs.
+Lumina runs on [IronClaw](https://github.com/nearai/ironclaw), a Rust-based, security-first agent runtime focused on privacy and data sovereignty — WASM sandbox isolation, host-boundary credential injection, and endpoint allowlisting.
 
----
+| Project | Role in Lumina | Source |
+|---------|---------------|--------|
+| **IronClaw** | Agent runtime — WASM sandboxing, credential isolation, endpoint allowlisting | [nearai/ironclaw](https://github.com/nearai/ironclaw) |
+| **FastMCP** | MCP server framework for Terminus | [jlowin/fastmcp](https://github.com/jlowin/fastmcp) |
+| **LiteLLM** | Unified LLM proxy (100+ providers) | [BerriAI/litellm](https://github.com/BerriAI/litellm) |
+| **Ollama** | Local model serving (under Chord) | [ollama/ollama](https://github.com/ollama/ollama) |
 
-## Quick start
+## Citations & Credits
 
-### Prerequisites
+Lumina builds on ideas and tools from the broader AI agent ecosystem.
 
-- A recent stable **Rust** toolchain ([rustup](https://rustup.rs) recommended)
-- A **local model server** (model serving runtime) for local inference
-- A **GPU with Vulkan or ROCm support** (or Apple Silicon with Metal) for fast local
-  inference — CPU-only works but is slow
-- A **chat channel** the assistant can talk on (e.g. a Matrix homeserver, self-hosted or
-  public)
+### Architectural Influences
 
-### Build
+**Ralph Loop Pattern** — Geoffrey Huntley. Autonomous agent loop where a coding agent runs repeatedly against a spec until complete, with memory persisting via git history.
+- [ghuntley.com/loop](https://ghuntley.com/loop/) · [snarktank/ralph](https://github.com/snarktank/ralph)
 
-```bash
-git clone https://github.com/<your-org>/lumina-constellation.git
-cd lumina-constellation
-cargo build --workspace --release
-```
+**NPCSH** — NPC Worldwide. Composable multi-agent shell with portable agent definitions, team orchestration, and knowledge graphs. Inspired Lumina's `.agent.yaml` format, conversation review, help system, and Docker deployment.
+- [NPC-Worldwide/npcsh](https://github.com/NPC-Worldwide/npcsh) · [npc-shell.readthedocs.io](https://npc-shell.readthedocs.io/)
 
-### Configure
+**A-MEM / Agentic Memory** — Xu, W. et al. (2025), NeurIPS. Zettelkasten-inspired memory with dynamic indexing, linking, and evolution. Influenced Engram's interconnected, reconstruct-don't-retrieve design.
+- [arxiv.org/abs/2502.12110](https://arxiv.org/abs/2502.12110)
 
-All configuration is supplied through environment variables. Copy the example file and
-fill in your own values:
+### Self-Hosted Backends
 
-```bash
-cp .env.example .env
-$EDITOR .env
-```
+| Project | Role | Source |
+|---------|------|--------|
+| **Plane CE** | Work queue | [makeplane/plane](https://github.com/makeplane/plane) |
+| **Tuwunel** | Matrix communication | [matrix-construct/tuwunel](https://github.com/matrix-construct/tuwunel) |
+| **SearXNG** | Research | [searxng/searxng](https://github.com/searxng/searxng) |
 
-At minimum you will set your chat-channel credentials, your local model URL, and the
-inference proxy's signing secret. Every variable is documented in
-[docs/deployment.md](docs/deployment.md#configuration-reference). **Never commit a
-populated `.env`** — secrets belong in the vault.
+## Contributors
 
-### Run
+- **Peter Boose** ([@LeMajesticMoose](https://github.com/LeMajesticMoose)) — Creator, architect, and product lead. Designed and directed the entire system via voice transcription and AI-assisted development.
+- **Claude** ([Anthropic](https://anthropic.com)) — Co-developer. Specifications, implementation, autonomous build sessions, and infrastructure debugging via Claude Code.
 
-```bash
-# Pull a local model into your model server (example: qwen3:8b)
+## Disclaimer
 
-# Start the proxy and orchestrator (see docs/deployment.md for service files)
-./target/release/chord-proxy &
-./target/release/lumina-core
-```
-
-Then say hello on your configured chat channel. For single-host and multi-host setups,
-service definitions, and secrets management, see [docs/deployment.md](docs/deployment.md).
-
----
-
-## Modules
-
-Lumina ships a roster of cooperating modules — memory, briefings, monitoring, research,
-notifications, cost governance, and more. Each does one thing well and shares the same
-memory and tool hub.
-
-See the full registry in **[docs/modules.md](docs/modules.md)**.
-
----
-
-## Documentation
-
-- [Architecture](docs/architecture.md) — system design, data flow, memory, model tiers
-- [Deployment](docs/deployment.md) — prerequisites, configuration, single/multi-host, secrets
-- [Modules](docs/modules.md) — the module registry
-- [Inference de-bloating](docs/inference-debloating.md) — the routing philosophy that keeps cost near zero
-- [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
-
----
+Lumina is self-hosted software that integrates with services managing sensitive personal data. **You are solely responsible for securing your deployment.** The software is provided "as is" under the MIT License, without warranty of any kind. Self-hosted deployments require proper network isolation, firewall configuration, and credential management. Store all API keys in a secrets manager — never in code or config. AI outputs are not professional advice, and AI agents can hallucinate or take unintended actions; human review of agent-initiated changes is strongly recommended. Use at your own risk.
 
 ## License
 
-Lumina Constellation is released under the [MIT License](LICENSE).
+MIT License. See [LICENSE](LICENSE) for details.
+
+Copyright (c) 2026 Peter Boose
+
+---
+
+<p align="center">
+  <em>Sovereign · Local-first · Personality-first · Powered by inference de-bloating</em>
+</p>
