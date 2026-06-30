@@ -77,19 +77,12 @@ Each fleet agent is defined by a single `.agent.yaml` file. Adding an agent is a
 
 Before every function: *can Python handle this?* If yes, no LLM. *Can a local model?* If yes, no cloud. Cloud AI only for genuine reasoning.
 
-```
-         ┌──────────────────┐
-         │  Cloud Opus       │  <0.1% — Architecture, security audits
-         ├──────────────────┤
-         │  Cloud Sonnet /   │  ~2% — Research, synthesis, reasoning
-         │  Haiku            │
-         ├──────────────────┤
-         │  Local models ($0)│  ~8% — Parsing, classification
-         ├──────────────────┤
-         │  Python +         │  ~90% — API calls, math, SQL,
-         │  Templates ($0)   │  templates, cron, threshold checks
-         └──────────────────┘
-```
+| Tier | Share | Used for |
+|------|-------|----------|
+| **Python + templates** ($0) | ~90% | API calls, math, SQL, templates, cron, threshold checks |
+| **Local models** ($0) | ~8% | Parsing, classification |
+| **Cloud Sonnet / Haiku** | ~2% | Research, synthesis, reasoning |
+| **Cloud Opus** | <0.1% | Architecture, security audits |
 
 Most "AI tasks" don't need AI. A Python script checking disk usage is faster, cheaper, and more reliable than asking an LLM to do it. Threshold alerts are comparisons, not inference calls. The system only reaches for AI when it genuinely needs to think — and prefers local inference (via Chord) before any cloud call.
 
