@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/lumina-core", "crates/chord-proxy", "crates/terminus-rs"]
+members = ["crates/lumina-core"]
 resolver = "2"
 
 [workspace.package]
